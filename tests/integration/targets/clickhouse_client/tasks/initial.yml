@@ -1,0 +1,73 @@
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+- name: Just run something
+  register: result
+  community.clickhouse.clickhouse_client:
+    login_host: localhost
+    client_kwargs:
+      connect_timeout: 20
+    execute: SHOW DATABASES
+    execute_kwargs:
+      types_check: false
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.result != []
+
+- name: Create dabase
+  community.clickhouse.clickhouse_client:
+    execute: CREATE DATABASE foo
+
+- name: Create user
+  community.clickhouse.clickhouse_client:
+    execute: "CREATE USER alice IDENTIFIED WITH sha256_password BY 'my_password'"
+
+- name: Query DB using non-default user & DB to connect to
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: SELECT version()
+    login_host: localhost
+    login_user: alice
+    login_db: foo
+    login_password: my_password
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result.statistics["processed_rows"] == 1
+
+- name: Create table
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: CREATE TABLE test_table_1 (x String) ENGINE = Memory
+
+- name: Insert into test table using named args
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "INSERT INTO test_table_1 (x) VALUES (%(a)s), (%(b)s), (%(c)s)"
+    execute_kwargs:
+      params:
+        a: one
+        b: two
+        c: three
+
+- name: Check the result
+  ansible.builtin.assert:
+    that:
+      - result.substituted_query == "INSERT INTO test_table_1 (x) VALUES ('one'), ('two'), ('three')"
+      - result.statistics["processed_rows"] == 3
+
+- name: Check rows were inserted into test table 
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT * FROM test_table_1"
+
+- name: Check the result
+  ansible.builtin.assert:
+    that:
+    - result.result == [["one"], ["two"], ["three"]]
