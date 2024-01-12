@@ -1,0 +1,40 @@
+# Based on the official guide https://clickhouse.com/docs/en/install
+- name: Install required packages
+  ansible.builtin.apt:
+    name:
+    - apt-transport-https
+    - ca-certificates
+    - dirmngr
+    state: present
+
+- name: GPG part
+  ansible.builtin.shell: >
+    GNUPGHOME="/tmp/" gpg --no-default-keyring
+    --keyring /usr/share/keyrings/clickhouse-keyring.gpg
+    --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 8919F6BD2B48D754 &&
+    chmod +r /usr/share/keyrings/clickhouse-keyring.gpg
+
+- name: Add repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/clickhouse-keyring.gpg] https://packages.clickhouse.com/deb stable main"
+    filename: clickhouse.list
+    state: present
+    update_cache: true
+
+- name: Install clickhouse
+  ansible.builtin.apt:
+    name:
+    - clickhouse-server
+    - clickhouse-client
+    state: present
+
+- name: Enable and start clickhouse
+  ansible.builtin.systemd_service:
+    name: clickhouse-server
+    state: started
+    enabled: true
+
+- name: Install Python driver
+  ansible.builtin.pip:
+    name: clickhouse-driver
+    state: present
