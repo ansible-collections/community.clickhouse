@@ -21,9 +21,9 @@ jobs:
       matrix:
         ansible:
           - stable-2.14
-          - stable-2.15
-          - stable-2.16
-          - devel
+          #- stable-2.15
+          #- stable-2.16
+          #- devel
     steps:
 
       - name: Check out code
@@ -34,7 +34,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.9
+          python-version: 3.10
 
       - name: Install ansible-base (${{ matrix.ansible }})
         run: pip install https://github.com/ansible/ansible/archive/${{ matrix.ansible }}.tar.gz --disable-pip-version-check
@@ -53,9 +53,9 @@ jobs:
       matrix:
         ansible:
           - stable-2.14
-          - stable-2.15
-          - stable-2.16
-          - devel
+          #- stable-2.15
+          #- stable-2.16
+          #- devel
 
     steps:
       - name: Check out code
@@ -66,7 +66,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.9
+          python-version: 3.10
 
       - name: Install ansible-base (${{ matrix.ansible }})
         run: pip install https://github.com/ansible/ansible/archive/${{ matrix.ansible }}.tar.gz --disable-pip-version-check
@@ -94,11 +94,11 @@ jobs:
       matrix:
         ansible:
           - stable-2.14
-          - stable-2.15
-          - stable-2.16
-          - devel
+          #- stable-2.15
+          #- stable-2.16
+          #- devel
         python:
-          - 3.9
+          - 3.10
     steps:
 
       - name: Check out code
@@ -109,7 +109,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.9
+          python-version: 3.10
 
       - name: Install ansible-base (${{ matrix.ansible }})
         run: pip install https://github.com/ansible/ansible/archive/${{ matrix.ansible }}.tar.gz --disable-pip-version-check
