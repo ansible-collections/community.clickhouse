@@ -1,0 +1,37 @@
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+- name: Get info
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+    client_kwargs:
+      connect_timeout: 20
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+
+- name: Debug
+  ansible.builtin.debug:
+    var: result
+
+#- name: Create user
+#  community.clickhouse.clickhouse_client:
+#    execute: "CREATE USER alice IDENTIFIED WITH sha256_password BY 'my_password'"
+#
+#- name: Query DB using non-default user & DB to connect to
+#  register: result
+#  community.clickhouse.clickhouse_info:
+#    login_host: localhost
+#    login_user: alice
+#    login_db: foo
+#    login_password: my_password
+
+#- name: 
+#  ansible.builtin.assert:
+#    that:
+#    - result
