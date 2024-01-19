@@ -11,16 +11,17 @@ DOCUMENTATION = r'''
 ---
 module: clickhouse_info
 
-short_description: Execute queries in a ClickHouse database using the clickhouse-driver Client interface
+short_description: Gather ClickHouse server information using the clickhouse-driver Client interface
 
 description:
-  - Execute arbitrary queries in a ClickHouse database using the
+  - Gather ClickHouse server information using the
     L(clickhouse-driver,https://clickhouse-driver.readthedocs.io/en/latest) Client interface.
-  - Always returns that the state changed.
+  - Does not change server state.
 
 attributes:
   check_mode:
-    description: Can run in check_mode. Does not modify target.
+    description: Supports check_mode.
+    support: full
 
 requirements: ['clickhouse-driver']
 
@@ -30,7 +31,6 @@ author:
   - Andrew Klychkov (@Andersson007)
 
 notes:
-  - Does not support C(check_mode).
   - See the clickhouse-driver
     L(documentation,https://clickhouse-driver.readthedocs.io/en/latest)
     for more information about the driver interface.
@@ -88,7 +88,18 @@ EXAMPLES = r'''
     var: result
 '''
 
-RETURN = r'''#'''
+RETURN = r'''
+driver:
+  description: Python driver information.
+  returned: success
+  type: dict
+  sample: { "version": "0.2.6" }
+version:
+  description: Clickhouse server version.
+  returned: success
+  type: dict
+  sample: {"raw": "23.12.2.59", "year": 23, "feature": 12, "maintenance": 2, "build": 59, "type": null }
+'''
 
 Client = None
 try:
@@ -121,17 +132,49 @@ def get_main_conn_kwargs(module):
     return main_conn_kwargs
 
 
-def execute_query(module, client, query, execute_kwargs):
+def execute_query(module, client, query, execute_kwargs=None):
     """Execute query.
 
     Returns rows returned in response.
     """
+    # Some modules do not pass this argument
+    if execute_kwargs is None:
+        execute_kwargs = {}
+
     try:
         result = client.execute(query, **execute_kwargs)
     except Exception as e:
         module.fail_json(msg="Failed to execute query: %s" % to_native(e))
 
     return result
+
+
+def get_server_version(module, client):
+    """Get server version.
+
+    Returns a dictionary with server version.
+    """
+    result = execute_query(module, client, "SELECT version()")
+
+    raw = result[0][0]
+    split_raw = raw.split('.')
+
+    version = {}
+    version["raw"] = raw
+
+    version["year"] = int(split_raw[0])
+    version["feature"] = int(split_raw[1])
+    version["maintenance"] = int(split_raw[2])
+
+    if '-' in split_raw[3]:
+        tmp = split_raw[3].split('-')
+        version["build"] = int(tmp[0])
+        version["type"] = tmp[1]
+    else:
+        version["build"] = int(split_raw[3])
+        version["type"] = None
+
+    return version
 
 
 def connect_to_db_via_client(module, main_conn_kwargs, client_kwargs):
@@ -177,7 +220,7 @@ def main():
     # Instantiate an object of module class
     module = AnsibleModule(
         argument_spec=argument_spec,
-        supports_check_mode=False,
+        supports_check_mode=True,
     )
 
     # Assign passed options to variables
@@ -197,10 +240,10 @@ def main():
     # Get server information
     srv_info = {'driver': {}}
     srv_info['driver']['version'] = driver_version
-    #srv_info['version'] = get_srv_version(module, client)
-    #srv_info['databases'] = get_databases(module, client)
-    #srv_info['users'] = get_users(module, client)
-    #srv_info['settings'] = get_settings(module, client)
+    srv_info['version'] = get_server_version(module, client)
+    # srv_info['databases'] = get_databases(module, client)
+    # srv_info['users'] = get_users(module, client)
+    # srv_info['settings'] = get_settings(module, client)
 
     # Close connection
     client.disconnect_connection()

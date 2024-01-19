@@ -74,6 +74,7 @@ TBD
 **Modules**:
 
 - clickhouse_client: Run queries in a ClickHouse database by using a Client() class object.
+- clickhouse_info: Gather ClickHouse server information using the clickhouse-driver Client interface.
 
 ## Tested with ansible-core
 
