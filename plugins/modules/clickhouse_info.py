@@ -149,6 +149,26 @@ def execute_query(module, client, query, execute_kwargs=None):
     return result
 
 
+def get_databases(module, client):
+    """Get databases.
+
+    Returns a dictionary with database names as keys.
+    """
+    query = "SELECT name, engine, data_path, uuid, comment FROM system.databases"
+    result = execute_query(module, client, query)
+
+    db_info = {}
+    for row in result:
+        db_info[row[0]] = {
+            "engine": row[1],
+            "data_path": row[2],
+            "uuid": str(row[3]),
+            "comment": row[4],
+        }
+
+    return db_info
+
+
 def get_server_version(module, client):
     """Get server version.
 
@@ -241,7 +261,7 @@ def main():
     srv_info = {'driver': {}}
     srv_info['driver']['version'] = driver_version
     srv_info['version'] = get_server_version(module, client)
-    # srv_info['databases'] = get_databases(module, client)
+    srv_info['databases'] = get_databases(module, client)
     # srv_info['users'] = get_users(module, client)
     # srv_info['settings'] = get_settings(module, client)
 
