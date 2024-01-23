@@ -128,7 +128,8 @@ See [Ansible Using collections](https://docs.ansible.com/ansible/latest/user_gui
   ansible.builtin.debug:
     var: result.result
 
-# Note: the task above contains it too
+# Note: it runs SELECT version() just for the sake of example.
+# You can get it with the task above much more conveniently.
 - name: Query DB using non-default user & DB to connect to
   register: result
   community.clickhouse.clickhouse_client:
