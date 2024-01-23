@@ -2,8 +2,6 @@
 
 [![Plugins CI](https://github.com/ansible-collections/community.clickhouse/workflows/Plugins%20CI/badge.svg?event=push)](https://github.com/ansible-collections/community.clickhouse/actions?query=workflow%3A"Plugins+CI") [![Codecov](https://img.shields.io/codecov/c/github/ansible-collections/community.clickhouse)](https://codecov.io/gh/ansible-collections/community.clickhouse)
 
-TODO: Add mission statement
-
 ## Our mission
 
 At the `community.clickhouse` Ansible collection project,
