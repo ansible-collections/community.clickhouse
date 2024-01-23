@@ -120,6 +120,16 @@ See [Ansible Using collections](https://docs.ansible.com/ansible/latest/user_gui
 ### Usage example
 
 ```yaml
+- name: Get server information
+  register: result
+  community.clickhouse.clickhouse_info:
+
+- name: Print server information
+  ansible.builtin.debug:
+    var: result.result
+
+# Note: it runs SELECT version() just for the sake of example.
+# You can get it with the task above much more conveniently.
 - name: Query DB using non-default user & DB to connect to
   register: result
   community.clickhouse.clickhouse_client:

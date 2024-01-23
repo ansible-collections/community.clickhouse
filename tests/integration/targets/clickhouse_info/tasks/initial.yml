@@ -3,6 +3,10 @@
 # and should not be used as examples of how to write Ansible roles #
 ####################################################################
 
+- name: Create role
+  community.clickhouse.clickhouse_client:
+    execute: "CREATE ROLE IF NOT EXISTS accountant"
+
 - name: Get info
   register: result
   community.clickhouse.clickhouse_info:
@@ -14,24 +18,29 @@
   ansible.builtin.assert:
     that:
     - result is not changed
+    - result["users"]["default"] != {}
+    - result["roles"]["accountant"] != {}
+    - result["databases"]["default"]["engine"] == "Atomic"
+    - result["version"] != {}
+    - result["driver"]["version"] != {}
+    - result["settings"]["add_http_cors_header"] != {}
 
 - name: Debug
   ansible.builtin.debug:
     var: result
 
-#- name: Create user
-#  community.clickhouse.clickhouse_client:
-#    execute: "CREATE USER alice IDENTIFIED WITH sha256_password BY 'my_password'"
-#
-#- name: Query DB using non-default user & DB to connect to
-#  register: result
-#  community.clickhouse.clickhouse_info:
-#    login_host: localhost
-#    login_user: alice
-#    login_db: foo
-#    login_password: my_password
+- name: Create user
+  community.clickhouse.clickhouse_client:
+    execute: "CREATE USER IF NOT EXISTS alice IDENTIFIED WITH sha256_password BY 'my_password'"
 
-#- name: 
-#  ansible.builtin.assert:
-#    that:
-#    - result
+- name: Query DB using non-default connect params
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+    login_user: alice
+    login_password: my_password
+
+- name: Check it returned something
+  ansible.builtin.assert:
+    that:
+    - result["users"]["497"] == "Not enough privileges"

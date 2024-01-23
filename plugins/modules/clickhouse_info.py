@@ -58,6 +58,8 @@ options:
     description:
       - The same as the C(Client(user='...')) argument.
       - If not passed, relies on the driver's default argument value.
+      - Be sure your the user has permissions to read the system tables
+        listed in the RETURN section.
     type: str
 
   login_password:
@@ -99,6 +101,33 @@ version:
   returned: success
   type: dict
   sample: {"raw": "23.12.2.59", "year": 23, "feature": 12, "maintenance": 2, "build": 59, "type": null }
+databases:
+  description:
+    - The content of the system.databases table with names as keys.
+    - Be sure your I(login_user) has permissions.
+  returned: success
+  type: dict
+  sample: { "system": "..." }
+users:
+  description:
+    - The content of the system.users table with names as keys.
+    - Be sure your I(login_user) has permissions.
+  returned: success
+  type: dict
+  sample: { "default": "..." }
+roles:
+  description:
+    - The content of the system.roles table with names as keys.
+    - Be sure your I(login_user) has permissions.
+  returned: success
+  type: dict
+  sample: { "accountant": "..." }
+settings:
+  description:
+    - The content of the system.settings table with names as keys.
+  returned: success
+  type: dict
+  sample: { "zstd_window_log_max": "..." }
 '''
 
 Client = None
@@ -111,6 +140,8 @@ except ImportError:
 
 from ansible.module_utils.basic import AnsibleModule, missing_required_lib
 from ansible.module_utils._text import to_native
+
+PRIV_ERR_CODE = 497
 
 
 def get_main_conn_kwargs(module):
@@ -144,9 +175,115 @@ def execute_query(module, client, query, execute_kwargs=None):
     try:
         result = client.execute(query, **execute_kwargs)
     except Exception as e:
+        if "Not enough privileges" in to_native(e):
+            return PRIV_ERR_CODE
         module.fail_json(msg="Failed to execute query: %s" % to_native(e))
 
     return result
+
+
+def get_databases(module, client):
+    """Get databases.
+
+    Returns a dictionary with database names as keys.
+    """
+    query = "SELECT name, engine, data_path, uuid, comment FROM system.databases"
+    result = execute_query(module, client, query)
+
+    if result == PRIV_ERR_CODE:
+        return {PRIV_ERR_CODE: "Not enough privileges"}
+
+    db_info = {}
+    for row in result:
+        db_info[row[0]] = {
+            "engine": row[1],
+            "data_path": row[2],
+            "uuid": str(row[3]),
+            "comment": row[4],
+        }
+
+    return db_info
+
+
+def get_roles(module, client):
+    """Get roles.
+
+    Returns a dictionary with roles names as keys.
+    """
+    query = "SELECT name, id, storage FROM system.roles"
+    result = execute_query(module, client, query)
+
+    if result == PRIV_ERR_CODE:
+        return {PRIV_ERR_CODE: "Not enough privileges"}
+
+    roles_info = {}
+    for row in result:
+        roles_info[row[0]] = {
+            "id": str(row[1]),
+            "storage": row[2],
+        }
+
+    return roles_info
+
+
+def get_settings(module, client):
+    """Get settings.
+
+    Returns a dictionary with settings names as keys.
+    """
+    query = ("SELECT name, value, changed, description, min, max, readonly, default, "
+             "is_obsolete FROM system.settings")
+    result = execute_query(module, client, query)
+
+    if result == PRIV_ERR_CODE:
+        return {PRIV_ERR_CODE: "Not enough privileges"}
+
+    settings_info = {}
+    for row in result:
+        settings_info[row[0]] = {
+            "value": row[1],
+            "changed": row[2],
+            "description": row[3],
+            "min": row[4],
+            "max": row[5],
+            "readonly": row[6],
+            "default": row[7],
+            "is_obsolete": row[8],
+        }
+
+    return settings_info
+
+
+def get_users(module, client):
+    """Get users.
+
+    Returns a dictionary with users names as keys.
+    """
+    query = ("SELECT name, id, storage, auth_type, auth_params, host_ip, host_names, "
+             "host_names_regexp, host_names_like, default_roles_all, "
+             "default_roles_list, default_roles_except FROM system.users")
+    result = execute_query(module, client, query)
+
+    if result == PRIV_ERR_CODE:
+        return {PRIV_ERR_CODE: "Not enough privileges"}
+
+    user_info = {}
+    for row in result:
+        user_info[row[0]] = {
+            "id": str(row[1]),
+            "storage": row[2],
+            "auth_type": row[3],
+            "auth_params": row[4],
+            "host_ip": row[5],
+            "host_names": row[6],
+            "host_names_regexp": row[7],
+            "host_names_like": row[8],
+            "default_roles_all": row[9],
+            "default_roles_list": row[10],
+            "default_roles_except": row[11],
+        }
+
+    return user_info
 
 
 def get_server_version(module, client):
@@ -155,6 +292,9 @@ def get_server_version(module, client):
     Returns a dictionary with server version.
     """
     result = execute_query(module, client, "SELECT version()")
+
+    if result == PRIV_ERR_CODE:
+        return {PRIV_ERR_CODE: "Not enough privileges"}
 
     raw = result[0][0]
     split_raw = raw.split('.')
@@ -241,9 +381,10 @@ def main():
     srv_info = {'driver': {}}
     srv_info['driver']['version'] = driver_version
     srv_info['version'] = get_server_version(module, client)
-    # srv_info['databases'] = get_databases(module, client)
-    # srv_info['users'] = get_users(module, client)
-    # srv_info['settings'] = get_settings(module, client)
+    srv_info['databases'] = get_databases(module, client)
+    srv_info['users'] = get_users(module, client)
+    srv_info['roles'] = get_roles(module, client)
+    srv_info['settings'] = get_settings(module, client)
 
     # Close connection
     client.disconnect_connection()
