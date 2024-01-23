@@ -15,6 +15,10 @@ you are encouraged to contribute, share insights, and collaborate with fellow en
 We strive to make managing ClickHouse deployments as effortless and efficient as possible with automation,
 enabling users to focus on their core objectives.
 
+## External requirements
+
+- [clickhouse-driver](https://clickhouse-driver.readthedocs.io/en/latest/) Python connector installed on a target machine.
+
 ## Using this collection
 
 ### Installing the Collection from Ansible Galaxy
@@ -137,10 +141,6 @@ TBD
 ## Tested with ansible-core
 
 TBD
-
-## External requirements
-
-- [clickhouse-driver](https://clickhouse-driver.readthedocs.io/en/latest/) Python connector installed on a machine where tasks are executed.
 
 ## More information
 
