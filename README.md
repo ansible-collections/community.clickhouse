@@ -15,6 +15,66 @@ you are encouraged to contribute, share insights, and collaborate with fellow en
 We strive to make managing ClickHouse deployments as effortless and efficient as possible with automation,
 enabling users to focus on their core objectives.
 
+## Using this collection
+
+### Installing the Collection from Ansible Galaxy
+
+Before using the ClickHouse collection, you need to install it with the Ansible Galaxy CLI:
+
+```bash
+ansible-galaxy collection install community.clickhouse
+```
+
+You can also include it in a `requirements.yml` file and install it via `ansible-galaxy collection install -r requirements.yml`, using the format:
+
+```yaml
+---
+collections:
+  - name: community.clickhouse
+```
+
+Note that if you install the collection from Ansible Galaxy, it will not be upgraded automatically if you upgrade the Ansible package.
+To upgrade the collection to the latest available version, run the following command:
+
+```bash
+ansible-galaxy collection install community.clickhouse --upgrade
+```
+
+You can also install a specific version of the collection, for example, if you need to downgrade when something is broken in the latest version (please report an issue in this repository). Use the following syntax:
+
+```bash
+ansible-galaxy collection install community.clickhouse:==0.1.0
+```
+
+See [Ansible Using collections](https://docs.ansible.com/ansible/latest/user_guide/collections_using.html) for more details.
+
+### Usage example
+
+```yaml
+- name: Get server information
+  register: result
+  community.clickhouse.clickhouse_info:
+
+- name: Print server information
+  ansible.builtin.debug:
+    var: result.result
+
+# Note: it runs SELECT version() just for the sake of example.
+# You can get it with the task above much more conveniently.
+- name: Query DB using non-default user & DB to connect to
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: SELECT version()
+    login_host: localhost
+    login_user: alice
+    login_db: foo
+    login_password: my_password
+
+- name: Print returned server version
+  ansible.builtin.debug:
+    var: result.result
+```
+
 ## Code of Conduct
 
 We follow the [Ansible Code of Conduct](https://docs.ansible.com/ansible/latest/community/code_of_conduct.html) in all our interactions within this project.
@@ -81,66 +141,6 @@ TBD
 ## External requirements
 
 - [clickhouse-driver](https://clickhouse-driver.readthedocs.io/en/latest/) Python connector installed on a machine where tasks are executed.
-
-## Using this collection
-
-### Installing the Collection from Ansible Galaxy
-
-Before using the ClickHouse collection, you need to install it with the Ansible Galaxy CLI:
-
-```bash
-ansible-galaxy collection install community.clickhouse
-```
-
-You can also include it in a `requirements.yml` file and install it via `ansible-galaxy collection install -r requirements.yml`, using the format:
-
-```yaml
----
-collections:
-  - name: community.clickhouse
-```
-
-Note that if you install the collection from Ansible Galaxy, it will not be upgraded automatically if you upgrade the Ansible package.
-To upgrade the collection to the latest available version, run the following command:
-
-```bash
-ansible-galaxy collection install community.clickhouse --upgrade
-```
-
-You can also install a specific version of the collection, for example, if you need to downgrade when something is broken in the latest version (please report an issue in this repository). Use the following syntax:
-
-```bash
-ansible-galaxy collection install community.clickhouse:==0.1.0
-```
-
-See [Ansible Using collections](https://docs.ansible.com/ansible/latest/user_guide/collections_using.html) for more details.
-
-### Usage example
-
-```yaml
-- name: Get server information
-  register: result
-  community.clickhouse.clickhouse_info:
-
-- name: Print server information
-  ansible.builtin.debug:
-    var: result.result
-
-# Note: it runs SELECT version() just for the sake of example.
-# You can get it with the task above much more conveniently.
-- name: Query DB using non-default user & DB to connect to
-  register: result
-  community.clickhouse.clickhouse_client:
-    execute: SELECT version()
-    login_host: localhost
-    login_user: alice
-    login_db: foo
-    login_password: my_password
-
-- name: Print returned server version
-  ansible.builtin.debug:
-    var: result.result
-```
 
 ## More information
 
