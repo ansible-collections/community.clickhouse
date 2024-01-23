@@ -169,6 +169,35 @@ def get_databases(module, client):
     return db_info
 
 
+def get_users(module, client):
+    """Get users.
+
+    Returns a dictionary with users names as keys.
+    """
+    query = ("SELECT name, id, storage, auth_type, auth_params, host_ip, host_names, "
+             "host_names_regexp, host_names_like, default_roles_all, "
+             "default_roles_list, default_roles_except FROM system.users")
+    result = execute_query(module, client, query)
+
+    user_info = {}
+    for row in result:
+        user_info[row[0]] = {
+            "id": str(row[1]),
+            "storage": row[2],
+            "auth_type": row[3],
+            "auth_params": row[4],
+            "host_ip": row[5],
+            "host_names": row[6],
+            "host_names_regexp": row[7],
+            "host_names_like": row[8],
+            "default_roles_all": row[9],
+            "default_roles_list": row[10],
+            "default_roles_except": row[11],
+        }
+
+    return user_info
+
+
 def get_server_version(module, client):
     """Get server version.
 
@@ -262,7 +291,7 @@ def main():
     srv_info['driver']['version'] = driver_version
     srv_info['version'] = get_server_version(module, client)
     srv_info['databases'] = get_databases(module, client)
-    # srv_info['users'] = get_users(module, client)
+    srv_info['users'] = get_users(module, client)
     # srv_info['settings'] = get_settings(module, client)
 
     # Close connection
