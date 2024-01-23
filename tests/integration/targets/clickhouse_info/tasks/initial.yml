@@ -5,7 +5,7 @@
 
 - name: Create role
   community.clickhouse.clickhouse_client:
-    execute: "CREATE ROLE accountant"
+    execute: "CREATE ROLE IF NOT EXISTS accountant"
 
 - name: Get info
   register: result
