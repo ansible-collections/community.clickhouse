@@ -31,7 +31,7 @@
 
 - name: Create user
   community.clickhouse.clickhouse_client:
-    execute: "CREATE USER alice IDENTIFIED WITH sha256_password BY 'my_password'"
+    execute: "CREATE USER IF NOT EXISTS alice IDENTIFIED WITH sha256_password BY 'my_password'"
 
 - name: Query DB using non-default connect params
   register: result
