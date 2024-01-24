@@ -128,6 +128,12 @@ settings:
   returned: success
   type: dict
   sample: { "zstd_window_log_max": "..." }
+clusters:
+  description:
+    - The content of the system.clusters table with names as keys.
+  returned: success
+  type: dict
+  sample: { "test_cluster_two_shards": "..." }
 '''
 
 Client = None
@@ -203,6 +209,72 @@ def get_databases(module, client):
         }
 
     return db_info
+
+
+def get_clusters(module, client):
+    """Get clusters.
+
+    Returns a list with clusters names as top level keys.
+    """
+    query = ("SELECT cluster, shard_num, shard_weight, replica_num, host_name, "
+             "host_address, port, is_local, user, default_database, errors_count, "
+             "slowdowns_count, estimated_recovery_time, database_shard_name, "
+             "database_replica_name, is_active "
+             "FROM system.clusters")
+    result = execute_query(module, client, query)
+
+    if result == PRIV_ERR_CODE:
+        return {PRIV_ERR_CODE: "Not enough privileges"}
+
+    cluster_info = {}
+
+    for row in result:
+        cluster = row[0]
+        shard_num = row[1]
+        shard_weight = row[2]
+        replica_num = row[3]
+        host_name = row[4]
+        host_address = row[5]
+        port = row[6]
+        is_local = row[7]
+        user = row[8]
+        default_database = row[9]
+        errors_count = row[10]
+        slowdowns_count = row[11]
+        estimated_recovery_time = row[12]
+        database_shard_name = row[13]
+        database_replica_name = row[14]
+        is_active = row[15]
+
+        # Add cluster if not already there
+        if cluster not in cluster_info:
+            cluster_info[cluster] = {"shards": {}}
+
+        # Add shard if not already there
+        if shard_num not in cluster_info[cluster]["shards"]:
+            cluster_info[cluster]["shards"][shard_num] = {
+                "shard_weight": shard_weight,
+                "replicas": {},
+            }
+
+        # Add replica if not already there
+        if replica_num not in cluster_info[cluster]["shards"][shard_num]["replicas"]:
+            cluster_info[cluster]["shards"][shard_num]["replicas"][replica_num] = {
+                "host_name": host_name,
+                "host_address": host_address,
+                "port": port,
+                "is_local": is_local,
+                "user": user,
+                "default_database": default_database,
+                "errors_count": errors_count,
+                "slowdowns_count": slowdowns_count,
+                "estimated_recovery_time": estimated_recovery_time,
+                "database_shard_name": database_shard_name,
+                "database_replica_name": database_replica_name,
+                "is_active": is_active,
+            }
+
+    return cluster_info
 
 
 def get_roles(module, client):
@@ -385,6 +457,7 @@ def main():
     srv_info['users'] = get_users(module, client)
     srv_info['roles'] = get_roles(module, client)
     srv_info['settings'] = get_settings(module, client)
+    srv_info['clusters'] = get_clusters(module, client)
 
     # Close connection
     client.disconnect_connection()
