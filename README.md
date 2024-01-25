@@ -87,7 +87,7 @@ If you encounter abusive behavior violating the [Ansible Code of Conduct](https:
 
 ## Contributing to this collection
 
-The content of this collection is made by [people](https://github.com/ansible-collections/community.clickhouse/graphs/contributors) just like you; a community of individuals collaborating on making the world better through developing automation software.
+The content of this collection is made by [people](https://github.com/ansible-collections/community.clickhouse/graphs/contributors) just like you: a community of individuals collaborating on making the world better through developing automation software.
 
 We are actively accepting new contributors and all types of contributions are very welcome.
 
@@ -125,8 +125,6 @@ For now, refer to general channels you can find in the [Ansible communication gu
 
 The process of decision making in this collection is based on discussing and finding consensus among participants.
 
-Every voice is important and every idea is valuable here. If you have something on your mind, create an issue or dedicated GitHub discussion and let's discuss it!
-
 ## Releases Support Timeline
 
 TBD
@@ -147,11 +145,3 @@ TBD
 - [Ansible User guide](https://docs.ansible.com/ansible/latest/user_guide/index.html)
 - [Ansible Developer guide](https://docs.ansible.com/ansible/latest/dev_guide/index.html)
 - [Ansible Community code of conduct](https://docs.ansible.com/ansible/latest/community/code_of_conduct.html)
-
-## Licensing
-
-<!-- Include the appropriate license information here and a pointer to the full licensing details. If the collection contains modules migrated from the ansible/ansible repo, you must use the same license that existed in the ansible/ansible repo. See the GNU license example below. -->
-
-GNU General Public License v3.0 or later.
-
-See [LICENSE](https://www.gnu.org/licenses/gpl-3.0.txt) to see the full text.
