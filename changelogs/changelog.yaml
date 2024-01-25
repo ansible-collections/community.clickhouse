@@ -1,1 +1,22 @@
-releases: {}
+ancestor: null
+releases:
+  0.1.0:
+    changes:
+      minor_changes:
+      - clickhouse_client - add the module.
+      - clickhouse_info - add the module.
+      release_summary: This is the first release of the community.clickhouse collection.
+    fragments:
+    - 0-clickhouse_client.yml
+    - 0.1.0.yml
+    - 1-clickhouse_info.yml
+    modules:
+    - description: Execute queries in a ClickHouse database using the clickhouse-driver
+        Client interface
+      name: clickhouse_client
+      namespace: ''
+    - description: Gather ClickHouse server information using the clickhouse-driver
+        Client interface
+      name: clickhouse_info
+      namespace: ''
+    release_date: '2024-01-25'

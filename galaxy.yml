@@ -6,7 +6,7 @@ version: 0.1.0
 readme: README.md
 authors:
   - Ansible ClickHouse community
-description: null
+description: ClickHouse collection for Ansible
 license_file: LICENSE
 tags:
 # tags so people can search for collections https://galaxy.ansible.com/search
