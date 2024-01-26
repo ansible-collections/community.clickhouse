@@ -193,7 +193,7 @@ def get_databases(module, client):
 
     Returns a dictionary with database names as keys.
     """
-    query = "SELECT name, engine, data_path, uuid, comment FROM system.databases"
+    query = "SELECT name, engine, data_path, uuid FROM system.databases"
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
@@ -205,7 +205,6 @@ def get_databases(module, client):
             "engine": row[1],
             "data_path": row[2],
             "uuid": str(row[3]),
-            "comment": row[4],
         }
 
     return db_info
