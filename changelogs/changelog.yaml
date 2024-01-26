@@ -20,3 +20,14 @@ releases:
       name: clickhouse_info
       namespace: ''
     release_date: '2024-01-25'
+  0.1.1:
+    changes:
+      bugfixes:
+      - clickhouse_info - fix the module to work with older server versions (https://github.com/ansible-collections/community.clickhouse/pull/10).
+      release_summary: This is a patch release of the community.clickhouse collections.
+        It fixes the ``clickhouse_info`` module to work with older versions of the
+        ClickHouse server.
+    fragments:
+    - 0-info.yml
+    - 0.1.1.yml
+    release_date: '2024-01-26'
