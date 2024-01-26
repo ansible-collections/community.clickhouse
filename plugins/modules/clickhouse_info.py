@@ -193,7 +193,7 @@ def get_databases(module, client):
 
     Returns a dictionary with database names as keys.
     """
-    query = "SELECT name, engine, data_path, uuid, comment FROM system.databases"
+    query = "SELECT name, engine, data_path, uuid FROM system.databases"
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
@@ -205,7 +205,6 @@ def get_databases(module, client):
             "engine": row[1],
             "data_path": row[2],
             "uuid": str(row[3]),
-            "comment": row[4],
         }
 
     return db_info
@@ -218,9 +217,7 @@ def get_clusters(module, client):
     """
     query = ("SELECT cluster, shard_num, shard_weight, replica_num, host_name, "
              "host_address, port, is_local, user, default_database, errors_count, "
-             "slowdowns_count, estimated_recovery_time, database_shard_name, "
-             "database_replica_name, is_active "
-             "FROM system.clusters")
+             "estimated_recovery_time FROM system.clusters")
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
@@ -240,11 +237,7 @@ def get_clusters(module, client):
         user = row[8]
         default_database = row[9]
         errors_count = row[10]
-        slowdowns_count = row[11]
-        estimated_recovery_time = row[12]
-        database_shard_name = row[13]
-        database_replica_name = row[14]
-        is_active = row[15]
+        estimated_recovery_time = row[11]
 
         # Add cluster if not already there
         if cluster not in cluster_info:
@@ -267,11 +260,7 @@ def get_clusters(module, client):
                 "user": user,
                 "default_database": default_database,
                 "errors_count": errors_count,
-                "slowdowns_count": slowdowns_count,
                 "estimated_recovery_time": estimated_recovery_time,
-                "database_shard_name": database_shard_name,
-                "database_replica_name": database_replica_name,
-                "is_active": is_active,
             }
 
     return cluster_info
@@ -303,8 +292,8 @@ def get_settings(module, client):
 
     Returns a dictionary with settings names as keys.
     """
-    query = ("SELECT name, value, changed, description, min, max, readonly, default, "
-             "is_obsolete FROM system.settings")
+    query = ("SELECT name, value, changed, description, min, max, readonly, "
+             "type FROM system.settings")
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
@@ -319,8 +308,7 @@ def get_settings(module, client):
             "min": row[4],
             "max": row[5],
             "readonly": row[6],
-            "default": row[7],
-            "is_obsolete": row[8],
+            "type": row[7],
         }
 
     return settings_info
