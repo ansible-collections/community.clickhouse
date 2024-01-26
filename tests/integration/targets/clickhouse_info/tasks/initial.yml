@@ -45,3 +45,18 @@
   ansible.builtin.assert:
     that:
     - result["users"]["497"] == "Not enough privileges"
+
+- name: Limit gathered values, one value does not exist
+  register: result
+  community.clickhouse.clickhouse_info:
+    limit:
+    - driver
+    - version
+    - warning_will_appear
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result["version"] != {}
+    - result["driver"]["version"] != {}

@@ -74,6 +74,14 @@ options:
         to the Client interface when instantiating its object.
     type: dict
     default: {}
+
+  limit:
+    description:
+      - Limits a set of return values you want to get.
+      - See the Return section for acceptable values.
+    type: list
+    elements: str
+    version_added: '0.2.0'
 '''
 
 EXAMPLES = r'''
@@ -88,8 +96,17 @@ EXAMPLES = r'''
 - name: Print returned data
   ansible.builtin.debug:
     var: result
+
+- name: Limit return values with users and roles
+  register: result
+  community.clickhouse.clickhouse_info:
+    filter:
+      - users
+      - roles
 '''
 
+# When adding new ret values,
+# please add it to the ret_val_func_mapping dictionary!
 RETURN = r'''
 driver:
   description: Python driver information.
@@ -393,6 +410,17 @@ def connect_to_db_via_client(module, main_conn_kwargs, client_kwargs):
     return client
 
 
+def get_driver(module, client):
+    """Gets driver information.
+
+    The module and client arguments are here
+    to provide a common interface and are ignored.
+
+    Returns its version for now.
+    """
+    return {"version": driver_version}
+
+
 def check_driver(module):
     """Checks if the driver is present.
 
@@ -400,6 +428,26 @@ def check_driver(module):
     """
     if not HAS_DB_DRIVER:
         module.fail_json(msg=missing_required_lib('clickhouse_driver'))
+
+
+def handle_limit_values(module, supported_ret_vals, limit):
+    """Checks if passed limit values match module return values.
+
+    Prints a warning if do not match. Returns a list of stripped vals.
+    """
+    stripped_vals = []
+    for wanted_val in limit:
+        wanted_val = wanted_val.strip()
+
+        if wanted_val not in supported_ret_vals:
+            msg = ("The passed %s value does not exist in module return values: "
+                   "please check the spelling and supported values, and try again" % wanted_val)
+            module.warn(msg)
+            continue
+
+        stripped_vals.append(wanted_val)
+
+    return stripped_vals
 
 
 def main():
@@ -415,6 +463,7 @@ def main():
         login_user=dict(type='str', default=None),
         login_password=dict(type='str', default=None, no_log=True),
         client_kwargs=dict(type='dict', default={}),
+        limit=dict(type='list', elements='str'),
     )
 
     # Instantiate an object of module class
@@ -431,6 +480,26 @@ def main():
     # Such data must be passed as module arguments (not nested deep in values).
     main_conn_kwargs = get_main_conn_kwargs(module)
 
+    # Create a mapping between ret values and functions.
+    # When adding new values to return, add the value
+    # and a corresponding function in this dictionary
+    ret_val_func_mapping = {
+        'driver': get_driver,
+        'version': get_server_version,
+        'databases': get_databases,
+        'users': get_users,
+        'roles': get_roles,
+        'settings': get_settings,
+        'clusters': get_clusters,
+    }
+    # Check if the limit is provided, it contains correct values
+    limit = module.params['limit']
+    if limit:
+        limit = handle_limit_values(module, ret_val_func_mapping.keys(), limit)
+    else:
+        # If no limit, just gather all ret values
+        limit = ret_val_func_mapping.keys()
+
     # Will fail if no driver informing the user
     check_driver(module)
 
@@ -438,14 +507,10 @@ def main():
     client = connect_to_db_via_client(module, main_conn_kwargs, client_kwargs)
 
     # Get server information
-    srv_info = {'driver': {}}
-    srv_info['driver']['version'] = driver_version
-    srv_info['version'] = get_server_version(module, client)
-    srv_info['databases'] = get_databases(module, client)
-    srv_info['users'] = get_users(module, client)
-    srv_info['roles'] = get_roles(module, client)
-    srv_info['settings'] = get_settings(module, client)
-    srv_info['clusters'] = get_clusters(module, client)
+    srv_info = {}
+    for item in limit:
+        # This will invoke a proper function
+        srv_info[item] = ret_val_func_mapping[item](module, client)
 
     # Close connection
     client.disconnect_connection()
