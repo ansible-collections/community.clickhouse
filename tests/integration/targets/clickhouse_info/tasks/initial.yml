@@ -24,7 +24,7 @@
     - result["version"] != {}
     - result["driver"]["version"] != {}
     - result["settings"]["add_http_cors_header"] != {}
-    - result["clusters"]["default"]["shards"]["1"]["replicas"]["1"]["is_local"] == 1
+    - result["clusters"]["test_shard_localhost"]["shards"]["1"]["replicas"]["1"]["is_local"] == 1
 
 - name: Debug
   ansible.builtin.debug:
