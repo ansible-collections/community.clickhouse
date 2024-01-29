@@ -100,7 +100,7 @@ EXAMPLES = r'''
 - name: Limit return values with users and roles
   register: result
   community.clickhouse.clickhouse_info:
-    filter:
+    limit:
       - users
       - roles
 '''
