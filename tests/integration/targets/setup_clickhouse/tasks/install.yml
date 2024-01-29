@@ -24,9 +24,18 @@
 - name: Install clickhouse
   ansible.builtin.apt:
     name:
-    - clickhouse-server
-    - clickhouse-client
+    - "clickhouse-server={{ server_version }}"
+    - "clickhouse-client={{ server_version }}"
+    - "clickhouse-common-static={{ server_version }}"
     state: present
+
+- name: Copy settings for default user
+  ansible.builtin.copy:
+    src: default_user.xml
+    dest: /etc/clickhouse-server/users.d/default_user.xml
+    owner: clickhouse
+    group: clickhouse
+    mode: '0600'
 
 - name: Enable and start clickhouse
   ansible.builtin.systemd_service:
