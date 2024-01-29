@@ -79,6 +79,7 @@ options:
     description:
       - Limits a set of return values you want to get.
       - See the Return section for acceptable values.
+      - If not specified, returns all supported return values.
     type: list
     elements: str
     version_added: '0.2.0'
