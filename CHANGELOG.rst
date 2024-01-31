@@ -5,6 +5,21 @@ CHANGE THIS IN changelogs/config.yaml! Release Notes
 .. contents:: Topics
 
 
+v0.2.0
+======
+
+Release Summary
+---------------
+
+This is a minor release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Minor Changes
+-------------
+
+- clickhouse_info - add the ``limit`` argument to limit the returned values.
+
 v0.1.1
 ======
 
