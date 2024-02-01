@@ -13,6 +13,9 @@ on:
   schedule:
     - cron: '0 6 * * *'
 
+env:
+  clickhouse_version_file: "./ansible_collections/community/clickhouse/tests/integration/targets/setup_clickhouse/vars/main.yml"
+
 jobs:
   sanity:
     name: "Sanity (Python: ${{ matrix.python }}, Ansible: ${{ matrix.ansible }})"
@@ -97,6 +100,10 @@ jobs:
           #- stable-2.15
           #- stable-2.16
           #- devel
+        clickhouse:
+          - 21.8.15.7
+          - 22.8.9.24
+          - 23.8.9.54
         python:
           - "3.10"
     steps:
@@ -113,6 +120,9 @@ jobs:
 
       - name: Install ansible-base (${{ matrix.ansible }})
         run: pip install https://github.com/ansible/ansible/archive/${{ matrix.ansible }}.tar.gz --disable-pip-version-check
+
+      - name: Set Clickhouse version (${{ matrix.clickhouse }})
+        run: "sed -i 's/^clickhouse_version:.*/clickhouse_version: \"${{ matrix.clickhouse }}\"/g' ${{ env.clickhouse_version_file }}"
 
       - name: Run integration tests
         run: ansible-test integration --docker ubuntu2204 -v --color --retry-on-error --continue-on-error --python ${{ matrix.python }} --diff --coverage
