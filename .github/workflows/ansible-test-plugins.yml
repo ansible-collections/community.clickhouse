@@ -15,7 +15,7 @@ on:
 
 env:
   clickhouse_version_file: "./ansible_collections/community/clickhouse/tests/integration/targets/setup_clickhouse/vars/main.yml"
-  clickhouse_test_info_file: "./ansible_collections/community/clickhouse/tests/integration/targets/clickhouse_info/task/initial.yml"
+  clickhouse_test_info_file: "./ansible_collections/community/clickhouse/tests/integration/targets/clickhouse_info/tasks/initial.yml"
 
 jobs:
   sanity:
