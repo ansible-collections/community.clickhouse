@@ -23,58 +23,15 @@ attributes:
     description: Supports check_mode.
     support: full
 
-requirements: ['clickhouse-driver']
-
 version_added: '0.1.0'
 
 author:
   - Andrew Klychkov (@Andersson007)
 
-notes:
-  - See the clickhouse-driver
-    L(documentation,https://clickhouse-driver.readthedocs.io/en/latest)
-    for more information about the driver interface.
+extends_documentation_fragment:
+  - community.clickhouse.client_inst_opts
 
 options:
-  login_host:
-    description:
-      - The same as the C(Client(host='...')) argument.
-    type: str
-    default: 'localhost'
-
-  login_port:
-    description:
-      - The same as the C(Client(port='...')) argument.
-      - If not passed, relies on the driver's default argument value.
-    type: int
-
-  login_db:
-    description:
-      - The same as the C(Client(database='...')) argument.
-      - If not passed, relies on the driver's default argument value.
-    type: str
-
-  login_user:
-    description:
-      - The same as the C(Client(user='...')) argument.
-      - If not passed, relies on the driver's default argument value.
-      - Be sure your the user has permissions to read the system tables
-        listed in the RETURN section.
-    type: str
-
-  login_password:
-    description:
-      - The same as the C(Client(password='...')) argument.
-      - If not passed, relies on the driver's default argument value.
-    type: str
-
-  client_kwargs:
-    description:
-      - Any additional keyword arguments you want to pass
-        to the Client interface when instantiating its object.
-    type: dict
-    default: {}
-
   limit:
     description:
       - Limits a set of return values you want to get.
@@ -154,6 +111,14 @@ clusters:
   sample: { "test_cluster_two_shards": "..." }
 '''
 
+from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils._text import to_native
+
+from ansible_collections.community.clickhouse.plugins.module_utils.connect import (
+    check_driver,
+    client_common_argument_spec,
+)
+
 Client = None
 try:
     from clickhouse_driver import Client
@@ -161,9 +126,6 @@ try:
     HAS_DB_DRIVER = True
 except ImportError:
     HAS_DB_DRIVER = False
-
-from ansible.module_utils.basic import AnsibleModule, missing_required_lib
-from ansible.module_utils._text import to_native
 
 PRIV_ERR_CODE = 497
 
@@ -422,15 +384,6 @@ def get_driver(module, client):
     return {"version": driver_version}
 
 
-def check_driver(module):
-    """Checks if the driver is present.
-
-    Informs user if no driver and fails.
-    """
-    if not HAS_DB_DRIVER:
-        module.fail_json(msg=missing_required_lib('clickhouse_driver'))
-
-
 def handle_limit_values(module, supported_ret_vals, limit):
     """Checks if passed limit values match module return values.
 
@@ -456,14 +409,8 @@ def main():
     # If there are common arguments shared across several modules,
     # create the common_argument_spec() function under plugins/module_utils/*
     # and invoke here to return a dict with those arguments
-    argument_spec = {}
+    argument_spec = client_common_argument_spec()
     argument_spec.update(
-        login_host=dict(type='str', default='localhost'),
-        login_port=dict(type='int', default=None),
-        login_db=dict(type='str', default=None),
-        login_user=dict(type='str', default=None),
-        login_password=dict(type='str', default=None, no_log=True),
-        client_kwargs=dict(type='dict', default={}),
         limit=dict(type='list', elements='str'),
     )
 
@@ -502,7 +449,7 @@ def main():
         limit = ret_val_func_mapping.keys()
 
     # Will fail if no driver informing the user
-    check_driver(module)
+    check_driver(module, HAS_DB_DRIVER)
 
     # Connect to DB
     client = connect_to_db_via_client(module, main_conn_kwargs, client_kwargs)
