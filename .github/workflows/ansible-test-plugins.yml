@@ -15,6 +15,7 @@ on:
 
 env:
   clickhouse_version_file: "./ansible_collections/community/clickhouse/tests/integration/targets/setup_clickhouse/vars/main.yml"
+  clickhouse_test_info_file: "./ansible_collections/community/clickhouse/tests/integration/targets/clickhouse_info/task/initial.yml"
 
 jobs:
   sanity:
@@ -123,6 +124,10 @@ jobs:
 
       - name: Set Clickhouse version (${{ matrix.clickhouse }})
         run: "sed -i 's/^clickhouse_version:.*/clickhouse_version: \"${{ matrix.clickhouse }}\"/g' ${{ env.clickhouse_version_file }}"
+
+      - name: Set Clickhouse version (${{ matrix.clickhouse }})
+        run: "sed -i 's/test_shard_localhost/default/g' ${{ env.clickhouse_test_info_file }}"
+        if: ${{ matrix.clickhouse }} == '23.8.9.54'
 
       - name: Run integration tests
         run: ansible-test integration --docker ubuntu2204 -v --color --retry-on-error --continue-on-error --python ${{ matrix.python }} --diff --coverage
