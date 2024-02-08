@@ -351,7 +351,7 @@ def get_dictionaries(module, client):
 
     dictionaries_info = {}
     for row in result:
-        dict_database = row[0] if row[0] else 'dict' 
+        dict_database = row[0] if row[0] else 'dict'
         if dict_database not in dictionaries_info:
             dictionaries_info[dict_database] = {}
         dictionaries_info[dict_database][row[1]] = {
