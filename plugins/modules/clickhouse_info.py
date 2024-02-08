@@ -27,6 +27,7 @@ version_added: '0.1.0'
 
 author:
   - Andrew Klychkov (@Andersson007)
+  - Aleksandr Vagachev (@aleksvagachev)
 
 extends_documentation_fragment:
   - community.clickhouse.client_inst_opts
@@ -109,6 +110,26 @@ clusters:
   returned: success
   type: dict
   sample: { "test_cluster_two_shards": "..." }
+tables:
+  description:
+    - The content of the system.tables database with names as dictionary,
+    - and the name of the tables in this dictionary is the keys.
+  returned: success
+  type: dict
+  sample: { "system": { "settings": "..." } }
+merge_tree_settings:
+  description:
+    - The content of the system.merge_tree_settings table with names as keys.
+  returned: success
+  type: dict
+  sample: { "merge_max_block_size": "..." }
+dictionaries:
+  description:
+    - The content of the system.dictionaries database with names as dictionary,
+    - and the name of the 'dictionary' in this dictionary is the keys.
+  returned: success
+  type: dict
+  sample: { "database": { "dictionary": "..." } }
 '''
 
 from ansible.module_utils.basic import AnsibleModule
@@ -267,6 +288,97 @@ def get_roles(module, client):
     return roles_info
 
 
+def get_tables(module, client):
+    """Get tables.
+
+    Returns a dictionary with databases name as dictionary,
+    and the name of the table in this dictionary is the key.
+    """
+    query = ("SELECT database, name, uuid, engine, is_temporary, data_paths, "
+             "metadata_path, metadata_modification_time, dependencies_database, "
+             "dependencies_table, create_table_query, engine_full, partition_key, "
+             "sorting_key, primary_key, sampling_key, storage_policy, total_rows, total_bytes, "
+             "lifetime_rows, lifetime_bytes FROM system.tables")
+    result = execute_query(module, client, query)
+
+    if result == PRIV_ERR_CODE:
+        return {PRIV_ERR_CODE: "Not enough privileges"}
+
+    tables_info = {}
+    for row in result:
+        if row[0] not in tables_info:
+            tables_info[row[0]] = {}
+        tables_info[row[0]][row[1]] = {
+            "uuid": str(row[2]),
+            "engine": row[3],
+            "is_temporary": row[4],
+            "data_paths": row[5],
+            "metadata_path": row[6],
+            "metadata_modification_time": row[7],
+            "dependencies_database": row[8],
+            "dependencies_table": row[9],
+            "create_table_query": row[10],
+            "engine_full": row[11],
+            "partition_key": row[12],
+            "sorting_key": row[13],
+            "primary_key": row[14],
+            "sampling_key": row[15],
+            "storage_policy": row[16],
+            "total_rows": row[17],
+            "total_bytes": row[18],
+            "lifetime_rows": row[19],
+            "lifetime_bytes": row[20],
+        }
+
+    return tables_info
+
+
+def get_dictionaries(module, client):
+    """Get dictionaries.
+
+    Returns a dictionary with databases name as dictionary,
+    and the name of the 'dictionary' in this dictionary is the key.
+    """
+    query = ("SELECT database, name, uuid, status, origin, type, key, "
+             "attribute.names, attribute.types, bytes_allocated, query_count, "
+             "hit_rate, element_count, load_factor, source, lifetime_min, "
+             "lifetime_max, loading_start_time, last_successful_update_time, "
+             "loading_duration, last_exception FROM system.dictionaries")
+    result = execute_query(module, client, query)
+
+    if result == PRIV_ERR_CODE:
+        return {PRIV_ERR_CODE: "Not enough privileges"}
+
+    dictionaries_info = {}
+    for row in result:
+        dict_database = row[0] if row[0] else 'dict' 
+        if dict_database not in dictionaries_info:
+            dictionaries_info[dict_database] = {}
+        dictionaries_info[dict_database][row[1]] = {
+            "uuid": str(row[2]),
+            "status": row[3],
+            "origin": row[4],
+            "type": row[5],
+            "key": row[6],
+            "attribute.names": row[7],
+            "attribute.types": row[8],
+            "bytes_allocated": row[9],
+            "query_count": row[10],
+            "hit_rate": row[11],
+            "element_count": row[12],
+            "load_factor": row[13],
+            "source": row[14],
+            "lifetime_min": row[15],
+            "lifetime_max": row[16],
+            "loading_start_time": row[17],
+            "last_successful_update_time": row[18],
+            "loading_duration": row[19],
+            "last_exception": row[20],
+        }
+
+    return dictionaries_info
+
+
 def get_settings(module, client):
     """Get settings.
 
@@ -292,6 +404,30 @@ def get_settings(module, client):
         }
 
     return settings_info
+
+
+def get_merge_tree_settings(module, client):
+    """Get merge_tree_settings.
+
+    Returns a dictionary with merge_tree_settings names as keys.
+    """
+    query = ("SELECT name, value, changed, description, "
+             "type FROM system.merge_tree_settings")
+    result = execute_query(module, client, query)
+
+    if result == PRIV_ERR_CODE:
+        return {PRIV_ERR_CODE: "Not enough privileges"}
+
+    merge_tree_settings_info = {}
+    for row in result:
+        merge_tree_settings_info[row[0]] = {
+            "value": row[1],
+            "changed": row[2],
+            "description": row[3],
+            "type": row[4],
+        }
+
+    return merge_tree_settings_info
 
 
 def get_users(module, client):
@@ -439,6 +575,9 @@ def main():
         'roles': get_roles,
         'settings': get_settings,
         'clusters': get_clusters,
+        'dictionaries': get_dictionaries,
+        'tables': get_tables,
+        'merge_tree_settings': get_merge_tree_settings,
     }
     # Check if the limit is provided, it contains correct values
     limit = module.params['limit']

@@ -1,0 +1,32 @@
+<clickhouse>
+  <comment>The dictionary is not working. It is used for testing</comment>
+  <dictionary>
+    <name>test_dictionary</name>
+      <source>
+        <clickhouse>
+          <db>system</db>
+          <table>table_test</table>
+          <port>9000</port>
+          <user>default</user>
+          <host>localhost</host>
+        </clickhouse>
+      </source>
+    <lifetime>
+        <min>1800</min>
+        <max>1900</max>
+    </lifetime>
+    <layout>
+        <hashed />
+    </layout>
+    <structure>
+        <id>
+            <name>id</name>
+        </id>
+        <attribute>
+            <name>value</name>
+            <type>String</type>
+            <null_value></null_value>
+        </attribute>
+    </structure>
+  </dictionary>
+</clickhouse>
