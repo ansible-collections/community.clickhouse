@@ -14,7 +14,7 @@ module: clickhouse_db
 short_description: Creates or removes a ClickHouse database using the clickhouse-driver Client interface
 
 description:
-  - Gather ClickHouse server information using the
+  - Creates or removes a ClickHouse database using the
     L(clickhouse-driver,https://clickhouse-driver.readthedocs.io/en/latest) Client interface.
 
 attributes:
@@ -39,16 +39,11 @@ options:
     type: str
     choices: ['present', 'absent']
     default: 'present'
-    required: true
   name:
     description:
       - Database name to add or remove.
     type: str
     required: true
-  comment:
-    description:
-      - Comment on the database.
-    type: str
   engine:
     description:
       - Database engine.
@@ -64,7 +59,17 @@ EXAMPLES = r'''
     login_password: my_password
     name: test_db
     engine: Memory
-    comment: Temporary test database
+    state: present
+
+- name: Drop database
+  community.clickhouse.clickhouse_db:
+    login_host: localhost
+    login_user: alice
+    login_db: foo
+    login_password: my_password
+    name: test_db
+    engine: Memory
+    state: absent
 '''
 
 RETURN = r'''
@@ -151,10 +156,10 @@ class ClickHouseDB():
         self.module = module
         self.client = client
         self.name = name
-        self.exists, self.engine, self.comment = self.__populate_info()
+        self.exists, self.engine = self.__populate_info()
 
     def __populate_info(self):
-        query = "SELECT engine, comment FROM system.databases WHERE name = %(name)s"
+        query = "SELECT engine FROM system.databases WHERE name = %(name)s"
         # Will move this function to the lib later and reuse
         exec_kwargs = {'params': {'name': self.name}}
         result = execute_query(self.module, self.client, query, exec_kwargs)
@@ -162,21 +167,17 @@ class ClickHouseDB():
         # Assume the DB does not exist by default
         exists = False
         engine = None
-        comment = None
         if result:
             # If exists
             exists = True
             engine = result[0][0]
-            comment = result[0][1]
 
-        return exists, engine, comment
+        return exists, engine
 
-    def create(self, engine, comment):
+    def create(self, engine):
         query = "CREATE DATABASE %s" % self.name
         if engine:
             query += " ENGINE = %s" % engine
-        if comment:
-            query += " COMMENT '%s'" % comment
 
         executed_statements.append(query)
 
@@ -185,22 +186,15 @@ class ClickHouseDB():
 
         return True
 
-    def update(self, engine, comment):
-        # There's no way to change neither a comment
-        # nor the engine now, so just inform the users
-        # they have to recreate the DB in order to change them
+    def update(self, engine):
+        # There's no way to change the engine
+        # so just inform the users they have to recreate
+        # the DB in order to change them
         if engine and engine != self.engine:
             msg = ("The provided engine '%s' is different from "
                    "the current one '%s'. It is NOT possible to "
                    "change it. The recreation of the database is required "
                    "in order to change it." % (engine, self.engine))
-            self.module.warn(msg)
-
-        if comment and comment != self.comment:
-            msg = ("The provided comment '%s' is different from "
-                   "the current one '%s'. It is NOT possible to "
-                   "change it. The recreation of the database is required "
-                   "in order to change it." % (comment, self.comment))
             self.module.warn(msg)
 
         return False
@@ -222,10 +216,9 @@ def main():
     # and invoke here to return a dict with those arguments
     argument_spec = client_common_argument_spec()
     argument_spec.update(
-        state=dict(type='str', choices=['present', 'absent'], required=True),
+        state=dict(type='str', choices=['present', 'absent'], default='present'),
         name=dict(type='str', required=True),
         engine=dict(type='str', default=None),
-        comment=dict(type='str', default=None),
     )
 
     # Instantiate an object of module class
@@ -244,7 +237,6 @@ def main():
     state = module.params['state']
     name = module.params['name']
     engine = module.params['engine']
-    comment = module.params['comment']
 
     # Will fail if no driver informing the user
     check_driver(module, HAS_DB_DRIVER)
@@ -258,14 +250,15 @@ def main():
 
     if state == 'present':
         if not database.exists:
-            changed = database.create(engine, comment)
+            changed = database.create(engine)
         else:
             # If database exists
-            changed = database.update(engine, comment)
+            changed = database.update(engine)
 
     else:
         # If state is absent
-        changed = database.drop()
+        if database.exists:
+            changed = database.drop()
 
     # Close connection
     client.disconnect_connection()
