@@ -117,6 +117,7 @@ tables:
   returned: success
   type: dict
   sample: { "system": { "settings": "..." } }
+  version_added: '0.3.0'
 merge_tree_settings:
   description:
     - The content of the system.merge_tree_settings table with names as keys.
