@@ -124,6 +124,7 @@ merge_tree_settings:
   returned: success
   type: dict
   sample: { "merge_max_block_size": "..." }
+  version_added: '0.3.0'
 dictionaries:
   description:
     - The content of the system.dictionaries database with names as dictionary,
