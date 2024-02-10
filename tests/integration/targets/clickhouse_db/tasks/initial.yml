@@ -1,0 +1,224 @@
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# Test
+- name: Create database in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_db:
+    state: present
+    name: test_db
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE DATABASE test_db']
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.databases WHERE name = 'test_db'"
+
+- name: Check the DB is not there
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+# Test
+- name: Create database in check mode with engine
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_db:
+    state: present
+    name: test_db
+    engine: Memory
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE DATABASE test_db ENGINE = Memory"]
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.databases WHERE name = 'test_db'"
+
+- name: Check the DB is not there
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+# Test
+- name: Create database with engine in real mode
+  register: result
+  community.clickhouse.clickhouse_db:
+    name: test_db
+    engine: Memory
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE DATABASE test_db ENGINE = Memory"]
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT engine FROM system.databases WHERE name = 'test_db'"
+
+- name: Check the DB is there
+  ansible.builtin.assert:
+    that:
+    - result.result == [["Memory"]]
+
+# Test
+- name: Create database that already exists
+  register: result
+  community.clickhouse.clickhouse_db:
+    name: test_db
+    engine: Memory
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+# Test
+- name: Create database that already exists in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_db:
+    name: test_db
+    engine: Memory
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+# Test
+- name: Create database that already exists with a different engine in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_db:
+    name: test_db
+    engine: Atomic
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT engine FROM system.databases WHERE name = 'test_db'"
+
+- name: Check the attributes are the same
+  ansible.builtin.assert:
+    that:
+    - result.result == [["Memory"]]
+
+# Test
+- name: Create database that already exists with a different engine in real mode
+  register: result
+  community.clickhouse.clickhouse_db:
+    name: test_db
+    engine: Atomic
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT engine FROM system.databases WHERE name = 'test_db'"
+
+- name: Check the attributes are the same
+  ansible.builtin.assert:
+    that:
+    - result.result == [["Memory"]]
+
+# Test
+- name: Drop database in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_db:
+    name: test_db
+    state: absent
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["DROP DATABASE test_db"]
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT engine FROM system.databases WHERE name = 'test_db'"
+
+- name: Check the DB is there
+  ansible.builtin.assert:
+    that:
+    - result.result == [["Memory"]]
+
+# Test
+- name: Drop database
+  register: result
+  community.clickhouse.clickhouse_db:
+    name: test_db
+    state: absent
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["DROP DATABASE test_db"]
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT engine FROM system.databases WHERE name = 'test_db'"
+
+- name: Check the DB is there
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+# Test
+- name: Drop non-existing database
+  register: result
+  community.clickhouse.clickhouse_db:
+    name: test_db
+    state: absent
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+# Test
+- name: Drop non-existing database in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_db:
+    name: test_db
+    state: absent
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
