@@ -126,8 +126,7 @@ merge_tree_settings:
   version_added: '0.3.0'
 dictionaries:
   description:
-    - The content of the system.dictionaries database with names as dictionary,
-    - and the name of the 'dictionary' in this dictionary is the keys.
+    - The content of the system.dictionaries table with dictionary names as keys.
   returned: success
   type: dict
   sample: { "database": { "dictionary": "..." } }
