@@ -112,8 +112,7 @@ clusters:
   sample: { "test_cluster_two_shards": "..." }
 tables:
   description:
-    - The content of the system.tables database with names as dictionary,
-    - and the name of the tables in this dictionary is the keys.
+    - The content of the system.tables table with the table names as keys.
   returned: success
   type: dict
   sample: { "system": { "settings": "..." } }
