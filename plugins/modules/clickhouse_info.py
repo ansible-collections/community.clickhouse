@@ -132,6 +132,7 @@ dictionaries:
   returned: success
   type: dict
   sample: { "database": { "dictionary": "..." } }
+  version_added: '0.3.0'
 '''
 
 from ansible.module_utils.basic import AnsibleModule
