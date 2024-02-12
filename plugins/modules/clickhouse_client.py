@@ -114,6 +114,9 @@ statistics:
   returned: on success
   type: dict
 '''
+from datetime import timedelta
+from decimal import Decimal
+from uuid import UUID
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
@@ -129,6 +132,51 @@ try:
     HAS_DB_DRIVER = True
 except ImportError:
     HAS_DB_DRIVER = False
+
+
+def is_uuid(value):
+    """Checks if the value is valid UUID.
+
+    Returns True if yes, False otherwise.
+    """
+    try:
+        UUID(str(value))
+        return True
+    except ValueError:
+        return False
+
+
+def vals_to_supported(result):
+    """Converts values of types unsupported by Ansible Core
+    to supported.
+
+    Ansible Core has a limited set of supported values.
+    This is intentional, and the docs says such values
+    have to be converted on the module's side.
+
+    Add more values here if needed.
+    """
+    for idx_row, row in enumerate(result):
+        for idx_val, val in enumerate(row):
+            if is_uuid(val) or isinstance(val, timedelta):
+                # As tuple does not support change,
+                # we need some conversion here
+                result[idx_row] = replace_val_in_tuple(row, idx_val, str(val))
+
+            elif isinstance(val, Decimal):
+                result[idx_row] = replace_val_in_tuple(row, idx_val, float(val))
+
+    return result
+
+
+def replace_val_in_tuple(tup, idx, val):
+    """Creates another tuple from a tuple substituting a value.
+
+    Returns a new tuple.
+    """
+    tmp = list(tup)
+    tmp[idx] = val
+    return tuple(tmp)
 
 
 def get_main_conn_kwargs(module):
@@ -268,6 +316,10 @@ def main():
 
     # Execute query
     result = execute_query(module, client, query, execute_kwargs)
+
+    # Convert values not supported by ansible-core
+    if result:
+        result = vals_to_supported(result)
 
     # Retreive statistics
     statistics = get_query_statistics(module, client)

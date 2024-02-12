@@ -71,3 +71,14 @@
   ansible.builtin.assert:
     that:
     - result.result == [["one"], ["two"], ["three"]]
+
+
+- name: The system.users table contain UUID value
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: SELECT id FROM system.users LIMIT 1
+
+- name: Check the result
+  ansible.builtin.assert:
+    that:
+    - result.result[0] != []
