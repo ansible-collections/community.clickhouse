@@ -78,7 +78,7 @@
   community.clickhouse.clickhouse_client:
     execute: SELECT id FROM system.users LIMIT 1
 
-- name: Print the result
+- name: Check the result
   ansible.builtin.assert:
     that:
     - result.result[0] != []
