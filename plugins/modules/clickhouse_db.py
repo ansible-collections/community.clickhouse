@@ -68,7 +68,6 @@ EXAMPLES = r'''
     login_db: foo
     login_password: my_password
     name: test_db
-    engine: Memory
     state: absent
 '''
 
