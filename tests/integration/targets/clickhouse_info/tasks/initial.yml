@@ -25,6 +25,9 @@
     - result["driver"]["version"] != {}
     - result["settings"]["add_http_cors_header"] != {}
     - result["clusters"]["test_shard_localhost"]["shards"]["1"]["replicas"]["1"]["is_local"] == 1
+    - result["merge_tree_settings"]["merge_max_block_size"] != {}
+    - result["tables"] != {}
+    - result["dictionaries"] != {}
 
 - name: Debug
   ansible.builtin.debug:
