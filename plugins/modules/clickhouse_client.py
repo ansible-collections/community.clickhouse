@@ -121,17 +121,13 @@ from uuid import UUID
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
 
-from ansible_collections.community.clickhouse.plugins.module_utils.connect import (
-    check_driver,
+from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse import (
+    check_clickhouse_driver,
     client_common_argument_spec,
+    get_main_conn_kwargs,
+    connect_to_db_via_client,
+    execute_query,
 )
-
-Client = None
-try:
-    from clickhouse_driver import Client
-    HAS_DB_DRIVER = True
-except ImportError:
-    HAS_DB_DRIVER = False
 
 
 def is_uuid(value):
@@ -179,25 +175,6 @@ def replace_val_in_tuple(tup, idx, val):
     return tuple(tmp)
 
 
-def get_main_conn_kwargs(module):
-    """Retrieves main connection arguments values and translates
-    them into corresponding clickhouse_driver.Client() arguments.
-
-    Returns a dictionary of arguments with values to pass to Client().
-    """
-    main_conn_kwargs = {}
-    main_conn_kwargs['host'] = module.params['login_host']  # Has a default value
-    if module.params['login_port']:
-        main_conn_kwargs['port'] = module.params['login_port']
-    if module.params['login_db']:
-        main_conn_kwargs['database'] = module.params['login_db']
-    if module.params['login_user']:
-        main_conn_kwargs['user'] = module.params['login_user']
-    if module.params['login_password']:
-        main_conn_kwargs['password'] = module.params['login_password']
-    return main_conn_kwargs
-
-
 def get_query_statistics(module, client):
     """Retrieve query statistics from the Client() object.
 
@@ -229,19 +206,6 @@ def get_query_statistics(module, client):
     return statistics
 
 
-def execute_query(module, client, query, execute_kwargs):
-    """Execute query.
-
-    Returns rows returned in response.
-    """
-    try:
-        result = client.execute(query, **execute_kwargs)
-    except Exception as e:
-        module.fail_json(msg="Failed to execute query: %s" % to_native(e))
-
-    return result
-
-
 def get_substituted_query(module, client, query, execute_kwargs):
     """Substitute params in a query. If no params, just return the query as is.
 
@@ -260,22 +224,6 @@ def get_substituted_query(module, client, query, execute_kwargs):
         substituted_query = query
 
     return substituted_query
-
-
-def connect_to_db_via_client(module, main_conn_kwargs, client_kwargs):
-    """Connects to DB using the Client() class.
-
-    Returns Client() object.
-    """
-    try:
-        # Merge the kwargs as Python 2 would through an error
-        # when unpaking them separately to Client()
-        client_kwargs.update(main_conn_kwargs)
-        client = Client(**client_kwargs)
-    except Exception as e:
-        module.fail_json(msg="Failed to connect to database: %s" % to_native(e))
-
-    return client
 
 
 def main():
@@ -306,7 +254,7 @@ def main():
     main_conn_kwargs = get_main_conn_kwargs(module)
 
     # Will fail if no driver informing the user
-    check_driver(module, HAS_DB_DRIVER)
+    check_clickhouse_driver(module)
 
     # Connect to DB
     client = connect_to_db_via_client(module, main_conn_kwargs, client_kwargs)

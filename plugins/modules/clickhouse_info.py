@@ -134,60 +134,18 @@ dictionaries:
 '''
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils._text import to_native
 
-from ansible_collections.community.clickhouse.plugins.module_utils.connect import (
-    check_driver,
+from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse import (
+    check_clickhouse_driver,
+    version_clickhouse_driver,
     client_common_argument_spec,
+    get_main_conn_kwargs,
+    connect_to_db_via_client,
+    execute_query,
 )
 
-Client = None
-try:
-    from clickhouse_driver import Client
-    from clickhouse_driver import __version__ as driver_version
-    HAS_DB_DRIVER = True
-except ImportError:
-    HAS_DB_DRIVER = False
 
 PRIV_ERR_CODE = 497
-
-
-def get_main_conn_kwargs(module):
-    """Retrieves main connection arguments values and translates
-    them into corresponding clickhouse_driver.Client() arguments.
-
-    Returns a dictionary of arguments with values to pass to Client().
-    """
-    main_conn_kwargs = {}
-    main_conn_kwargs['host'] = module.params['login_host']  # Has a default value
-    if module.params['login_port']:
-        main_conn_kwargs['port'] = module.params['login_port']
-    if module.params['login_db']:
-        main_conn_kwargs['database'] = module.params['login_db']
-    if module.params['login_user']:
-        main_conn_kwargs['user'] = module.params['login_user']
-    if module.params['login_password']:
-        main_conn_kwargs['password'] = module.params['login_password']
-    return main_conn_kwargs
-
-
-def execute_query(module, client, query, execute_kwargs=None):
-    """Execute query.
-
-    Returns rows returned in response.
-    """
-    # Some modules do not pass this argument
-    if execute_kwargs is None:
-        execute_kwargs = {}
-
-    try:
-        result = client.execute(query, **execute_kwargs)
-    except Exception as e:
-        if "Not enough privileges" in to_native(e):
-            return PRIV_ERR_CODE
-        module.fail_json(msg="Failed to execute query: %s" % to_native(e))
-
-    return result
 
 
 def get_databases(module, client):
@@ -494,22 +452,6 @@ def get_server_version(module, client):
     return version
 
 
-def connect_to_db_via_client(module, main_conn_kwargs, client_kwargs):
-    """Connects to DB using the Client() class.
-
-    Returns Client() object.
-    """
-    try:
-        # Merge the kwargs as Python 2 would through an error
-        # when unpaking them separately to Client()
-        client_kwargs.update(main_conn_kwargs)
-        client = Client(**client_kwargs)
-    except Exception as e:
-        module.fail_json(msg="Failed to connect to database: %s" % to_native(e))
-
-    return client
-
-
 def get_driver(module, client):
     """Gets driver information.
 
@@ -518,7 +460,7 @@ def get_driver(module, client):
 
     Returns its version for now.
     """
-    return {"version": driver_version}
+    return {"version": version_clickhouse_driver()}
 
 
 def handle_limit_values(module, supported_ret_vals, limit):
@@ -589,7 +531,7 @@ def main():
         limit = ret_val_func_mapping.keys()
 
     # Will fail if no driver informing the user
-    check_driver(module, HAS_DB_DRIVER)
+    check_clickhouse_driver(module)
 
     # Connect to DB
     client = connect_to_db_via_client(module, main_conn_kwargs, client_kwargs)

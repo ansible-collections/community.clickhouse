@@ -75,6 +75,9 @@ jobs:
       - name: Install ansible-base (${{ matrix.ansible }})
         run: pip install https://github.com/ansible/ansible/archive/${{ matrix.ansible }}.tar.gz --disable-pip-version-check
 
+      - name: Instal clickhouse-driver
+        run: pip install clickhouse-driver
+
       # Run the unit tests
       - name: Run unit test
         run: ansible-test units -v --color --docker --coverage
@@ -91,7 +94,7 @@ jobs:
           fail_ci_if_error: false
 
   integration:
-    name: "Integration (Python: ${{ matrix.python }}, Ansible: ${{ matrix.ansible }}"
+    name: "Integration (Python: ${{ matrix.python }}, Ansible: ${{ matrix.ansible }}, ClickHouse: ${{ matrix.clickhouse }}"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
