@@ -80,7 +80,7 @@ jobs:
 
       # Run the unit tests
       - name: Run unit test
-        run: ansible-test units -v --color --docker --coverage
+        run: ansible-test units -v --color --python 3.10 --docker --coverage
         working-directory: ./ansible_collections/community/clickhouse
 
       # ansible-test support producing code coverage date
