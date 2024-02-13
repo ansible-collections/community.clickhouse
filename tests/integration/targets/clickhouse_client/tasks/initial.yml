@@ -82,3 +82,22 @@
   ansible.builtin.assert:
     that:
     - result.result[0] != []
+
+
+- name: Create table with Decimal and DateTime columns
+  community.clickhouse.clickhouse_client:
+    execute: CREATE TABLE decimal_datetime (x Decimal(12,4), y DateTime) ENGINE = Memory
+
+- name: Insert Decimal and DateTime
+  community.clickhouse.clickhouse_client:
+    execute: "INSERT INTO decimal_datetime VALUES ('4.01', '2019-01-01 00:00:00')"
+
+- name: Insert Decimal and DateTime
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT * FROM decimal_datetime"
+
+- name: Check the ret vals
+  ansible.builtin.assert:
+    that:
+    - result.result == [[4.01, '2019-01-01T00:00:00']]
