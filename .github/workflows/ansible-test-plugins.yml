@@ -75,9 +75,12 @@ jobs:
       - name: Install ansible-base (${{ matrix.ansible }})
         run: pip install https://github.com/ansible/ansible/archive/${{ matrix.ansible }}.tar.gz --disable-pip-version-check
 
+      - name: Instal clickhouse-driver
+        run: pip install clickhouse-driver
+
       # Run the unit tests
       - name: Run unit test
-        run: ansible-test units -v --color --docker --coverage
+        run: ansible-test units -v --color --python 3.10 --docker --coverage
         working-directory: ./ansible_collections/community/clickhouse
 
       # ansible-test support producing code coverage date
@@ -91,7 +94,7 @@ jobs:
           fail_ci_if_error: false
 
   integration:
-    name: "Integration (Python: ${{ matrix.python }}, Ansible: ${{ matrix.ansible }}"
+    name: "Integration (Python: ${{ matrix.python }}, Ansible: ${{ matrix.ansible }}, ClickHouse: ${{ matrix.clickhouse }}"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
