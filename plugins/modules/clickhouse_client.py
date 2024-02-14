@@ -114,7 +114,6 @@ statistics:
   returned: on success
   type: dict
 '''
-from datetime import timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -154,7 +153,7 @@ def vals_to_supported(result):
     """
     for idx_row, row in enumerate(result):
         for idx_val, val in enumerate(row):
-            if is_uuid(val) or isinstance(val, timedelta):
+            if is_uuid(val):
                 # As tuple does not support change,
                 # we need some conversion here
                 result[idx_row] = replace_val_in_tuple(row, idx_val, str(val))
