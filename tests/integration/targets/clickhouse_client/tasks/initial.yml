@@ -92,7 +92,7 @@
   community.clickhouse.clickhouse_client:
     execute: "INSERT INTO decimal_datetime VALUES ('4.01', '2019-01-01 00:00:00')"
 
-- name: SELECT Decimal and DateTime
+- name: Select Decimal and DateTime
   register: result
   community.clickhouse.clickhouse_client:
     execute: "SELECT * FROM decimal_datetime"
@@ -111,7 +111,7 @@
   community.clickhouse.clickhouse_client:
     execute: "INSERT INTO map VALUES ({'a': 1, 'b': 2})"
 
-- name: SELECT Map
+- name: Select Map
   register: result
   community.clickhouse.clickhouse_client:
     execute: "SELECT * FROM map"
@@ -120,3 +120,22 @@
   ansible.builtin.assert:
     that:
     - result.result[0][0]['a'] == 1
+
+
+- name: Create table with IPv4 and IPv6 columns
+  community.clickhouse.clickhouse_client:
+    execute: CREATE TABLE ip (v4 IPv4, v6 IPv6) ENGINE = Memory
+
+- name: Insert IPv4 and IPv6
+  community.clickhouse.clickhouse_client:
+    execute: "INSERT INTO ip VALUES ('192.168.0.1', '001:44c8:129:2632:33:0:252:2')"
+
+- name: Select IPv4 and IPv6
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT * FROM ip"
+
+- name: Check the ret vals
+  ansible.builtin.assert:
+    that:
+    - result.result == [["192.168.0.1", "1:44c8:129:2632:33:0:252:2"]]

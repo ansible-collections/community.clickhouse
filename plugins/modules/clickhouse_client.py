@@ -116,6 +116,7 @@ statistics:
 '''
 from datetime import timedelta
 from decimal import Decimal
+from ipaddress import IPv4Address, IPv6Address
 from uuid import UUID
 
 from ansible.module_utils.basic import AnsibleModule
@@ -157,10 +158,16 @@ def vals_to_supported(result):
             if is_uuid(val) or isinstance(val, timedelta):
                 # As tuple does not support change,
                 # we need some conversion here
-                result[idx_row] = replace_val_in_tuple(row, idx_val, str(val))
+                row = replace_val_in_tuple(row, idx_val, str(val))
+                result[idx_row] = row
 
             elif isinstance(val, Decimal):
-                result[idx_row] = replace_val_in_tuple(row, idx_val, float(val))
+                row = replace_val_in_tuple(row, idx_val, float(val))
+                result[idx_row] = row
+
+            elif isinstance(val, IPv4Address) or isinstance(val, IPv6Address):
+                row = replace_val_in_tuple(row, idx_val, str(val))
+                result[idx_row] = row
 
     return result
 
