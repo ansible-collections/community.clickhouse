@@ -4,6 +4,31 @@ CHANGE THIS IN changelogs/config.yaml! Release Notes
 
 .. contents:: Topics
 
+v0.3.0
+======
+
+Release Summary
+---------------
+
+This is the minor release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Minor Changes
+-------------
+
+- clickhouse_info - added the ability to collect information from system.tables, system.dictionaries, system.merge_tree_settings.
+
+Bugfixes
+--------
+
+- clickhouse_client - Add support for returned values of types ``IPv4Address`` and ``IPv6Address``.
+- clickhouse_client - Add support for returned values of types ``UUID`` and ``decimal``.
+
+New Modules
+-----------
+
+- clickhouse_db - Creates or removes a ClickHouse database using the clickhouse-driver Client interface
 
 v0.2.0
 ======

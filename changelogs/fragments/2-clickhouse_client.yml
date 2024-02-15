@@ -1,2 +1,0 @@
-bugfixes:
-- clickhouse_client - Add support for returned values of types ``IPv4Address`` and ``IPv6Address``.

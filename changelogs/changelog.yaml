@@ -44,3 +44,30 @@ releases:
     - 0-clickhouse_info_limit.yml
     - 0.2.0.yml
     release_date: '2024-01-31'
+  0.3.0:
+    changes:
+      bugfixes:
+      - clickhouse_client - Add support for returned values of types ``IPv4Address``
+        and ``IPv6Address``.
+      - clickhouse_client - Add support for returned values of types ``UUID`` and
+        ``decimal``.
+      minor_changes:
+      - clickhouse_info - added the ability to collect information from system.tables,
+        system.dictionaries, system.merge_tree_settings.
+      release_summary: 'This is the minor release of the ``community.clickhouse``
+        collection.
+
+        This changelog contains all changes to the modules and plugins in this collection
+
+        that have been made after the previous release.'
+    fragments:
+    - 0-clickhouse_info.yml
+    - 0.3.0.yml
+    - 1-clickhouse_client.yml
+    - 2-clickhouse_client.yml
+    modules:
+    - description: Creates or removes a ClickHouse database using the clickhouse-driver
+        Client interface
+      name: clickhouse_db
+      namespace: ''
+    release_date: '2024-02-15'
