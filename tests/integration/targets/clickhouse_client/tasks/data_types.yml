@@ -1,0 +1,76 @@
+- name: The system.users table contain UUID value
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: SELECT id FROM system.users LIMIT 1
+
+- name: Check the result
+  ansible.builtin.assert:
+    that:
+    - result.result[0] != []
+
+
+- name: Create table with Decimal and DateTime columns
+  community.clickhouse.clickhouse_client:
+    execute: CREATE TABLE decimal_datetime (x Decimal(12,4), y DateTime) ENGINE = Memory
+
+- name: Insert Decimal and DateTime
+  community.clickhouse.clickhouse_client:
+    execute: "INSERT INTO decimal_datetime VALUES ('4.01', '2019-01-01 00:00:00')"
+
+- name: Select Decimal and DateTime
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT * FROM decimal_datetime"
+
+- name: Check the ret vals
+  ansible.builtin.assert:
+    that:
+    - result.result == [[4.01, '2019-01-01T00:00:00']]
+
+
+- name: Create table with Map column
+  community.clickhouse.clickhouse_client:
+    execute: CREATE TABLE map (x Map(String, UInt64)) ENGINE = Memory
+
+- name: Insert Map
+  community.clickhouse.clickhouse_client:
+    execute: "INSERT INTO map VALUES ({'a': 1, 'b': 2})"
+
+- name: Select Map
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT * FROM map"
+
+- name: Check the ret vals
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0]['a'] == 1
+
+# Test version dependent features
+- name: Get server version
+  register: srv
+  community.clickhouse.clickhouse_info:
+    limit: version
+
+
+- name: Test Point column
+  when: srv['version']['year'] >= 23
+  block:
+
+  - name: Create table with Point column
+    community.clickhouse.clickhouse_client:
+      execute: CREATE TABLE geo_point (p Point) ENGINE = Memory
+
+  - name: Insert Point
+    community.clickhouse.clickhouse_client:
+      execute: "INSERT INTO geo_point VALUES ((10, 10))"
+
+  - name: Select Point
+    register: result
+    community.clickhouse.clickhouse_client:
+      execute: "SELECT * FROM geo_point"
+
+  - name: Check the ret vals
+    ansible.builtin.assert:
+      that:
+      - result.result == [[[10, 10]]]

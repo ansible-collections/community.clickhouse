@@ -5,3 +5,6 @@
 
 # Initial CI tests of clickhouse_client module
 - import_tasks: initial.yml
+
+# File to test querying tables storing different data types
+- import_tasks: data_types.yml
