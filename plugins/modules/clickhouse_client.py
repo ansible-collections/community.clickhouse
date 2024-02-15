@@ -115,6 +115,14 @@ statistics:
   type: dict
 '''
 from decimal import Decimal
+
+HAS_IPADDRESS = False
+try:
+    from ipaddress import IPv4Address, IPv6Address
+    HAS_IPADDRESS = True
+except ImportError:
+    pass
+
 from uuid import UUID
 
 from ansible.module_utils.basic import AnsibleModule
@@ -156,10 +164,16 @@ def vals_to_supported(result):
             if is_uuid(val):
                 # As tuple does not support change,
                 # we need some conversion here
-                result[idx_row] = replace_val_in_tuple(row, idx_val, str(val))
+                row = replace_val_in_tuple(row, idx_val, str(val))
+                result[idx_row] = row
 
             elif isinstance(val, Decimal):
-                result[idx_row] = replace_val_in_tuple(row, idx_val, float(val))
+                row = replace_val_in_tuple(row, idx_val, float(val))
+                result[idx_row] = row
+
+            elif isinstance(val, IPv4Address) or isinstance(val, IPv6Address):
+                row = replace_val_in_tuple(row, idx_val, str(val))
+                result[idx_row] = row
 
     return result
 
@@ -254,6 +268,13 @@ def main():
 
     # Will fail if no driver informing the user
     check_clickhouse_driver(module)
+
+    # There's no ipaddress package in Python 2
+    if not HAS_IPADDRESS:
+        msg = ("If you use Python 2 on your target host, "
+               "make sure you have the py2-ipaddress Python package installed there to avoid "
+               "crashes while querying tables containing columns of IPv4|6Address types.")
+        module.warn(msg)
 
     # Connect to DB
     client = connect_to_db_via_client(module, main_conn_kwargs, client_kwargs)

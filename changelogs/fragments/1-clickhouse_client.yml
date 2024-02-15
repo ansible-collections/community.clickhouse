@@ -1,2 +1,2 @@
 bugfixes:
-- clickhouse_client - Add support for returning values of types ``UUID``, ``timedelta``, and ``decimal``.
+- clickhouse_client - Add support for returned values of types ``UUID`` and ``decimal``.
