@@ -28,6 +28,8 @@
     - result["merge_tree_settings"]["merge_max_block_size"] != {}
     - result["tables"] != {}
     - result["dictionaries"] != {}
+    - result["quotas"]["default"] != {}
+    - result["settings_profiles"]["default"] != {}
 
 - name: Debug
   ansible.builtin.debug:

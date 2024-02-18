@@ -131,6 +131,20 @@ dictionaries:
   type: dict
   sample: { "database": { "dictionary": "..." } }
   version_added: '0.3.0'
+quotas:
+  description:
+    - The content of the system.quotas table with quota names as keys.
+  returned: success
+  type: dict
+  sample: { "default": "..." }
+  version_added: '0.4.0'
+settings_profiles:
+  description:
+    - The content of the system.settings_profiles table with profile names as keys.
+  returned: success
+  type: dict
+  sample: { "readonly": "..." }
+  version_added: '0.4.0'
 '''
 
 from ansible.module_utils.basic import AnsibleModule
@@ -421,6 +435,90 @@ def get_users(module, client):
     return user_info
 
 
+def get_settings_profiles(module, client):
+    """Get settings profiles.
+
+    Returns a dictionary with profile names as keys.
+    """
+    query = ("SELECT name, id, storage, num_elements, apply_to_all, apply_to_list, "
+             "apply_to_except FROM system.settings_profiles")
+    result = execute_query(module, client, query)
+
+    if result == PRIV_ERR_CODE:
+        return {PRIV_ERR_CODE: "Not enough privileges"}
+
+    profile_info = {}
+    for row in result:
+        profile_info[row[0]] = {
+            "id": str(row[1]),
+            "storage": row[2],
+            "num_elements": row[3],
+            "apply_to_all": row[4],
+            "apply_to_list": row[5],
+            "apply_to_except": row[6],
+        }
+
+    return profile_info
+
+
+def get_quotas(module, client):
+    """Get quotas.
+
+    Returns a dictionary with quota names as keys.
+    """
+    query = ("SELECT name, id, storage, keys, durations, apply_to_all, "
+             "apply_to_list, apply_to_except FROM system.quotas")
+    result = execute_query(module, client, query)
+
+    if result == PRIV_ERR_CODE:
+        return {PRIV_ERR_CODE: "Not enough privileges"}
+
+    quota_info = {}
+    for row in result:
+        quota_info[row[0]] = {
+            "id": str(row[1]),
+            "storage": row[2],
+            "keys": row[3],
+            "durations": row[4],
+            "apply_to_all": row[5],
+            "apply_to_list": row[6],
+            "apply_to_except": row[7],
+        }
+
+    return quota_info
+
+
+def get_server_version(module, client):
+    """Get server version.
+
+    Returns a dictionary with server version.
+    """
+    result = execute_query(module, client, "SELECT version()")
+
+    if result == PRIV_ERR_CODE:
+        return {PRIV_ERR_CODE: "Not enough privileges"}
+
+    raw = result[0][0]
+    split_raw = raw.split('.')
+
+    version = {}
+    version["raw"] = raw
+
+    version["year"] = int(split_raw[0])
+    version["feature"] = int(split_raw[1])
+    version["maintenance"] = int(split_raw[2])
+
+    if '-' in split_raw[3]:
+        tmp = split_raw[3].split('-')
+        version["build"] = int(tmp[0])
+        version["type"] = tmp[1]
+    else:
+        version["build"] = int(split_raw[3])
+        version["type"] = None
+
+    return version
+
+
 def get_server_version(module, client):
     """Get server version.
 
@@ -521,6 +619,8 @@ def main():
         'dictionaries': get_dictionaries,
         'tables': get_tables,
         'merge_tree_settings': get_merge_tree_settings,
+        'quotas': get_quotas,
+        'settings_profiles': get_settings_profiles,
     }
     # Check if the limit is provided, it contains correct values
     limit = module.params['limit']
