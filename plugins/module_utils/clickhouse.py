@@ -108,3 +108,34 @@ def execute_query(module, client, query, execute_kwargs=None):
         module.fail_json(msg="Failed to execute query: %s" % to_native(e))
 
     return result
+
+
+def get_server_version(module, client):
+    """Get server version.
+
+    Returns a dictionary with server version.
+    """
+    result = execute_query(module, client, "SELECT version()")
+
+    if result == PRIV_ERR_CODE:
+        return {PRIV_ERR_CODE: "Not enough privileges"}
+
+    raw = result[0][0]
+    split_raw = raw.split('.')
+
+    version = {}
+    version["raw"] = raw
+
+    version["year"] = int(split_raw[0])
+    version["feature"] = int(split_raw[1])
+    version["maintenance"] = int(split_raw[2])
+
+    if '-' in split_raw[3]:
+        tmp = split_raw[3].split('-')
+        version["build"] = int(tmp[0])
+        version["type"] = tmp[1]
+    else:
+        version["build"] = int(split_raw[3])
+        version["type"] = None
+
+    return version
