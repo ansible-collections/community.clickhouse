@@ -151,11 +151,12 @@ from ansible.module_utils.basic import AnsibleModule
 
 from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse import (
     check_clickhouse_driver,
-    version_clickhouse_driver,
     client_common_argument_spec,
-    get_main_conn_kwargs,
     connect_to_db_via_client,
     execute_query,
+    get_main_conn_kwargs,
+    get_server_version,
+    version_clickhouse_driver,
 )
 
 
@@ -486,37 +487,6 @@ def get_quotas(module, client):
         }
 
     return quota_info
-
-
-def get_server_version(module, client):
-    """Get server version.
-
-    Returns a dictionary with server version.
-    """
-    result = execute_query(module, client, "SELECT version()")
-
-    if result == PRIV_ERR_CODE:
-        return {PRIV_ERR_CODE: "Not enough privileges"}
-
-    raw = result[0][0]
-    split_raw = raw.split('.')
-
-    version = {}
-    version["raw"] = raw
-
-    version["year"] = int(split_raw[0])
-    version["feature"] = int(split_raw[1])
-    version["maintenance"] = int(split_raw[2])
-
-    if '-' in split_raw[3]:
-        tmp = split_raw[3].split('-')
-        version["build"] = int(tmp[0])
-        version["type"] = tmp[1]
-    else:
-        version["build"] = int(split_raw[3])
-        version["type"] = None
-
-    return version
 
 
 def get_driver(module, client):

@@ -46,8 +46,13 @@ options:
     required: true
   engine:
     description:
-      - Database engine.
+      - Database engine. Once set, cannot be changed.
     type: str
+  comment:
+    description:
+      - Database comment. Once set, cannot be changed.
+    type: str
+    version_added: '0.4.0'
 '''
 
 EXAMPLES = r'''
@@ -60,6 +65,7 @@ EXAMPLES = r'''
     name: test_db
     engine: Memory
     state: present
+    comment: Test DB
 
 - name: Drop database
   community.clickhouse.clickhouse_db:
@@ -85,9 +91,10 @@ from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse import (
     check_clickhouse_driver,
     client_common_argument_spec,
-    get_main_conn_kwargs,
-    execute_query,
     connect_to_db_via_client,
+    execute_query,
+    get_main_conn_kwargs,
+    get_server_version,
 )
 
 
@@ -99,28 +106,43 @@ class ClickHouseDB():
         self.module = module
         self.client = client
         self.name = name
-        self.exists, self.engine = self.__populate_info()
+        self.srv_version = get_server_version(self.module, self.client)
+        # Set default values, then update
+        self.exists = False
+        self.engine = None
+        self.comment = None
+        self.__populate_info()
 
     def __populate_info(self):
-        query = "SELECT engine FROM system.databases WHERE name = %(name)s"
+        # TODO: If anyone can determine the version when the comment feature
+        # was added to database more precisely, you're welcome to adjust it here
+        if self.srv_version['year'] >= 22:
+            # The comment is not supported in all versions
+            query = ("SELECT engine, comment "
+                     "FROM system.databases "
+                     "WHERE name = %(name)s")
+        else:
+            query = "SELECT engine FROM system.databases WHERE name = %(name)s"
+
         # Will move this function to the lib later and reuse
         exec_kwargs = {'params': {'name': self.name}}
         result = execute_query(self.module, self.client, query, exec_kwargs)
 
         # Assume the DB does not exist by default
-        exists = False
-        engine = None
         if result:
             # If exists
-            exists = True
-            engine = result[0][0]
+            self.exists = True
+            self.engine = result[0][0]
+            if self.srv_version['year'] >= 22:
+                self.comment = result[0][1]
 
-        return exists, engine
-
-    def create(self, engine):
+    def create(self, engine, comment):
         query = "CREATE DATABASE %s" % self.name
         if engine:
             query += " ENGINE = %s" % engine
+
+        if comment:
+            query += " COMMENT '%s'" % comment
 
         executed_statements.append(query)
 
@@ -129,7 +151,10 @@ class ClickHouseDB():
 
         return True
 
-    def update(self, engine):
+    def update(self, engine, comment):
+        # IMPORTANT: In case in future any items here can change
+        # please add check_mode handling
+
         # There's no way to change the engine
         # so just inform the users they have to recreate
         # the DB in order to change them
@@ -138,6 +163,13 @@ class ClickHouseDB():
                    "the current one '%s'. It is NOT possible to "
                    "change it. The recreation of the database is required "
                    "in order to change it." % (engine, self.engine))
+            self.module.warn(msg)
+
+        if comment and comment != self.comment:
+            msg = ("The provided comment '%s' is different from "
+                   "the current one '%s'. It is NOT possible to "
+                   "change it. The recreation of the database is required "
+                   "in order to change it." % (comment, self.comment))
             self.module.warn(msg)
 
         return False
@@ -162,6 +194,7 @@ def main():
         state=dict(type='str', choices=['present', 'absent'], default='present'),
         name=dict(type='str', required=True),
         engine=dict(type='str', default=None),
+        comment=dict(type='str', default=None),
     )
 
     # Instantiate an object of module class
@@ -180,6 +213,7 @@ def main():
     state = module.params['state']
     name = module.params['name']
     engine = module.params['engine']
+    comment = module.params['comment']
 
     # Will fail if no driver informing the user
     check_clickhouse_driver(module)
@@ -191,12 +225,18 @@ def main():
     changed = False
     database = ClickHouseDB(module, client, name)
 
+    if comment and database.srv_version['year'] < 22:
+        msg = ('The module supports the comment feature for ClickHouse '
+               'versions equal to or higher than 22.*. Ignored.')
+        module.warn(msg)
+        comment = None
+
     if state == 'present':
         if not database.exists:
-            changed = database.create(engine)
+            changed = database.create(engine, comment)
         else:
             # If database exists
-            changed = database.update(engine)
+            changed = database.update(engine, comment)
 
     else:
         # If state is absent
