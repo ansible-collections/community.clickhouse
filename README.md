@@ -131,10 +131,7 @@ TBD
 
 ## Included content
 
-**Modules**:
-
-- clickhouse_client: Run queries in a ClickHouse database by using a Client() class object.
-- clickhouse_info: Gather ClickHouse server information using the clickhouse-driver Client interface.
+See the list of included modules and their documentation for your installed version on the [collection Galaxy page](https://galaxy.ansible.com/ui/repo/published/community/clickhouse/docs/).
 
 ## Tested with ansible-core
 
