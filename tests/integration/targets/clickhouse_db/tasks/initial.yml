@@ -222,3 +222,90 @@
     that:
     - result is not changed
     - result.executed_statements == []
+
+# Get srv version for the following block
+- name: Get server version
+  register: server_info
+  community.clickhouse.clickhouse_info:
+    limit: version
+
+- name: Test comment
+  when: server_info['version']['year'] >= 22
+  block:
+
+  # Test
+  - name: Create database in check mode with comment
+    register: result
+    check_mode: true
+    community.clickhouse.clickhouse_db:
+      state: present
+      name: test_db
+      comment: Test DB
+
+  - name: Check ret values
+    ansible.builtin.assert:
+      that:
+      - result is changed
+      - result.executed_statements == ["CREATE DATABASE test_db COMMENT 'Test DB'"]
+
+  # Test
+  - name: Create database with comment real mode
+    register: result
+    community.clickhouse.clickhouse_db:
+      state: present
+      name: test_db
+      comment: Test DB
+
+  - name: Check ret values
+    ansible.builtin.assert:
+      that:
+      - result is changed
+      - result.executed_statements == ["CREATE DATABASE test_db COMMENT 'Test DB'"]
+
+  - name: Check the actual state
+    register: result
+    community.clickhouse.clickhouse_client:
+      execute: "SELECT comment FROM system.databases WHERE name = 'test_db'"
+
+  - name: Check the DB is there
+    ansible.builtin.assert:
+      that:
+      - result.result == [['Test DB']]
+
+  # Test
+  # The change is not possible. It'll just show a warning and ignore
+  - name: Create database with another comment real mode
+    register: result
+    community.clickhouse.clickhouse_db:
+      state: present
+      name: test_db
+      comment: Test DB 1
+
+  - name: Check ret values
+    ansible.builtin.assert:
+      that:
+      - result is not changed
+      - result.executed_statements == []
+
+  - name: Check the actual state
+    register: result
+    community.clickhouse.clickhouse_client:
+      execute: "SELECT comment FROM system.databases WHERE name = 'test_db'"
+
+  - name: Check the DB is there
+    ansible.builtin.assert:
+      that:
+      - result.result == [['Test DB']]
+
+  # Test
+  - name: Drop DB with comment
+    register: result
+    community.clickhouse.clickhouse_db:
+      state: absent
+      name: test_db
+      comment: Test DB
+
+  - name: Check ret values
+    ansible.builtin.assert:
+      that:
+      - result is changed

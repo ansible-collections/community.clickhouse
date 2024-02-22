@@ -114,6 +114,8 @@ class ClickHouseDB():
         self.__populate_info()
 
     def __populate_info(self):
+        # TODO: If anyone can determine the version when the comment feature
+        # was added to database more precisely, you're welcome to adjust it here
         if self.srv_version['year'] >= 22:
             # The comment is not supported in all versions
             query = ("SELECT engine, comment "
@@ -150,6 +152,9 @@ class ClickHouseDB():
         return True
 
     def update(self, engine, comment):
+        # IMPORTANT: In case in future any items here can change
+        # please add check_mode handling
+
         # There's no way to change the engine
         # so just inform the users they have to recreate
         # the DB in order to change them
@@ -219,6 +224,12 @@ def main():
     # Do the job
     changed = False
     database = ClickHouseDB(module, client, name)
+
+    if comment and database.srv_version['year'] < 22:
+        msg = ('The module supports the comment feature for ClickHouse '
+               'versions equal to or higher than 22.*. Ignored.')
+        module.warn(msg)
+        comment = None
 
     if state == 'present':
         if not database.exists:
