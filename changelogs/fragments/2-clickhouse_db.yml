@@ -1,0 +1,4 @@
+minor_changes:
+- clickhouse_db - added the ability to rename databases.
+- clickhouse_db - add the ``cluster`` argument to execute commands on all cluster hosts.
+- clickhouse_db - add the ``target`` argument to rename the database.
