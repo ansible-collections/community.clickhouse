@@ -65,3 +65,23 @@
     - result is not changed
     - result["version"] != {}
     - result["driver"]["version"] != {}
+
+- name: Check function
+  when: result['version']['year'] >= 22
+  block:
+    - name: Create function
+      community.clickhouse.clickhouse_client:
+        execute: "CREATE FUNCTION linear_equation AS (x, k, b) -> k*x + b"
+
+    - name: Get info
+      register: result_func
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        limit:
+          - functions
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result_func is not changed
+        - result_func["functions"] != {}
