@@ -223,6 +223,74 @@
     - result is not changed
     - result.executed_statements == []
 
+# Test rename database
+- name: Create database for renaming
+  register: result
+  community.clickhouse.clickhouse_db:
+    name: test_rename_db
+
+- name: Rename database
+  register: result
+  community.clickhouse.clickhouse_db:
+    name: test_rename_db
+    target: dev_db
+    state: rename
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["RENAME DATABASE test_rename_db TO dev_db"]
+
+# Test
+- name: Rename database in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_db:
+    state: rename
+    name: dev_db
+    target: test_rename_db
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["RENAME DATABASE dev_db TO test_rename_db"]
+
+# Test rename database if there is nothing to rename
+- name: Rename database if there is nothing to rename
+  register: result
+  community.clickhouse.clickhouse_db:
+    name: test_rename_db
+    target: dev_db
+    state: rename
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+    - result.warnings != []
+
+# Test rename database if both databases exist
+- name: Create database for renaming
+  register: result
+  community.clickhouse.clickhouse_db:
+    name: test_rename_db
+
+- name: Rename database if both databases exist
+  register: result
+  community.clickhouse.clickhouse_db:
+    name: test_rename_db
+    target: dev_db
+    state: rename
+  ignore_errors: true
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is failed
+
 # Get srv version for the following block
 - name: Get server version
   register: server_info

@@ -26,6 +26,7 @@ version_added: '0.3.0'
 
 author:
   - Andrew Klychkov (@Andersson007)
+  - Aleksandr Vagachev (@aleksvagachev)
 
 extends_documentation_fragment:
   - community.clickhouse.client_inst_opts
@@ -36,8 +37,9 @@ options:
       - Database state.
       - If C(present), will create the database if not exists.
       - If C(absent), will drop the database if exists.
+      - If C(rename), will rename the database if exists.
     type: str
-    choices: ['present', 'absent']
+    choices: ['present', 'absent', 'rename']
     default: 'present'
   name:
     description:
@@ -48,6 +50,17 @@ options:
     description:
       - Database engine. Once set, cannot be changed.
     type: str
+  cluster:
+    description:
+      - Run the command on all cluster hosts.
+      - If the cluster is not configured, the command will crash with an error.
+    type: str
+    version_added: '0.4.0'
+  target:
+    description:
+      - Name for renaming the database.
+    type: str
+    version_added: '0.4.0'
   comment:
     description:
       - Database comment. Once set, cannot be changed.
@@ -75,6 +88,22 @@ EXAMPLES = r'''
     login_password: my_password
     name: test_db
     state: absent
+
+# Rename the database test_db to prod_db.
+# If the database test_db exists, it will be renamed to prod_db.
+# If the database test_db does not exist and the prod_db database exists,
+# the module will report that nothing has changed.
+# If both the databases exist, an error will be raised.
+- name: Rename database
+  community.clickhouse.clickhouse_db:
+    login_host: localhost
+    login_user: alice
+    login_db: foo
+    login_password: my_password
+    name: test_db
+    target: prod_db
+    cluster: test_cluster
+    state: rename
 '''
 
 RETURN = r'''
@@ -102,10 +131,11 @@ executed_statements = []
 
 
 class ClickHouseDB():
-    def __init__(self, module, client, name):
+    def __init__(self, module, client, name, cluster):
         self.module = module
         self.client = client
         self.name = name
+        self.cluster = cluster
         self.srv_version = get_server_version(self.module, self.client)
         # Set default values, then update
         self.exists = False
@@ -141,6 +171,9 @@ class ClickHouseDB():
         if engine:
             query += " ENGINE = %s" % engine
 
+        if self.cluster:
+            query += " ON CLUSTER %s" % self.cluster
+
         if comment:
             query += " COMMENT '%s'" % comment
 
@@ -174,8 +207,23 @@ class ClickHouseDB():
 
         return False
 
+    def rename(self, target):
+        query = "RENAME DATABASE %s TO %s" % (self.name, target)
+        if self.cluster:
+            query += " ON CLUSTER %s" % self.cluster
+
+        executed_statements.append(query)
+
+        if not self.module.check_mode:
+            execute_query(self.module, self.client, query)
+
+        return True
+
     def drop(self):
         query = "DROP DATABASE %s" % self.name
+        if self.cluster:
+            query += " ON CLUSTER %s" % self.cluster
+
         executed_statements.append(query)
 
         if not self.module.check_mode:
@@ -191,9 +239,11 @@ def main():
     # and invoke here to return a dict with those arguments
     argument_spec = client_common_argument_spec()
     argument_spec.update(
-        state=dict(type='str', choices=['present', 'absent'], default='present'),
+        state=dict(type='str', choices=['present', 'absent', 'rename'], default='present'),
         name=dict(type='str', required=True),
         engine=dict(type='str', default=None),
+        cluster=dict(type='str', default=None),
+        target=dict(type='str', default=None),
         comment=dict(type='str', default=None),
     )
 
@@ -213,6 +263,8 @@ def main():
     state = module.params['state']
     name = module.params['name']
     engine = module.params['engine']
+    cluster = module.params['cluster']
+    target = module.params['target']
     comment = module.params['comment']
 
     # Will fail if no driver informing the user
@@ -223,7 +275,7 @@ def main():
 
     # Do the job
     changed = False
-    database = ClickHouseDB(module, client, name)
+    database = ClickHouseDB(module, client, name, cluster)
 
     if comment and database.srv_version['year'] < 22:
         msg = ('The module supports the comment feature for ClickHouse '
@@ -237,7 +289,18 @@ def main():
         else:
             # If database exists
             changed = database.update(engine, comment)
-
+    elif state == 'rename':
+        if database.exists:
+            changed = database.rename(target)
+        else:
+            target_db = ClickHouseDB(module, client, target, cluster)
+            if target_db.exists:
+                changed = False
+                msg = "There is nothing to rename"
+                module.warn(msg)
+            else:
+                msg = "The %s and %s databases do not exist" % (name, target)
+                module.fail_json(msg=msg)
     else:
         # If state is absent
         if database.exists:
