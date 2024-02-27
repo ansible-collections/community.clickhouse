@@ -1,3 +1,4 @@
+# UUID
 - name: The system.users table contain UUID value
   register: result
   community.clickhouse.clickhouse_client:
@@ -8,7 +9,7 @@
     that:
     - result.result[0] != []
 
-
+# Decimal & DateTime
 - name: Create table with Decimal and DateTime columns
   community.clickhouse.clickhouse_client:
     execute: CREATE TABLE decimal_datetime (x Decimal(12,4), y DateTime) ENGINE = Memory
@@ -27,7 +28,7 @@
     that:
     - result.result == [[4.01, '2019-01-01T00:00:00']]
 
-
+# Map
 - name: Create table with Map column
   community.clickhouse.clickhouse_client:
     execute: CREATE TABLE map (x Map(String, UInt64)) ENGINE = Memory
@@ -46,6 +47,57 @@
     that:
     - result.result[0][0]['a'] == 1
 
+
+# FixedString
+- name: Create table with FixedString column
+  community.clickhouse.clickhouse_client:
+    execute: CREATE TABLE fixed_string (fs FixedString(2)) ENGINE = Memory
+
+- name: Insert FixedString
+  community.clickhouse.clickhouse_client:
+    execute: "INSERT INTO fixed_string VALUES ('a')"
+
+- name: Select FixedString
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT * FROM fixed_string"
+
+- name: Check the ret vals
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0] == "a"
+
+
+# Enum
+- name: Create table with Enum column
+  community.clickhouse.clickhouse_client:
+    execute: "CREATE TABLE t_enum (e Enum('hello' = 1, 'world' = 2)) ENGINE = Memory"
+
+- name: Insert Enum
+  community.clickhouse.clickhouse_client:
+    execute: "INSERT INTO t_enum VALUES ('hello'), ('world')"
+
+- name: Select Enum
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT * FROM t_enum"
+
+- name: Check the ret vals
+  ansible.builtin.assert:
+    that:
+    - result.result == [['hello'], ['world']]
+
+- name: Select Enum with cast
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT CAST(e, 'Int8') FROM t_enum"
+
+- name: Check the ret vals
+  ansible.builtin.assert:
+    that:
+    - result.result == [[1], [2]]
+
+
 # Test version dependent features
 - name: Get server version
   register: srv
@@ -53,10 +105,11 @@
     limit: version
 
 
-- name: Test Point column
+- name: Types supported since version 23.*
   when: srv['version']['year'] >= 23
   block:
 
+  # Point
   - name: Create table with Point column
     community.clickhouse.clickhouse_client:
       execute: CREATE TABLE geo_point (p Point) ENGINE = Memory
