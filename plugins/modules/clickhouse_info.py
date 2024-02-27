@@ -148,8 +148,8 @@ settings_profiles:
 functions:
   description:
     - The content of the system.functions table with function names as keys.
-    - Works only for clickhouse-server versions >= 22
-    - Does not output functions on the 'System' origin
+    - Works only for clickhouse-server versions >= 22.
+    - Does not output functions on the 'System' origin.
   returned: success
   type: dict
   sample: { "test_function": "..." }
