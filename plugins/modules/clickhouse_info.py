@@ -145,6 +145,15 @@ settings_profiles:
   type: dict
   sample: { "readonly": "..." }
   version_added: '0.4.0'
+functions:
+  description:
+    - The content of the system.functions table with function names as keys.
+    - Works only for clickhouse-server versions >= 22.
+    - Does not output functions on the 'System' origin.
+  returned: success
+  type: dict
+  sample: { "test_function": "..." }
+  version_added: '0.4.0'
 '''
 
 from ansible.module_utils.basic import AnsibleModule
@@ -489,6 +498,34 @@ def get_quotas(module, client):
     return quota_info
 
 
+def get_functions(module, client):
+    """Get functions.
+
+    Returns a dictionary with function names as keys.
+    """
+    srv_version = get_server_version(module, client)
+    function_info = {}
+    if srv_version['year'] >= 22:
+        query = ("SELECT name, is_aggregate, case_insensitive, alias_to, "
+                 "create_query, origin FROM system.functions "
+                 "WHERE origin != 'System'")
+        result = execute_query(module, client, query)
+
+        if result == PRIV_ERR_CODE:
+            return {PRIV_ERR_CODE: "Not enough privileges"}
+
+        for row in result:
+            function_info[row[0]] = {
+                "is_aggregate": str(row[1]),
+                "case_insensitive": row[2],
+                "alias_to": row[3],
+                "create_query": row[4],
+                "origin": row[5],
+            }
+
+    return function_info
+
+
 def get_driver(module, client):
     """Gets driver information.
 
@@ -560,6 +597,7 @@ def main():
         'merge_tree_settings': get_merge_tree_settings,
         'quotas': get_quotas,
         'settings_profiles': get_settings_profiles,
+        'functions': get_functions,
     }
     # Check if the limit is provided, it contains correct values
     limit = module.params['limit']
