@@ -55,13 +55,20 @@ See [Ansible Using collections](https://docs.ansible.com/ansible/latest/user_gui
 ### Usage example
 
 ```yaml
+- name: Create database
+  community.clickhouse.clickhouse_db:
+    name: test_db
+    engine: Memory
+    state: present
+    comment: Test DB
+
 - name: Get server information
   register: result
   community.clickhouse.clickhouse_info:
 
 - name: Print server information
   ansible.builtin.debug:
-    var: result.result
+    var: result
 
 # Note: it runs SELECT version() just for the sake of example.
 # You can get it with the task above much more conveniently.
@@ -84,6 +91,39 @@ See [Ansible Using collections](https://docs.ansible.com/ansible/latest/user_gui
 We follow the [Ansible Code of Conduct](https://docs.ansible.com/ansible/latest/community/code_of_conduct.html) in all our interactions within this project.
 
 If you encounter abusive behavior violating the [Ansible Code of Conduct](https://docs.ansible.com/ansible/latest/community/code_of_conduct.html), please refer to the [policy violations](https://docs.ansible.com/ansible/latest/community/code_of_conduct.html#policy-violations) section of the Code of Conduct for information on how to raise a complaint.
+
+## Communication
+
+> `GitHub Discussions` feature is disabled in this repository. Use the `clickhouse` tag on the forum in the [Project Discussions](https://forum.ansible.com/new-topic?title=topic%20title&body=topic%20body&category=project&tags=postgresql) or [Get Help](https://forum.ansible.com/new-topic?title=topic%20title&body=topic%20body&category=help&tags=clickhouse) category instead.
+
+### Asynchronous channels
+
+* Join the Ansible forum:
+    * [ClickHouse Team](https://forum.ansible.com/g/ClickHouseTeam): by joining the team you will automatically get subscribed to the posts tagged with [clickhouse](https://forum.ansible.com/tag/clickhouse).
+    * [Get Help](https://forum.ansible.com/c/help/6/none): get help or help others.
+    * [Posts tagged with 'postgresql'](https://forum.ansible.com/tag/clickhouse): leverage tags to narrow the scope.
+    * [Social Spaces](https://forum.ansible.com/c/chat/4): gather and interact with fellow enthusiasts.
+    * [News & Announcements](https://forum.ansible.com/c/news/5/none): track project-wide announcements including social events.
+
+* The Ansible [Bullhorn newsletter](https://forum.ansible.com/t/about-the-newsletter-category/166): used to announce releases and important changes.
+
+### Real-time channels
+
+* Matrix rooms:
+    * `TBD` [#clickhouse:ansible.com](https://matrix.to/#/#clickhouse:ansible.com): questions on how to contribute and use this collection.
+    * [#users:ansible.com](https://matrix.to/#/#users:ansible.com): general use questions and support.
+    * [#social:ansible.com](https://matrix.to/#/#social:ansible.com): say hello or share a funny joke and let's laugh together;)
+    * [#ansible-community:ansible.com](https://matrix.to/#/#community:ansible.com): community and collection development questions.
+    * other Matrix rooms or corresponding bridged Libera.Chat channels. See the [Ansible Communication Guide](https://docs.ansible.com/ansible/devel/community/communication.html) for details.
+
+For more information about communication, including how to join these channels, see the [Ansible communication guide](https://docs.ansible.com/ansible/devel/community/communication.html).
+
+
+We announce important development changes and releases through Ansible's [The Bullhorn newsletter](https://docs.ansible.com/ansible/devel/community/communication.html#the-bullhorn). If you are a collection developer, be sure you are subscribed.
+
+We can create a [Forum](https://forum.ansible.com/) group and a Matrix channel in future if there's an interest.
+
+For now, refer to general channels you can find in the [Ansible communication guide](https://docs.ansible.com/ansible/devel/community/communication.html).
 
 ## Contributing to this collection
 
@@ -113,29 +153,33 @@ It is necessary for maintainers of this collection to be subscribed to:
 
 They also should be subscribed to Ansible's [The Bullhorn newsletter](https://docs.ansible.com/ansible/devel/community/communication.html#the-bullhorn).
 
-## Communication
-
-We announce important development changes and releases through Ansible's [The Bullhorn newsletter](https://docs.ansible.com/ansible/devel/community/communication.html#the-bullhorn). If you are a collection developer, be sure you are subscribed.
-
-We can create a [Forum](https://forum.ansible.com/) group and a Matrix channel in future if there's an interest.
-
-For now, refer to general channels you can find in the [Ansible communication guide](https://docs.ansible.com/ansible/devel/community/communication.html).
-
 ## Governance
 
 The process of decision making in this collection is based on discussing and finding consensus among participants.
 
 ## Releases Support Timeline
 
-TBD
+We maintain each major release version (1.x.y, 2.x.y, ...) for two years after the next major version is released.
+
+Here is the table for the support timeline:
+- 1.x.y: to be released
 
 ## Included content
 
 See the list of included modules and their documentation for your installed version on the [collection Galaxy page](https://galaxy.ansible.com/ui/repo/published/community/clickhouse/docs/).
 
-## Tested with ansible-core
+## Tested with
 
-TBD
+Tested with the following `ansible-core` releases:
+- 2.14
+- 2.15
+- 2.16
+- current development version
+
+Tested with ClickHouse:
+- 21.8.15.7
+- 22.8.9.24
+- 23.8.9.54
 
 ## More information
 
