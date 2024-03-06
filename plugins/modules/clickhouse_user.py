@@ -141,7 +141,8 @@ class ClickHouseUser():
 
         if result == PRIV_ERR_CODE:
             login_user = self.module.params['login_user']
-            self.module.fail_json(msg=f"Not enough privileges for user: {login_user}")
+            msg = "Not enough privileges for user: %s" % login_user
+            self.module.fail_json(msg=msg)
 
         if result != []:
             self.user_exists = True
