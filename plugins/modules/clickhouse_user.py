@@ -33,7 +33,7 @@ extends_documentation_fragment:
 options:
   state:
     description:
-      - Database state.
+      - User state.
       - If C(present), will create the user if not exists.
       - If C(absent), will drop the user if exists.
     type: str
