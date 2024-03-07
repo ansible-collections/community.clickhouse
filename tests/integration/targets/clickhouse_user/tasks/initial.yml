@@ -10,12 +10,13 @@
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
+    password: querty
 
 - name: Test 1 - Check ret values in 
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['CREATE USER test_user']
+    - result.executed_statements == ["CREATE USER test_user IDENTIFIED WITH ******** BY '********'"]
 
 - name: Test 1 - Check the actual state
   register: result
@@ -95,3 +96,31 @@
     that:
     - result is not changed
     - result.executed_statements == []
+
+
+# test 6
+- name: Create test_user
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    password: querty
+
+- name: Test 6 - Create test_user again with update_password always
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    password: querty
+    update_password: always
+
+- name: Test 6 - Check result
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["ALTER USER test_user IDENTIFIED WITH ******** BY '********'"]
+
+- name: Drop test_user
+  community.clickhouse.clickhouse_user:
+    state: absent
+    name: test_user
