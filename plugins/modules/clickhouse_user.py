@@ -26,9 +26,11 @@ attributes:
 
 author:
   - Aleksandr Vagachev (@aleksvagachev)
+  - Andrew Klychkov (@Andersson007)
 
 extends_documentation_fragment:
   - community.clickhouse.client_inst_opts
+
 version_added: '0.4.0'
 
 options:
@@ -61,6 +63,18 @@ options:
       - Run the command on all cluster hosts.
       - If the cluster is not configured, the command will crash with an error.
     type: str
+  update_password:
+    description:
+      - If C(on_create), will set the password only for newly created users.
+        If the user already exists, a C(password) value will be ignored.
+      - If C(always), will always update the password.
+        This option is not idempotent and will update the password even
+        if it is the same in the database. If in future ClickHouse will allow
+        to retrieve password hashes and other necessary details, this behavior
+        will be changed.
+    type: str
+    choices: [always, on_create]
+    default: on_create
 '''
 
 EXAMPLES = r'''
@@ -73,6 +87,16 @@ EXAMPLES = r'''
     name: test_user
     password: qwerty
     type_password: sha256_password
+
+- name: If user exists, update password
+  community.clickhouse.clickhouse_user:
+    login_host: localhost
+    login_user: alice
+    login_db: foo
+    login_password: my_password
+    name: test_user
+    password: qwerty123
+    update_password: always
 
 - name: Create user
   community.clickhouse.clickhouse_user:
@@ -164,6 +188,23 @@ class ClickHouseUser():
 
         return True
 
+    def update(self, update_password):
+        if update_password == 'on_create':
+            return False
+
+        # If update_password is always
+        # TODO: When ClickHouse will allow to retrieve password hashes,
+        # make this idempotent, i.e. execute this only if the passwords don't match
+        query = ("ALTER USER %s IDENTIFIED WITH %s "
+                 "BY '%s'") % (self.name, self.type_password, self.password)
+
+        executed_statements.append(query)
+
+        if not self.module.check_mode:
+            execute_query(self.module, self.client, query)
+
+        return True
+
     def drop(self):
         query = "DROP USER %s" % self.name
         if self.cluster:
@@ -185,6 +226,7 @@ def main():
         password=dict(type='str', default=None, no_log=True),
         type_password=dict(type='str', default='sha256_password', no_log=True),
         cluster=dict(type='str', default=None),
+        update_password=dict(type='str', choices=['always', 'on_create'], default='on_create'),
     )
 
     # Instantiate an object of module class
@@ -205,6 +247,7 @@ def main():
     password = module.params["password"]
     type_password = module.params["type_password"]
     cluster = module.params['cluster']
+    update_password = module.params['update_password']
 
     # Will fail if no driver informing the user
     check_clickhouse_driver(module)
@@ -222,7 +265,7 @@ def main():
             changed = user.create()
         else:
             # If user exists
-            pass
+            changed = user.update(update_password)
     else:
         # If state is absent
         if user.user_exists:
