@@ -40,7 +40,7 @@ options:
     type: str
     choices: ['present', 'absent']
     default: 'present'
-  user:
+  name:
     description:
       - User name to add or remove.
     type: str
