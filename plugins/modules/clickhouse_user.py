@@ -120,10 +120,10 @@ executed_statements = []
 
 
 class ClickHouseUser():
-    def __init__(self, module, client, user, password, type_password, cluster):
+    def __init__(self, module, client, name, password, type_password, cluster):
         self.module = module
         self.client = client
-        self.user = user
+        self.name = name
         self.password = password
         self.type_password = type_password
         self.cluster = cluster
@@ -135,7 +135,7 @@ class ClickHouseUser():
         # Collecting user information
         query = ("SELECT name, storage, auth_type "
                  "FROM system.users "
-                 "WHERE name = '%s'" % self.user)
+                 "WHERE name = '%s'" % self.name)
 
         result = execute_query(self.module, self.client, query)
 
@@ -148,7 +148,7 @@ class ClickHouseUser():
             self.user_exists = True
 
     def create(self):
-        query = "CREATE USER %s" % self.user
+        query = "CREATE USER %s" % self.name
 
         if self.password is not None:
             query += (" IDENTIFIED WITH %s"
@@ -165,7 +165,7 @@ class ClickHouseUser():
         return True
 
     def drop(self):
-        query = "DROP USER %s" % self.user
+        query = "DROP USER %s" % self.name
         if self.cluster:
             query += " ON CLUSTER %s" % self.cluster
 
@@ -181,7 +181,7 @@ def main():
     argument_spec = client_common_argument_spec()
     argument_spec.update(
         state=dict(type='str', choices=['present', 'absent'], default='present'),
-        user=dict(type='str', required=True),
+        name=dict(type='str', required=True),
         password=dict(type='str', default=None, no_log=True),
         type_password=dict(type='str', default='sha256_password', no_log=True),
         cluster=dict(type='str', default=None),
@@ -201,7 +201,7 @@ def main():
     # Such data must be passed as module arguments (not nested deep in values).
     main_conn_kwargs = get_main_conn_kwargs(module)
     state = module.params['state']
-    user = module.params['user']
+    name = module.params['name']
     password = module.params["password"]
     type_password = module.params["type_password"]
     cluster = module.params['cluster']
@@ -214,7 +214,7 @@ def main():
 
     # Do the job
     changed = False
-    user = ClickHouseUser(module, client, user, password,
+    user = ClickHouseUser(module, client, name, password,
                           type_password, cluster)
 
     if state == 'present':
