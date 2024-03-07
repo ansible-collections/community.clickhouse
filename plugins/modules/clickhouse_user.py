@@ -92,7 +92,7 @@ EXAMPLES = r'''
     login_user: alice
     login_db: foo
     login_password: my_password
-    user: test_user
+    name: test_user
     state: absent
 '''
 
