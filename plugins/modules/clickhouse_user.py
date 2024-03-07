@@ -29,6 +29,7 @@ author:
 
 extends_documentation_fragment:
   - community.clickhouse.client_inst_opts
+version_added: '0.4.0'
 
 options:
   state:
