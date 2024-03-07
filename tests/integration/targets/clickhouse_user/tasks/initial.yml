@@ -9,7 +9,7 @@
   check_mode: true
   community.clickhouse.clickhouse_user:
     state: present
-    user: test_user
+    name: test_user
 
 - name: Test 1 - Check ret values in 
   ansible.builtin.assert:
