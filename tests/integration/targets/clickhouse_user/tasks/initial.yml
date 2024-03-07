@@ -35,7 +35,7 @@
 - name: Test 2 - Create test_user
   community.clickhouse.clickhouse_user:
     state: present
-    user: test_user
+    name: test_user
 
 - name: Test 2 - Check the actual state
   register: result
