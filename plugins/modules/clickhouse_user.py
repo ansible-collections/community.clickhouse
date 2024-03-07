@@ -52,8 +52,8 @@ options:
     type: str
   type_password:
     description:
-      - The type of password being transmitted(plaintext_password, sha256_password, sha256_hash...)
-      - For more details, see U(https://clickhouse.com/docs/en/sql-reference/statements/create/user)
+      - The type of password being transmitted(plaintext_password, sha256_password, sha256_hash...).
+      - For more details, see U(https://clickhouse.com/docs/en/sql-reference/statements/create/user).
     type: str
     default: sha256_password
   cluster:
