@@ -24,7 +24,6 @@ attributes:
     description: Supports check_mode.
     support: full
 
-
 author:
   - Aleksandr Vagachev (@aleksvagachev)
 
