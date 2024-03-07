@@ -55,7 +55,7 @@
   register: result
   community.clickhouse.clickhouse_user:
     state: present
-    user: test_user
+    name: test_user
 
 - name: Test 3 - Check result
   ansible.builtin.assert:
