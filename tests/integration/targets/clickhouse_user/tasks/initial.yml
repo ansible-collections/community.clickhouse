@@ -68,7 +68,7 @@
 - name: Test 4 - Drop test_user
   community.clickhouse.clickhouse_user:
     state: absent
-    user: test_user
+    name: test_user
 
 - name: Test 4 - Check the actual state
   register: result
