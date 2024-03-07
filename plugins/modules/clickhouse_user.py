@@ -80,7 +80,7 @@ EXAMPLES = r'''
     login_user: alice
     login_db: foo
     login_password: my_password
-    user: test_user
+    name: test_user
     password: 9e69e7e29351ad837503c44a5971edebc9b7e6d8601c89c284b1b59bf37afa80
     type_password: sha256_hash
     cluster: test_cluster
