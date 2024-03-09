@@ -154,6 +154,13 @@ functions:
   type: dict
   sample: { "test_function": "..." }
   version_added: '0.4.0'
+storage_policies:
+  description:
+    - The content of the system.storage_policies table with storage_policies names as keys.
+  returned: success
+  type: dict
+  sample: { "storage_policies": "..." }
+  version_added: '0.4.0'
 '''
 
 from ansible.module_utils.basic import AnsibleModule
@@ -526,6 +533,34 @@ def get_functions(module, client):
     return function_info
 
 
+def get_storage_policies(module, client):
+    """Get storage_policies.
+
+    Returns a dictionary with storage_policies names as keys.
+    """
+    query = ("SELECT policy_name, volume_name, volume_priority, "
+             "disks, volume_type, max_data_part_size, "
+             "move_factor, prefer_not_to_merge FROM system.storage_policies")
+    result = execute_query(module, client, query)
+
+    if result == PRIV_ERR_CODE:
+        return {PRIV_ERR_CODE: "Not enough privileges"}
+
+    storage_policies_info = {}
+    for row in result:
+        storage_policies_info[row[0]] = {
+            "volume_name": row[1],
+            "volume_priority": row[2],
+            "disks": row[3],
+            "volume_type": row[4],
+            "max_data_part_size": row[5],
+            "move_factor": row[6],
+            "prefer_not_to_merge": row[7],
+        }
+
+    return storage_policies_info
+
+
 def get_driver(module, client):
     """Gets driver information.
 
@@ -598,6 +633,7 @@ def main():
         'quotas': get_quotas,
         'settings_profiles': get_settings_profiles,
         'functions': get_functions,
+        'storage_policies': get_storage_policies,
     }
     # Check if the limit is provided, it contains correct values
     limit = module.params['limit']
