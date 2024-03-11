@@ -30,6 +30,7 @@
     - result["dictionaries"] != {}
     - result["quotas"]["default"] != {}
     - result["settings_profiles"]["default"] != {}
+    - result["storage_policies"] != {}
 
 - name: Debug
   ansible.builtin.debug:
