@@ -224,9 +224,12 @@ def main():
         state=dict(type='str', choices=['present', 'absent'], default='present'),
         name=dict(type='str', required=True),
         password=dict(type='str', default=None, no_log=True),
-        type_password=dict(type='str', default='sha256_password', no_log=True),
+        type_password=dict(type='str', default='sha256_password', no_log=False),
         cluster=dict(type='str', default=None),
-        update_password=dict(type='str', choices=['always', 'on_create'], default='on_create'),
+        update_password=dict(
+            type='str', choices=['always', 'on_create'],
+            default='on_create', no_log=False
+        ),
     )
 
     # Instantiate an object of module class

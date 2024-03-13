@@ -16,7 +16,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["CREATE USER test_user IDENTIFIED WITH ******** BY '********'"]
+    - result.executed_statements == ["CREATE USER test_user IDENTIFIED WITH sha256_password BY '********'"]
 
 - name: Test 1 - Check the actual state
   register: result
@@ -118,7 +118,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["ALTER USER test_user IDENTIFIED WITH ******** BY '********'"]
+    - result.executed_statements == ["ALTER USER test_user IDENTIFIED WITH sha256_password BY '********'"]
 
 - name: Drop test_user
   community.clickhouse.clickhouse_user:
