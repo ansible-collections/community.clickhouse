@@ -1,2 +1,0 @@
-minor_changes:
-- clickhouse_info - added the ability to collect information from system.storage_policies.
