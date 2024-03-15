@@ -4,6 +4,32 @@ CHANGE THIS IN changelogs/config.yaml! Release Notes
 
 .. contents:: Topics
 
+v0.4.0
+======
+
+Release Summary
+---------------
+
+This is the minor release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Minor Changes
+-------------
+
+- clickhouse_db - add the ``cluster`` argument to execute commands on all cluster hosts.
+- clickhouse_db - add the ``comment`` argument to set a comment on databases.
+- clickhouse_db - add the ``target`` argument to rename the database.
+- clickhouse_db - added the ability to rename databases.
+- clickhouse_info - added the ability to collect information from system.functions.
+- clickhouse_info - added the ability to collect information from system.quotas, system.settings_profiles.
+- clickhouse_info - added the ability to collect information from system.storage_policies.
+
+New Modules
+-----------
+
+- clickhouse_user - Creates or removes a ClickHouse user using the clickhouse-driver Client interface
+
 v0.3.0
 ======
 

@@ -71,3 +71,34 @@ releases:
       name: clickhouse_db
       namespace: ''
     release_date: '2024-02-15'
+  0.4.0:
+    changes:
+      minor_changes:
+      - clickhouse_db - add the ``cluster`` argument to execute commands on all cluster
+        hosts.
+      - clickhouse_db - add the ``comment`` argument to set a comment on databases.
+      - clickhouse_db - add the ``target`` argument to rename the database.
+      - clickhouse_db - added the ability to rename databases.
+      - clickhouse_info - added the ability to collect information from system.functions.
+      - clickhouse_info - added the ability to collect information from system.quotas,
+        system.settings_profiles.
+      - clickhouse_info - added the ability to collect information from system.storage_policies.
+      release_summary: 'This is the minor release of the ``community.clickhouse``
+        collection.
+
+        This changelog contains all changes to the modules and plugins in this collection
+
+        that have been made after the previous release.'
+    fragments:
+    - 0-clickhouse_info.yml
+    - 0.4.0.yml
+    - 1-clickhouse_db.yml
+    - 2-clickhouse_db.yml
+    - 2-clickhouse_info.yml
+    - 3-clickhouse_info.yml
+    modules:
+    - description: Creates or removes a ClickHouse user using the clickhouse-driver
+        Client interface
+      name: clickhouse_user
+      namespace: ''
+    release_date: '2024-03-14'

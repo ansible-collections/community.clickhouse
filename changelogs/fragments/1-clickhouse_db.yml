@@ -1,2 +1,0 @@
-minor_changes:
-- clickhouse_db - add the ``comment`` argument to set a comment on databases.
