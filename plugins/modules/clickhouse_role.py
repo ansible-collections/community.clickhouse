@@ -24,7 +24,6 @@ attributes:
 version_added: '0.3.0'
 
 author:
-  - Andrew Klychkov (@Andersson007)
   - Don Naro (@oranod)
 
 extends_documentation_fragment:
