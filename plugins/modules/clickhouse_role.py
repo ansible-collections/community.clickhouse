@@ -64,7 +64,7 @@ executed_statements:
   - Data-modifying executed statements.
   returned: on success
   type: list
-  sample: ['CREATE DATABASE test_db']
+  sample: ['CREATE ROLE test_role']
 '''
 
 from ansible.module_utils.basic import AnsibleModule
