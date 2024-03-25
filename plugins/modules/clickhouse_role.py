@@ -22,7 +22,7 @@ attributes:
     description: Supports check_mode.
     support: full
 
-version_added: '0.3.0'
+version_added: '0.5.0'
 
 author:
   - Don Naro (@oranod)
@@ -159,8 +159,6 @@ def main():
     if state == "present":
         if not role.exists:
             changed = role.create()
-        else:
-            pass
     else:
         # If state is absent
         if role.exists:
