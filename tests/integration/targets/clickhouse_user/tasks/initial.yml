@@ -85,21 +85,21 @@
 
 
 # Test 5
-- name: Test 4 - Drop test_user if it does not exists
+- name: Test 5 - Drop test_user if it does not exists
   register: result
   community.clickhouse.clickhouse_user:
     state: absent
     name: test_user
 
-- name: Test 4 - Check ret values 
+- name: Test 5 - Check ret values 
   ansible.builtin.assert:
     that:
     - result is not changed
     - result.executed_statements == []
 
 
-# test 6
-- name: Create test_user
+# Test 6
+- name: Test 6 - Create test_user
   register: result
   community.clickhouse.clickhouse_user:
     state: present
@@ -120,7 +120,25 @@
     - result is changed
     - result.executed_statements == ["ALTER USER test_user IDENTIFIED WITH sha256_password BY '********'"]
 
-- name: Drop test_user
+- name: Test 6 - Drop test_user
   community.clickhouse.clickhouse_user:
     state: absent
     name: test_user
+
+
+# Test 7
+- name: Test 7 - Create test_user with settings
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    password: querty
+    settings:
+      - max_memory_usage = 15000 READONLY
+      - max_memory_usage_for_all_queries = 15000 MIN 15000 MAX 16000 WRITABLE
+
+- name: Test 7 - Check result
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements != []
