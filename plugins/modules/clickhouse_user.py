@@ -75,6 +75,12 @@ options:
     type: str
     choices: [always, on_create]
     default: on_create
+  settings:
+    description:
+      - Settings with their constraints applied by default at user login.
+      - You can also specify the profile from which the settings will be inherited.
+    type: list
+    elements: str
 '''
 
 EXAMPLES = r'''
@@ -98,7 +104,7 @@ EXAMPLES = r'''
     password: qwerty123
     update_password: always
 
-- name: Create user
+- name: Create user with specific settings
   community.clickhouse.clickhouse_user:
     login_host: localhost
     login_user: alice
@@ -108,6 +114,9 @@ EXAMPLES = r'''
     password: 9e69e7e29351ad837503c44a5971edebc9b7e6d8601c89c284b1b59bf37afa80
     type_password: sha256_hash
     cluster: test_cluster
+    settings:
+      - max_memory_usage = 15000 MIN 15000 MAX 16000 READONLY
+      - PROFILE 'restricted'
     state: present
 
 - name: Drop user
@@ -172,6 +181,7 @@ class ClickHouseUser():
             self.user_exists = True
 
     def create(self):
+        list_settings = self.module.params['settings']
         query = "CREATE USER %s" % self.name
 
         if self.password is not None:
@@ -180,6 +190,13 @@ class ClickHouseUser():
 
         if self.cluster:
             query += " ON CLUSTER %s" % self.cluster
+
+        if list_settings:
+            query += " SETTINGS"
+            for index, value in enumerate(list_settings):
+                query += " %s" % value
+                if index < len(list_settings) - 1:
+                    query += ","
 
         executed_statements.append(query)
 
@@ -230,6 +247,7 @@ def main():
             type='str', choices=['always', 'on_create'],
             default='on_create', no_log=False
         ),
+        settings=dict(type='list', elements='str'),
     )
 
     # Instantiate an object of module class
