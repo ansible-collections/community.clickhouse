@@ -174,6 +174,7 @@ Tested with the following `ansible-core` releases:
 - 2.14
 - 2.15
 - 2.16
+- 2.17
 - current development version
 
 Tested with ClickHouse:
