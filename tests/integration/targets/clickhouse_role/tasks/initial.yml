@@ -1,0 +1,124 @@
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# Test 1
+- name: Test 1 - Create a test role in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: test_role
+
+- name: Test 1 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE ROLE test_role']
+
+- name: Test 1 - Check the role was created
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.roles WHERE name = 'test_role'"
+
+- name: Test 1 - Verify that the role is not present
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+# Test 2
+- name: Test 2 - Create a test role in real mode
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: test_role
+
+- name: Test 2 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE ROLE test_role']
+
+- name: Test 2 - Check the role was created
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.roles WHERE name = 'test_role'"
+
+- name: Test 2 - Verify that the role is present
+  ansible.builtin.assert:
+    that:
+    - result.result == [["test_role"]]
+
+# Test 3
+- name: Test 3 - Check idempotency by creating the test role again
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: test_role
+
+- name: Test 3 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+# Test 4
+- name: Test 4 - Remove the test role in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_role:
+    state: absent
+    name: test_role
+
+- name: Test 4 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['DROP ROLE test_role']
+
+- name: Test 4 - Check the role was removed in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.roles WHERE name = 'test_role'"
+
+- name: Test 4 - Verify that the role is still present
+  ansible.builtin.assert:
+    that:
+    - result.result == [["test_role"]]
+
+# Test 5
+- name: Test 5 - Remove the test role in real mode
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: absent
+    name: test_role
+
+- name: Test 5 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['DROP ROLE test_role']
+
+- name: Test 5 - Check the role was removed in real mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.roles WHERE name = 'test_role'"
+
+- name: Test 5 - Verify that the role is absent
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+# Test 6
+- name: Test 6 - Try to remove role in real mode again to check idempotency
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: absent
+    name: test_role
+
+- name: Test 6 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
