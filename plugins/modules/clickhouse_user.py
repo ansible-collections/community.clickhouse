@@ -81,6 +81,7 @@ options:
       - You can also specify the profile from which the settings will be inherited.
     type: list
     elements: str
+    version_added: '0.5.0'
 '''
 
 EXAMPLES = r'''

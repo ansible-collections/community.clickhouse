@@ -26,6 +26,7 @@ version_added: '0.5.0'
 
 author:
   - Don Naro (@oranod)
+  - Aleksandr Vagachev (@aleksvagachev)
 
 extends_documentation_fragment:
   - community.clickhouse.client_inst_opts
@@ -44,6 +45,17 @@ options:
       - Role name to add or remove.
     type: str
     required: true
+  cluster:
+    description:
+      - Run the command on all cluster hosts.
+      - If the cluster is not configured, the command will crash with an error.
+    type: str
+  settings:
+    description:
+      - Settings with their limitations that apply to the role.
+      - You can also specify the profile from which the settings will be inherited.
+    type: list
+    elements: str
 """
 
 EXAMPLES = r"""
@@ -51,6 +63,15 @@ EXAMPLES = r"""
   community.clickhouse.clickhouse_role:
     name: test_role
     state: present
+
+- name: Create a role with settings
+  community.clickhouse.clickhouse_role:
+    name: test_role
+    state: present
+    settings:
+      - max_memory_usage = 15000 MIN 15000 MAX 16000 READONLY
+      - PROFILE restricted
+    cluster: test_cluster
 
 - name: Remove role
   community.clickhouse.clickhouse_role:
@@ -95,6 +116,18 @@ class ClickHouseRole:
     def create(self):
         if not self.exists:
             query = "CREATE ROLE %s" % self.name
+
+            if self.module.params['cluster']:
+                query += " ON CLUSTER %s" % self.module.params['cluster']
+
+            list_settings = self.module.params['settings']
+            if list_settings:
+                query += " SETTINGS"
+                for index, value in enumerate(list_settings):
+                    query += " %s" % value
+                    if index < len(list_settings) - 1:
+                        query += ","
+
             executed_statements.append(query)
 
             if not self.module.check_mode:
@@ -128,6 +161,8 @@ def main():
     argument_spec.update(
         state=dict(type="str", choices=["present", "absent"], default="present"),
         name=dict(type="str", required=True),
+        cluster=dict(type='str', default=None),
+        settings=dict(type='list', elements='str'),
     )
 
     # Instantiate an object of module class
