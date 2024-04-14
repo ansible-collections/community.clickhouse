@@ -41,7 +41,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements != []
+    - result.executed_statements == ['CREATE ROLE test_role SETTINGS max_memory_usage = 15000 READONLY, max_memory_usage_for_all_queries = 15000 MIN 15000 MAX 16000 WRITABLE']
 
 - name: Test 2 - Check the role was created
   register: result
