@@ -260,6 +260,7 @@ def main():
     client_kwargs = module.params['client_kwargs']
     query = module.params['execute']
     execute_kwargs = module.params['execute_kwargs']
+    flatten_nested = module.params['flatten_nested']
     # The reason why these arguments are separate from client_kwargs
     # is that we need to protect some sensitive data like passwords passed
     # to the module from logging (see the arguments above with no_log=True);
@@ -283,6 +284,8 @@ def main():
     substituted_query = get_substituted_query(module, client, query, execute_kwargs)
 
     # Execute query
+    if flatten_nested == 0:
+        execute_query(module, client, "set flatten_nested=0;", execute_kwargs)
     result = execute_query(module, client, query, execute_kwargs)
 
     # Convert values not supported by ansible-core

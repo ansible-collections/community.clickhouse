@@ -49,6 +49,14 @@ options:
     type: dict
     default: {}
 
+  flatten_nested:
+    description:
+      - Updates flatten_nested setting on session before running
+        query
+      - Only runs the update if set to 0
+    type: int
+    default: 1
+
 requirements: [ 'clickhouse-driver' ]
 
 notes:

@@ -37,6 +37,7 @@ def client_common_argument_spec():
         login_user=dict(type='str', default=None),
         login_password=dict(type='str', default=None, no_log=True),
         client_kwargs=dict(type='dict', default={}),
+        flatten_nested=dict(type='int', default=1),
     )
 
 
