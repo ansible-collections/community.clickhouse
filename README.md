@@ -170,17 +170,7 @@ See the list of included modules and their documentation for your installed vers
 
 ## Tested with
 
-Tested with the following `ansible-core` releases:
-- 2.14
-- 2.15
-- 2.16
-- 2.17
-- current development version
-
-Tested with ClickHouse:
-- 21.8.15.7
-- 22.8.9.24
-- 23.8.9.54
+See our [CI matrix](https://github.com/ansible-collections/community.clickhouse/blob/main/.github/workflows/ansible-test-plugins.yml) for more information about ansible-core and ClickHouse versions the collection is tested with.
 
 ## More information
 
