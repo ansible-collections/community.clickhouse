@@ -51,12 +51,10 @@ options:
 
   flatten_nested:
     description:
-      - Updates flatten_nested setting on session before running
-        query
-      - Only runs the update if set to 0
+      - Sets the C(flatten_nested) setting on session before running the query.
     type: int
-    default: 1
-
+    choices: [0, 1]
+    version_added: '0.5.0'
 requirements: [ 'clickhouse-driver' ]
 
 notes:
