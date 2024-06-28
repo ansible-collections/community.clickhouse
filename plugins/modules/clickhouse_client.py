@@ -285,7 +285,7 @@ def main():
 
     # Execute query
     if flatten_nested == 0:
-        execute_query(module, client, "set flatten_nested=0;", execute_kwargs)
+        execute_query(module, client, "SET flatten_nested = 0", execute_kwargs)
     result = execute_query(module, client, query, execute_kwargs)
 
     # Convert values not supported by ansible-core
