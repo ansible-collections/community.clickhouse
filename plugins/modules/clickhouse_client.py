@@ -283,9 +283,11 @@ def main():
     # Substitute query params if needed for future return
     substituted_query = get_substituted_query(module, client, query, execute_kwargs)
 
-    # Execute query
+    # If support of arbitrary levels of nesting is needed when executing the main query
     if flatten_nested == 0:
         execute_query(module, client, "SET flatten_nested = 0", execute_kwargs)
+
+    # Execute query
     result = execute_query(module, client, query, execute_kwargs)
 
     # Convert values not supported by ansible-core
