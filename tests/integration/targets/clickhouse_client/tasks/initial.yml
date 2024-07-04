@@ -72,21 +72,22 @@
     that:
     - result.result == [["one"], ["two"], ["three"]]
 
-- name: Load a Schema with Nested Fields
+# https://github.com/ansible-collections/community.clickhouse/pull/63/
+- name: Load a schema with nested fields
   community.clickhouse.clickhouse_client:
     flatten_nested: 0
-    execute: "CREATE TABLE foo.nested ( `coordinates` Nested(x int, y int )) ENGINE = Memory;"
+    execute: "CREATE TABLE foo.nested (`coordinates` Nested(x int, y int )) ENGINE = Memory"
 
-- name: Load Nested Data
+- name: Load nested data
   community.clickhouse.clickhouse_client:
-    execute: 'insert into foo.nested (coordinates) VALUES (([(10,20), (11,21)]));'
+    execute: "INSERT INTO foo.nested (coordinates) VALUES (([(10,20), (11,21)]))"
 
-- name: Read Nested data
+- name: Read nested data
   register: nested_result
   community.clickhouse.clickhouse_client:
     execute: 'select * from foo.nested;'
 
-- name: Check Nested Data exists
+- name: Check nested data exists
   ansible.builtin.assert:
     that:
     - nested_result.result[0][0][0][0] == 10

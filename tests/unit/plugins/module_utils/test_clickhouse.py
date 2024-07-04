@@ -37,7 +37,8 @@ def test_client_common_argument_spec():
         'login_user': {'type': 'str', 'default': None},
         'login_host': {'type': 'str', 'default': 'localhost'},
         'login_password': {'type': 'str', 'default': None, 'no_log': True},
-        'client_kwargs': {'type': 'dict', 'default': {}}
+        'client_kwargs': {'type': 'dict', 'default': {}},
+        'flatten_nested': {'type': 'int', 'choices': [0, 1]},
     }
 
     assert client_common_argument_spec() == EXPECTED
