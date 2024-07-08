@@ -1,0 +1,2 @@
+minor_changes:
+- clickhouse_client - added the ``set_settings`` argument (https://github.com/ansible-collections/community.clickhouse/pull/63).

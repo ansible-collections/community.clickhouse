@@ -37,7 +37,6 @@ def client_common_argument_spec():
         login_user=dict(type='str', default=None),
         login_password=dict(type='str', default=None, no_log=True),
         client_kwargs=dict(type='dict', default={}),
-        flatten_nested=dict(type='int', choices=[0, 1]),
     )
 
 
@@ -92,16 +91,21 @@ def connect_to_db_via_client(module, main_conn_kwargs, client_kwargs):
     return client
 
 
-def execute_query(module, client, query, execute_kwargs=None):
+def execute_query(module, client, query, execute_kwargs=None, set_settings=[]):
     """Execute query.
 
     Returns rows returned in response.
+
+    set_settings - The list of settings that need to be set before executing the request.
     """
     # Some modules do not pass this argument
     if execute_kwargs is None:
         execute_kwargs = {}
 
     try:
+        if len(set_settings) != 0:
+            for i in set_settings:
+                client.execute(f"SET {i}")
         result = client.execute(query, **execute_kwargs)
     except Exception as e:
         if "Not enough privileges" in to_native(e):
