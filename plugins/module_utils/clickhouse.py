@@ -107,8 +107,8 @@ def execute_query(module, client, query, execute_kwargs=None, set_settings=None)
 
     try:
         if len(set_settings) != 0:
-            for i in set_settings:
-                client.execute(f"SET {i}")
+            for setting in set_settings:
+                client.execute("SET %s" % setting)
         result = client.execute(query, **execute_kwargs)
     except Exception as e:
         if "Not enough privileges" in to_native(e):
