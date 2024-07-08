@@ -91,7 +91,7 @@ def connect_to_db_via_client(module, main_conn_kwargs, client_kwargs):
     return client
 
 
-def execute_query(module, client, query, execute_kwargs=None, set_settings=[]):
+def execute_query(module, client, query, execute_kwargs=None, set_settings=None):
     """Execute query.
 
     Returns rows returned in response.
@@ -101,6 +101,9 @@ def execute_query(module, client, query, execute_kwargs=None, set_settings=[]):
     # Some modules do not pass this argument
     if execute_kwargs is None:
         execute_kwargs = {}
+
+    if set_settings is None:
+        set_settings = []
 
     try:
         if len(set_settings) != 0:

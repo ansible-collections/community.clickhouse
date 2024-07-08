@@ -51,7 +51,8 @@ options:
       - The list of settings that need to be set before executing the request
         Sets the passed parameters in the session before executing the request
     type: list
-    default: {}
+    elements: str
+    default: []
     version_added: '0.5.0'
 '''
 
