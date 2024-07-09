@@ -48,11 +48,9 @@ options:
 
   set_settings:
     description:
-      - The list of settings that need to be set before executing the request
-        Sets the passed parameters in the session before executing the request
-    type: list
-    elements: str
-    default: []
+      - The dict of settings that need to be set in the session before executing the request.
+    type: dict
+    default: {}
     version_added: '0.5.0'
 '''
 
@@ -75,8 +73,8 @@ EXAMPLES = r'''
   community.clickhouse.clickhouse_client:
     execute: CREATE TABLE test_table_1 (x String) ENGINE = Memory
     set_settings:
-      - flatten_nested = 0
-      - short_circuit_function_evaluation = 'disable'
+      flatten_nested: 0
+      short_circuit_function_evaluation: 'disable'
 
 
 - name: Insert into test table using named parameters
@@ -262,7 +260,7 @@ def main():
     argument_spec.update(
         execute=dict(type='str', required=True),
         execute_kwargs=dict(type='dict', default={}),
-        set_settings=dict(type='list', default=[], elements='str')
+        set_settings=dict(type='dict', default={})
     )
 
     # Instantiate an object of module class

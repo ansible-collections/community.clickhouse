@@ -76,7 +76,7 @@
 - name: Load a schema with nested fields
   community.clickhouse.clickhouse_client:
     set_settings:
-      - flatten_nested = 0
+      flatten_nested: 0
     execute: "CREATE TABLE foo.nested (`coordinates` Nested(x int, y int )) ENGINE = Memory"
 
 - name: Load nested data
@@ -101,7 +101,7 @@
   register: result
   community.clickhouse.clickhouse_client:
     set_settings:
-      - flatten_nested = 0
+      flatten_nested: 0
     execute: "SELECT value, changed FROM system.settings WHERE name='flatten_nested'"
 
 - name: Check result 
