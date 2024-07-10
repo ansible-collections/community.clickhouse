@@ -49,14 +49,6 @@ options:
     type: dict
     default: {}
 
-  flatten_nested:
-    description:
-      - Sets the C(flatten_nested) setting on session before
-        running the query.
-    type: int
-    choices: [0, 1]
-    version_added: '0.5.0'
-
 requirements: [ 'clickhouse-driver' ]
 
 notes:

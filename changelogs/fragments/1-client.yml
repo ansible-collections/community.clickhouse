@@ -1,2 +1,0 @@
-minor_changes:
-- clickhouse_client - added the ``flatten_tested`` argument (https://github.com/ansible-collections/community.clickhouse/pull/63).

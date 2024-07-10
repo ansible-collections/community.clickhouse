@@ -75,7 +75,8 @@
 # https://github.com/ansible-collections/community.clickhouse/pull/63/
 - name: Load a schema with nested fields
   community.clickhouse.clickhouse_client:
-    flatten_nested: 0
+    set_settings:
+      flatten_nested: 0
     execute: "CREATE TABLE foo.nested (`coordinates` Nested(x int, y int )) ENGINE = Memory"
 
 - name: Load nested data
@@ -94,3 +95,17 @@
     - nested_result.result[0][0][0][1] == 20
     - nested_result.result[0][0][1][0] == 11
     - nested_result.result[0][0][1][1] == 21
+
+
+- name: Check that the settings are applied
+  register: result
+  community.clickhouse.clickhouse_client:
+    set_settings:
+      flatten_nested: 0
+    execute: "SELECT value, changed FROM system.settings WHERE name='flatten_nested'"
+
+- name: Check result 
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0] == "0"
+    - result.result[0][1] == 1

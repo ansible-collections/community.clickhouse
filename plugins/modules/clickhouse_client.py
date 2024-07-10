@@ -22,6 +22,7 @@ version_added: '0.1.0'
 
 author:
   - Andrew Klychkov (@Andersson007)
+  - Aleks Vagachev (@aleksvagachev)
 
 extends_documentation_fragment:
   - community.clickhouse.client_inst_opts
@@ -44,6 +45,13 @@ options:
         through the I(execute) argument.
     type: dict
     default: {}
+
+  set_settings:
+    description:
+      - The dict of settings that need to be set in the session before executing the request.
+    type: dict
+    default: {}
+    version_added: '0.5.0'
 '''
 
 EXAMPLES = r'''
@@ -64,6 +72,10 @@ EXAMPLES = r'''
   register: result
   community.clickhouse.clickhouse_client:
     execute: CREATE TABLE test_table_1 (x String) ENGINE = Memory
+    set_settings:
+      flatten_nested: 0
+      short_circuit_function_evaluation: 'disable'
+
 
 - name: Insert into test table using named parameters
   register: result
@@ -248,6 +260,7 @@ def main():
     argument_spec.update(
         execute=dict(type='str', required=True),
         execute_kwargs=dict(type='dict', default={}),
+        set_settings=dict(type='dict', default={})
     )
 
     # Instantiate an object of module class
@@ -260,7 +273,7 @@ def main():
     client_kwargs = module.params['client_kwargs']
     query = module.params['execute']
     execute_kwargs = module.params['execute_kwargs']
-    flatten_nested = module.params['flatten_nested']
+    set_settings = module.params['set_settings']
     # The reason why these arguments are separate from client_kwargs
     # is that we need to protect some sensitive data like passwords passed
     # to the module from logging (see the arguments above with no_log=True);
@@ -283,12 +296,8 @@ def main():
     # Substitute query params if needed for future return
     substituted_query = get_substituted_query(module, client, query, execute_kwargs)
 
-    # If support of arbitrary levels of nesting is needed when executing the main query
-    if flatten_nested == 0:
-        execute_query(module, client, "SET flatten_nested = 0", execute_kwargs)
-
     # Execute query
-    result = execute_query(module, client, query, execute_kwargs)
+    result = execute_query(module, client, query, execute_kwargs, set_settings)
 
     # Convert values not supported by ansible-core
     if result:
