@@ -4,6 +4,28 @@ CHANGE THIS IN changelogs/config.yaml! Release Notes
 
 .. contents:: Topics
 
+
+v0.5.0
+======
+
+Release Summary
+---------------
+
+This is a minor release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Minor Changes
+-------------
+
+- clickhouse_client - added the ``set_settings`` argument (https://github.com/ansible-collections/community.clickhouse/pull/63).
+- clickhouse_user - added the ability to add settings with their restrictions applied by default when a user logs in.
+
+New Modules
+-----------
+
+- clickhouse_role - Creates or removes a ClickHouse role.
+
 v0.4.0
 ======
 
