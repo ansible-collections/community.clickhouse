@@ -102,3 +102,23 @@ releases:
       name: clickhouse_user
       namespace: ''
     release_date: '2024-03-14'
+  0.5.0:
+    changes:
+      minor_changes:
+      - clickhouse_client - added the ``set_settings`` argument (https://github.com/ansible-collections/community.clickhouse/pull/63).
+      - clickhouse_user - added the ability to add settings with their restrictions
+        applied by default when a user logs in.
+      release_summary: 'This is a minor release of the ``community.clickhouse`` collection.
+
+        This changelog contains all changes to the modules and plugins in this collection
+
+        that have been made after the previous release.'
+    fragments:
+    - 0-clickhouse_user.yml
+    - 0.5.0.yml
+    - 1-clickhouse_client.yml
+    modules:
+    - description: Creates or removes a ClickHouse role.
+      name: clickhouse_role
+      namespace: ''
+    release_date: '2024-07-10'
