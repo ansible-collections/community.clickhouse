@@ -94,10 +94,6 @@ If you encounter abusive behavior violating the [Ansible Code of Conduct](https:
 
 ## Communication
 
-> `GitHub Discussions` feature is disabled in this repository. Use the `clickhouse` tag on the forum in the [Project Discussions](https://forum.ansible.com/new-topic?title=topic%20title&body=topic%20body&category=project&tags=postgresql) or [Get Help](https://forum.ansible.com/new-topic?title=topic%20title&body=topic%20body&category=help&tags=clickhouse) category instead.
-
-### Asynchronous channels
-
 * Join the Ansible forum:
     * [ClickHouse Team](https://forum.ansible.com/g/ClickHouseTeam): by joining the team you will automatically get subscribed to the posts tagged with [clickhouse](https://forum.ansible.com/tag/clickhouse).
     * [Get Help](https://forum.ansible.com/c/help/6/none): get help or help others.
@@ -107,23 +103,7 @@ If you encounter abusive behavior violating the [Ansible Code of Conduct](https:
 
 * The Ansible [Bullhorn newsletter](https://forum.ansible.com/t/about-the-newsletter-category/166): used to announce releases and important changes.
 
-### Real-time channels
-
-* Matrix rooms:
-    * `TBD` [#clickhouse:ansible.com](https://matrix.to/#/#clickhouse:ansible.com): questions on how to contribute and use this collection.
-    * [#users:ansible.com](https://matrix.to/#/#users:ansible.com): general use questions and support.
-    * [#social:ansible.com](https://matrix.to/#/#social:ansible.com): say hello or share a funny joke and let's laugh together;)
-    * [#ansible-community:ansible.com](https://matrix.to/#/#community:ansible.com): community and collection development questions.
-    * other Matrix rooms or corresponding bridged Libera.Chat channels. See the [Ansible Communication Guide](https://docs.ansible.com/ansible/devel/community/communication.html) for details.
-
-For more information about communication, including how to join these channels, see the [Ansible communication guide](https://docs.ansible.com/ansible/devel/community/communication.html).
-
-
-We announce important development changes and releases through Ansible's [The Bullhorn newsletter](https://docs.ansible.com/ansible/devel/community/communication.html#the-bullhorn). If you are a collection developer, be sure you are subscribed.
-
-We can create a [Forum](https://forum.ansible.com/) group and a Matrix channel in future if there's an interest.
-
-For now, refer to general channels you can find in the [Ansible communication guide](https://docs.ansible.com/ansible/devel/community/communication.html).
+For more information about communication see the [Ansible communication guide](https://docs.ansible.com/ansible/devel/community/communication.html).
 
 ## Contributing to this collection
 
