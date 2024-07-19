@@ -157,6 +157,7 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
 
 PRIV_ERR_CODE = 497
 executed_statements = []
+debug = []
 
 
 class ClickHouseUser():
@@ -195,6 +196,7 @@ class ClickHouseUser():
                      "FROM system.role_grants "
                      "WHERE granted_role_name='%s'" % self.name)
             result = execute_query(self.module, self.client, query)
+            debug.append("%s" % result)
             for row in result:
                 self.granted_roles[row[0]] = {
                     "granted_role_is_default": row[1],
@@ -235,6 +237,8 @@ class ClickHouseUser():
             default_role = self.module.params['default_role']
 
             if default_role not in self.granted_roles:
+                # TODO debug remove
+                debug.append("%s" % self.granted_roles)
                 self.__grant_role(default_role)
                 self.__set_default_role(default_role)
 
@@ -351,7 +355,7 @@ def main():
     client.disconnect_connection()
 
     # Users will get this in JSON output after execution
-    module.exit_json(changed=changed, executed_statements=executed_statements)
+    module.exit_json(changed=changed, executed_statements=executed_statements, debug=debug)
 
 
 if __name__ == '__main__':
