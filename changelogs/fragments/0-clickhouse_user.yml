@@ -1,0 +1,2 @@
+minor_changes:
+- clickhouse_user - add the ``default_role`` argument to set a default role (https://github.com/ansible-collections/community.clickhouse/pull/70).
