@@ -3,8 +3,7 @@
 # and should not be used as examples of how to write Ansible roles #
 ####################################################################
 
-# Test 1
-- name: Test 1 - Create test_user in check mode
+- name: Create test_user in check mode
   register: result
   check_mode: true
   community.clickhouse.clickhouse_user:
@@ -12,33 +11,31 @@
     name: test_user
     password: querty
 
-- name: Test 1 - Check ret values in 
+- name: Check ret values in 
   ansible.builtin.assert:
     that:
     - result is changed
     - result.executed_statements == ["CREATE USER test_user IDENTIFIED WITH sha256_password BY '********'"]
 
-- name: Test 1 - Check the actual state
+- name: Check the actual state
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
     client_kwargs:
       connect_timeout: 20
 
-- name: Test 1 - Check result
+- name: Check result
   ansible.builtin.assert:
     that:
     - result is not changed
     - result["users"]["test_user"] is not defined
 
-
-# Test 2
-- name: Test 2 - Create test_user
+- name: Create test_user
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
 
-- name: Test 2 - Check the actual state
+- name: Check the actual state
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
@@ -50,63 +47,55 @@
     that:
     - result["users"]["test_user"] != {}
 
-
-# Test 3
-- name: Test 3 - Create test_user if it exists
+- name: Create test_user if it exists
   register: result
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
 
-- name: Test 3 - Check result
+- name: Check result
   ansible.builtin.assert:
     that:
     - result is not changed
     - result.executed_statements == []
 
-
-# Test 4
-- name: Test 4 - Drop test_user
+- name: Drop test_user
   community.clickhouse.clickhouse_user:
     state: absent
     name: test_user
 
-- name: Test 4 - Check the actual state
+- name: Check the actual state
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
     client_kwargs:
       connect_timeout: 20
 
-- name: Test 4 - Check result
+- name: Check result
   ansible.builtin.assert:
     that:
     - result["users"]["test_user"] is not defined
 
-
-# Test 5
-- name: Test 5 - Drop test_user if it does not exists
+- name: Drop test_user if it does not exists
   register: result
   community.clickhouse.clickhouse_user:
     state: absent
     name: test_user
 
-- name: Test 5 - Check ret values 
+- name: Check ret values 
   ansible.builtin.assert:
     that:
     - result is not changed
     - result.executed_statements == []
 
-
-# Test 6
-- name: Test 6 - Create test_user
+- name: Create test_user
   register: result
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
     password: querty
 
-- name: Test 6 - Create test_user again with update_password always
+- name: Create test_user again with update_password always
   register: result
   community.clickhouse.clickhouse_user:
     state: present
@@ -114,20 +103,18 @@
     password: querty
     update_password: always
 
-- name: Test 6 - Check result
+- name: Check result
   ansible.builtin.assert:
     that:
     - result is changed
     - result.executed_statements == ["ALTER USER test_user IDENTIFIED WITH sha256_password BY '********'"]
 
-- name: Test 6 - Drop test_user
+- name: Drop test_user
   community.clickhouse.clickhouse_user:
     state: absent
     name: test_user
 
-
-# Test 7
-- name: Test 7 - Create test_user with settings
+- name: Create test_user with settings
   register: result
   community.clickhouse.clickhouse_user:
     state: present
@@ -137,7 +124,7 @@
       - max_memory_usage = 15000 READONLY
       - max_memory_usage_for_all_queries = 15000 MIN 15000 MAX 16000 WRITABLE
 
-- name: Test 7 - Check result
+- name: Check result
   ansible.builtin.assert:
     that:
     - result is changed
@@ -276,3 +263,26 @@
     - result is not changed
     - result.executed_statements == []
 
+- name: Set the first role in real mode
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    default_role: accountant
+
+- name: Check ret values 
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["GRANT accountant TO test_user", "SET DEFAULT ROLE accountant TO test_user"]
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result["users"]["test_user"]["default_roles_list"] == ["accountant"]
