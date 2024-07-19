@@ -142,3 +142,109 @@
     that:
     - result is changed
     - result.executed_statements != []
+
+# Test default_role argument
+- name: Create test roles
+  loop:
+  - accountant
+  - sales
+  community.clickhouse.clickhouse_role:
+    name: "{{ item }}"
+  
+- name: Set default role in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    default_role: accountant
+
+- name: Check ret values 
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["GRANT accountant TO test_user", "SET DEFAULT ROLE accountant TO test_user"]
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result["users"]["test_user"]["default_roles_list"] == []
+
+- name: Set default role in real mode
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    default_role: accountant
+
+- name: Check ret values 
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["GRANT accountant TO test_user", "SET DEFAULT ROLE accountant TO test_user"]
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result["users"]["test_user"]["default_roles_list"] == ["accountant"]
+
+- name: Set another role as default in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    default_role: sales
+
+- name: Check ret values 
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["GRANT sales TO test_user", "SET DEFAULT ROLE sales TO test_user"]
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check the state has not been changed
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result["users"]["test_user"]["default_roles_list"] == ["accountant"]
+
+- name: Set another role as default in real mode
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    default_role: sales
+
+- name: Check ret values 
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["GRANT sales TO test_user", "SET DEFAULT ROLE sales TO test_user"]
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result["users"]["test_user"]["default_roles_list"] == ["sales"]
