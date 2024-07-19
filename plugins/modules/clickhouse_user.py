@@ -236,9 +236,11 @@ class ClickHouseUser():
 
             if default_role not in self.granted_roles:
                 self.__grant_role(default_role)
-
-            if not self.granted_roles[default_role]["granted_role_is_default"]:
                 self.__set_default_role(default_role)
+
+            else:
+                if not self.granted_roles[default_role]["granted_role_is_default"]:
+                    self.__set_default_role(default_role)
 
         if update_password == 'on_create':
             return False or self.changed
