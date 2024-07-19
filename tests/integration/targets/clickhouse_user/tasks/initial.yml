@@ -248,3 +248,31 @@
     that:
     - result is not changed
     - result["users"]["test_user"]["default_roles_list"] == ["sales"]
+
+- name: Set the role again
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    default_role: sales
+
+- name: Check ret values 
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Set the role again in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    default_role: sales
+
+- name: Check ret values 
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
