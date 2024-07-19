@@ -157,7 +157,6 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
 
 PRIV_ERR_CODE = 497
 executed_statements = []
-debug = []
 
 
 class ClickHouseUser():
@@ -171,12 +170,12 @@ class ClickHouseUser():
         self.cluster = cluster
         # Set default values, then update
         self.user_exists = False
-        self.granted_roles = {}
+        self.default_roles_list = []
         self.__populate_info()
 
     def __populate_info(self):
         # Collecting user information
-        query = ("SELECT name, storage, auth_type "
+        query = ("SELECT name, storage, auth_type, default_roles_list "
                  "FROM system.users "
                  "WHERE name = '%s'" % self.name)
 
@@ -189,19 +188,7 @@ class ClickHouseUser():
 
         if result != []:
             self.user_exists = True
-
-        if self.user_exists:
-            query = ("SELECT granted_role_name, "
-                     "granted_role_is_default, with_admin_option "
-                     "FROM system.role_grants "
-                     "WHERE granted_role_name='%s'" % self.name)
-            result = execute_query(self.module, self.client, query)
-            debug.append("%s" % result)
-            for row in result:
-                self.granted_roles[row[0]] = {
-                    "granted_role_is_default": row[1],
-                    "with_admin_option": row[2],
-                }
+            self.default_roles_list = result[0][3]
 
     def create(self):
         list_settings = self.module.params['settings']
@@ -236,15 +223,9 @@ class ClickHouseUser():
         if self.module.params['default_role']:
             default_role = self.module.params['default_role']
 
-            if default_role not in self.granted_roles:
-                # TODO debug remove
-                debug.append("%s" % self.granted_roles)
+            if default_role not in self.default_roles_list:
                 self.__grant_role(default_role)
                 self.__set_default_role(default_role)
-
-            else:
-                if not self.granted_roles[default_role]["granted_role_is_default"]:
-                    self.__set_default_role(default_role)
 
         if update_password == 'on_create':
             return False or self.changed
@@ -355,7 +336,7 @@ def main():
     client.disconnect_connection()
 
     # Users will get this in JSON output after execution
-    module.exit_json(changed=changed, executed_statements=executed_statements, debug=debug)
+    module.exit_json(changed=changed, executed_statements=executed_statements)
 
 
 if __name__ == '__main__':
