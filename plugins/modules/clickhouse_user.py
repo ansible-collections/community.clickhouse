@@ -226,10 +226,14 @@ class ClickHouseUser():
         if self.module.params['default_roles']:
             default_roles = self.module.params['default_roles']
 
+            roles_to_set = []
             for role in default_roles:
                 if role not in self.default_roles_list:
-                    self.__grant_role(role)
-                    self.__set_default_roles(role)
+                    roles_to_set.append(role)
+
+            if roles_to_set:
+                self.__grant_roles(roles_to_set)
+                self.__set_default_roles(roles_to_set)
 
         if update_password == 'on_create':
             return False or self.changed
@@ -259,17 +263,18 @@ class ClickHouseUser():
 
         return True
 
-    def __grant_role(self, role):
-        query = "GRANT %s TO %s" % (role, self.name)
-        executed_statements.append(query)
+    def __grant_roles(self, roles_to_set):
+        for role in roles_to_set:
+            query = "GRANT %s TO %s" % (role, self.name)
+            executed_statements.append(query)
 
-        if not self.module.check_mode:
-            execute_query(self.module, self.client, query)
+            if not self.module.check_mode:
+                execute_query(self.module, self.client, query)
 
         self.changed = True
 
-    def __set_default_roles(self, role):
-        query = "SET DEFAULT ROLE %s TO %s" % (role, self.name)
+    def __set_default_roles(self, roles_to_set):
+        query = "ALTER USER %s DEFAULT ROLE %s" % (self.name, ', '.join(roles_to_set))
         executed_statements.append(query)
 
         if not self.module.check_mode:
