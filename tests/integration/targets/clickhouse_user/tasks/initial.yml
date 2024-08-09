@@ -130,7 +130,7 @@
     - result is changed
     - result.executed_statements != []
 
-# Test default_role argument
+# Test default_roles argument
 - name: Create test roles
   loop:
   - accountant
@@ -144,7 +144,8 @@
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
-    default_role: accountant
+    default_roles:
+    - accountant
 
 - name: Check ret values 
   ansible.builtin.assert:
@@ -168,7 +169,8 @@
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
-    default_role: accountant
+    default_roles:
+    - accountant
 
 - name: Check ret values 
   ansible.builtin.assert:
@@ -193,7 +195,8 @@
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
-    default_role: sales
+    default_roles:
+    - sales
 
 - name: Check ret values 
   ansible.builtin.assert:
@@ -217,7 +220,7 @@
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
-    default_role: sales
+    default_roles: sales
 
 - name: Check ret values 
   ansible.builtin.assert:
@@ -241,7 +244,8 @@
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
-    default_role: sales
+    default_roles:
+    - sales
 
 - name: Check ret values 
   ansible.builtin.assert:
@@ -255,7 +259,8 @@
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
-    default_role: sales
+    default_roles:
+    - sales
 
 - name: Check ret values 
   ansible.builtin.assert:
@@ -268,7 +273,8 @@
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
-    default_role: accountant
+    default_roles:
+    - accountant
 
 - name: Check ret values 
   ansible.builtin.assert:

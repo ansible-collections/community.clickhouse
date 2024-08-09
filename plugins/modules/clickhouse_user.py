@@ -82,10 +82,11 @@ options:
     type: list
     elements: str
     version_added: '0.5.0'
-  default_role:
+  default_roles:
     description:
-      - Grants and sets the role as default for the user.
-    type: str
+      - Grants and sets the role(s) as default for the user.
+    type: list
+    elements: str
     version_added: '0.6.0'
 '''
 
@@ -99,7 +100,9 @@ EXAMPLES = r'''
     name: test_user
     password: qwerty
     type_password: sha256_password
-    default_role: accountant
+    default_roles:
+    - accountant
+    - manager
 
 - name: If user exists, update password
   community.clickhouse.clickhouse_user:
@@ -213,19 +216,20 @@ class ClickHouseUser():
         if not self.module.check_mode:
             execute_query(self.module, self.client, query)
 
-        if self.module.params['default_role']:
-            self.__grant_role(self.module.params['default_role'])
-            self.__set_default_role(self.module.params['default_role'])
+        if self.module.params['default_roles']:
+            self.__grant_role(self.module.params['default_roles'])
+            self.__set_default_roles(self.module.params['default_roles'])
 
         return True
 
     def update(self, update_password):
-        if self.module.params['default_role']:
-            default_role = self.module.params['default_role']
+        if self.module.params['default_roles']:
+            default_roles = self.module.params['default_roles']
 
-            if default_role not in self.default_roles_list:
-                self.__grant_role(default_role)
-                self.__set_default_role(default_role)
+            for role in default_roles:
+                if role not in self.default_roles_list:
+                    self.__grant_role(role)
+                    self.__set_default_roles(role)
 
         if update_password == 'on_create':
             return False or self.changed
@@ -264,7 +268,7 @@ class ClickHouseUser():
 
         self.changed = True
 
-    def __set_default_role(self, role):
+    def __set_default_roles(self, role):
         query = "SET DEFAULT ROLE %s TO %s" % (role, self.name)
         executed_statements.append(query)
 
@@ -287,7 +291,7 @@ def main():
             default='on_create', no_log=False
         ),
         settings=dict(type='list', elements='str'),
-        default_role=dict(type='str', default=None),
+        default_roles=dict(type='list', elements='str', default=None),
     )
 
     # Instantiate an object of module class
