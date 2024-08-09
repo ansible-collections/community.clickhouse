@@ -82,6 +82,12 @@ options:
     type: list
     elements: str
     version_added: '0.5.0'
+  default_roles:
+    description:
+      - Grants and sets the role(s) as default for the user.
+    type: list
+    elements: str
+    version_added: '0.6.0'
 '''
 
 EXAMPLES = r'''
@@ -94,6 +100,9 @@ EXAMPLES = r'''
     name: test_user
     password: qwerty
     type_password: sha256_password
+    default_roles:
+    - accountant
+    - manager
 
 - name: If user exists, update password
   community.clickhouse.clickhouse_user:
@@ -155,6 +164,7 @@ executed_statements = []
 
 class ClickHouseUser():
     def __init__(self, module, client, name, password, type_password, cluster):
+        self.changed = False
         self.module = module
         self.client = client
         self.name = name
@@ -163,11 +173,12 @@ class ClickHouseUser():
         self.cluster = cluster
         # Set default values, then update
         self.user_exists = False
+        self.default_roles_list = []
         self.__populate_info()
 
     def __populate_info(self):
         # Collecting user information
-        query = ("SELECT name, storage, auth_type "
+        query = ("SELECT name, storage, auth_type, default_roles_list "
                  "FROM system.users "
                  "WHERE name = '%s'" % self.name)
 
@@ -180,6 +191,7 @@ class ClickHouseUser():
 
         if result != []:
             self.user_exists = True
+            self.default_roles_list = result[0][3]
 
     def create(self):
         list_settings = self.module.params['settings']
@@ -204,11 +216,27 @@ class ClickHouseUser():
         if not self.module.check_mode:
             execute_query(self.module, self.client, query)
 
+        if self.module.params['default_roles']:
+            self.__grant_role(self.module.params['default_roles'])
+            self.__set_default_roles(self.module.params['default_roles'])
+
         return True
 
     def update(self, update_password):
+        if self.module.params['default_roles']:
+            default_roles = self.module.params['default_roles']
+
+            roles_to_set = []
+            for role in default_roles:
+                if role not in self.default_roles_list:
+                    roles_to_set.append(role)
+
+            if roles_to_set:
+                self.__grant_roles(roles_to_set)
+                self.__set_default_roles(roles_to_set)
+
         if update_password == 'on_create':
-            return False
+            return False or self.changed
 
         # If update_password is always
         # TODO: When ClickHouse will allow to retrieve password hashes,
@@ -235,6 +263,25 @@ class ClickHouseUser():
 
         return True
 
+    def __grant_roles(self, roles_to_set):
+        for role in roles_to_set:
+            query = "GRANT %s TO %s" % (role, self.name)
+            executed_statements.append(query)
+
+            if not self.module.check_mode:
+                execute_query(self.module, self.client, query)
+
+        self.changed = True
+
+    def __set_default_roles(self, roles_to_set):
+        query = "ALTER USER %s DEFAULT ROLE %s" % (self.name, ', '.join(roles_to_set))
+        executed_statements.append(query)
+
+        if not self.module.check_mode:
+            execute_query(self.module, self.client, query)
+
+        self.changed = True
+
 
 def main():
     argument_spec = client_common_argument_spec()
@@ -249,6 +296,7 @@ def main():
             default='on_create', no_log=False
         ),
         settings=dict(type='list', elements='str'),
+        default_roles=dict(type='list', elements='str', default=None),
     )
 
     # Instantiate an object of module class
