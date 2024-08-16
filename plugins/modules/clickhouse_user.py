@@ -82,9 +82,18 @@ options:
     type: list
     elements: str
     version_added: '0.5.0'
+  roles:
+    description:
+      - Grants specified roles for the user.
+    type: list
+    elements: str
+    version_added: '0.6.0'
   default_roles:
     description:
-      - Grants and sets the role(s) as default for the user.
+      - Sets specified roles as default for the user.
+      - The roles must be explicitly granted to the user whether manually
+        before using this argument or by using the I(roles)
+        argument in the same task.
     type: list
     elements: str
     version_added: '0.6.0'
@@ -100,9 +109,11 @@ EXAMPLES = r'''
     name: test_user
     password: qwerty
     type_password: sha256_password
-    default_roles:
+    roles:
     - accountant
     - manager
+    default_roles:
+    - accountant
 
 - name: If user exists, update password
   community.clickhouse.clickhouse_user:
@@ -173,7 +184,10 @@ class ClickHouseUser():
         self.cluster = cluster
         # Set default values, then update
         self.user_exists = False
-        self.default_roles_list = []
+        self.current_default_roles = []
+        self.current_roles = []
+        # Fetch actual values from DB and
+        # update the attributes with them
         self.__populate_info()
 
     def __populate_info(self):
@@ -191,7 +205,16 @@ class ClickHouseUser():
 
         if result != []:
             self.user_exists = True
-            self.default_roles_list = result[0][3]
+            self.current_default_roles = result[0][3]
+
+        if self.user_exists:
+            self.current_roles = self.__fetch_user_groups()
+
+    def __fetch_user_groups(self):
+        query = ("SELECT granted_role_name FROM system.role_grants "
+                 "WHERE user_name = '%s'" % self.name)
+        result = execute_query(self.module, self.client, query)
+        return [row[0] for row in result]
 
     def create(self):
         list_settings = self.module.params['settings']
@@ -216,23 +239,35 @@ class ClickHouseUser():
         if not self.module.check_mode:
             execute_query(self.module, self.client, query)
 
+        if self.module.params['roles']:
+            self.__grant_role(self.module.params['roles'])
+
         if self.module.params['default_roles']:
-            self.__grant_role(self.module.params['default_roles'])
             self.__set_default_roles(self.module.params['default_roles'])
 
         return True
 
     def update(self, update_password):
+        if self.module.params['roles']:
+            desired_roles = self.module.params['roles']
+
+            roles_to_set = []
+            for role in desired_roles:
+                if role not in self.current_roles:
+                    roles_to_set.append(role)
+
+            if roles_to_set:
+                self.__grant_roles(roles_to_set)
+
         if self.module.params['default_roles']:
             default_roles = self.module.params['default_roles']
 
             roles_to_set = []
             for role in default_roles:
-                if role not in self.default_roles_list:
+                if role not in self.current_default_roles:
                     roles_to_set.append(role)
 
             if roles_to_set:
-                self.__grant_roles(roles_to_set)
                 self.__set_default_roles(roles_to_set)
 
         if update_password == 'on_create':
@@ -296,6 +331,7 @@ def main():
             default='on_create', no_log=False
         ),
         settings=dict(type='list', elements='str'),
+        roles=dict(type='list', elements='str', default=None),
         default_roles=dict(type='list', elements='str', default=None),
     )
 
