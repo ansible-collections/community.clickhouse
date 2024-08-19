@@ -85,7 +85,8 @@ options:
   roles:
     description:
       - Grants specified roles for the user.
-      - To append specified roles to existing ones, also add I(append=true) to your task.
+      - To append specified roles to existing ones, also add I(append_roles=true) to your task.
+      - To revoke all roles, pass an empty list and I(append_roles=false).
     type: list
     elements: str
     version_added: '0.6.0'
@@ -95,7 +96,8 @@ options:
       - The roles must be explicitly granted to the user whether manually
         before using this argument or by using the I(roles)
         argument in the same task.
-      - To append specified roles to existing ones, also add I(append_roles=true) to your task.
+      - To append specified roles to existing ones, also add I(append_default_roles=true) to your task.
+      - To unset all roles as default, pass an empty list and I(append_default_roles=false).
     type: list
     elements: str
     version_added: '0.6.0'
@@ -104,7 +106,7 @@ options:
      - When set to C(true), appends roles specified in I(roles) to existing
        user roles instead of removing the user from not specified roles.
      - The default is C(false), which will remove the user from all not specified roles.
-     - Requires I(roles) to be set in the task.
+     - Ignored without I(roles) set.
     type: bool
     default: false
     version_added: '0.6.0'
@@ -113,7 +115,7 @@ options:
      - When set to C(true), appends roles specified in I(default_roles) to existing
        default roles instead of unsetting not specified ones.
      - The default is C(false), which will unset all not specified roles.
-     - Requires I(default_roles) to be set in the task.
+     - Ignored without I(default_roles) set.
     type: bool
     default: false
     version_added: '0.6.0'
@@ -146,6 +148,24 @@ EXAMPLES = r'''
     roles:
     - sales
     append_roles: true
+
+- name: Unset all alice's default roles
+  community.clickhouse.clickhouse_user:
+    login_host: localhost
+    login_user: alice
+    login_db: foo
+    login_password: my_password
+    name: test_user
+    default_roles: []
+
+- name: Revoke all roles from alice
+  community.clickhouse.clickhouse_user:
+    login_host: localhost
+    login_user: alice
+    login_db: foo
+    login_password: my_password
+    name: test_user
+    roles: []
 
 - name: If user exists, update password
   community.clickhouse.clickhouse_user:
@@ -280,7 +300,7 @@ class ClickHouseUser():
         return True
 
     def update(self, update_password):
-        if self.module.params['roles']:
+        if self.module.params['roles'] is not None:
             desired_roles = self.module.params['roles']
 
             roles_to_grant = []
@@ -294,30 +314,35 @@ class ClickHouseUser():
             if not self.module.params['append_roles']:
                 roles_to_revoke = []
                 for role in self.current_roles:
-                    if role not in self.desired_roles:
+                    if role not in desired_roles:
                         roles_to_revoke.append(role)
 
                 if roles_to_revoke:
                     self.__revoke_roles(roles_to_revoke)
 
-        if self.module.params['default_roles']:
+        if self.module.params['default_roles'] is not None:
             default_roles = self.module.params['default_roles']
+            cur_def_roles_set = set(self.current_default_roles)
+            req_def_roles_set = set(default_roles)
 
-            if self.module.params['append_roles']:
-                roles_to_set = []
-                for role in default_roles:
-                    if role not in self.current_default_roles:
-                        roles_to_set.append(role)
+            if self.module.params['append_roles'] is False:
+                if not req_def_roles_set:
+                    # Update roles info in case all roles were revoked
+                    # in the same task and then unset if the roles list
+                    # is not empty
+                    self.current_roles = self.__fetch_user_groups()
+                    if self.current_roles:
+                        self.__unset_default_roles()
 
-                if roles_to_set:
+                elif cur_def_roles_set != req_def_roles_set:
+                    self.__set_default_roles(default_roles)
+
+            else:
+                if cur_def_roles_set != req_def_roles_set:
+                    # Append roles to default roles.
+                    # Use set union to make a list of unique roles
+                    roles_to_set = list(cur_def_roles_set.union(req_def_roles_set))
                     self.__set_default_roles(roles_to_set)
-
-            elif not self.module.params['append_roles']:
-                # Use sets to make a list of unique roles
-                set1 = set(self.current_default_roles)
-                set2 = set(default_roles)
-                roles_to_set = list(set1.union(set2))
-                self.__set_default_roles(roles_to_set)
 
         if update_password == 'on_create':
             return False or self.changed
@@ -357,7 +382,7 @@ class ClickHouseUser():
         self.changed = True
 
     def __revoke_roles(self, roles_to_revoke):
-        query = "REVOKE %s FROM %s" % (' ,'.join(roles_to_revoke), self.name)
+        query = "REVOKE %s FROM %s" % (', '.join(roles_to_revoke), self.name)
         executed_statements.append(query)
 
         if not self.module.check_mode:
@@ -366,7 +391,21 @@ class ClickHouseUser():
         self.changed = True
 
     def __set_default_roles(self, roles_to_set):
+        self.current_roles = self.__fetch_user_groups()
+        for role in roles_to_set:
+            if role not in self.current_roles and role not in self.module.params["roles"]:
+                self.module.fail_json("User %s is not in %s role. Grant it explicitly first." % (self.name, role))
+
         query = "ALTER USER %s DEFAULT ROLE %s" % (self.name, ', '.join(roles_to_set))
+        executed_statements.append(query)
+
+        if not self.module.check_mode:
+            execute_query(self.module, self.client, query)
+
+        self.changed = True
+
+    def __unset_default_roles(self):
+        query = "SET DEFAULT ROLE NONE TO %s" % self.name
         executed_statements.append(query)
 
         if not self.module.check_mode:

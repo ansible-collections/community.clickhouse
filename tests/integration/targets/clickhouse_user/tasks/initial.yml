@@ -156,7 +156,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["GRANT accountant, manager TO test_user", "ALTER USER test_user DEFAULT ROLE accountant, manager"]
+    - result.executed_statements[0] == "GRANT accountant, manager TO test_user"
+    - result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE accountant, manager" or result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE manager, accountant"
 
 - name: Check the actual state
   register: result
@@ -186,7 +187,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["GRANT accountant, manager TO test_user", "ALTER USER test_user DEFAULT ROLE accountant, manager"]
+    - result.executed_statements[0] == "GRANT accountant, manager TO test_user"
+    - result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE accountant, manager" or result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE manager, accountant"
 
 - name: Check the actual state
   register: result
@@ -197,10 +199,10 @@
   ansible.builtin.assert:
     that:
     - result is not changed
-    - result["users"]["test_user"]["roles"] == ["accountant", "manager"]
+    - result["users"]["test_user"]["roles"] == ["accountant", "manager"] or result["users"]["test_user"]["roles"] == ["manager", "accountant"]
     - result["users"]["test_user"]["default_roles_list"] == ["accountant", "manager"]
 
-- name: Set another role as default in check mode
+- name: Grant and set another role as default in check mode
   register: result
   check_mode: true
   community.clickhouse.clickhouse_user:
@@ -216,7 +218,7 @@
     that:
     - result is changed
     - result.executed_statements[0] == "GRANT sales TO test_user"
-    - result.executed_statements[1] == "REVOKE account, manager FROM test_user"
+    - result.executed_statements[1] == "REVOKE accountant, manager FROM test_user" or result.executed_statements[1] == "REVOKE manager, accountant FROM test_user"
     - result.executed_statements[2] == "ALTER USER test_user DEFAULT ROLE sales"
 
 - name: Check the actual state
@@ -228,8 +230,8 @@
   ansible.builtin.assert:
     that:
     - result is not changed
-    - result["users"]["test_user"]["roles"] == ["accountant", "manager"]
-    - result["users"]["test_user"]["default_roles_list"] == ["accountant", "manager"]
+    - result["users"]["test_user"]["roles"] == ["accountant", "manager"] or result["users"]["test_user"]["roles"] == ["manager", "accountant"]
+    - result["users"]["test_user"]["default_roles_list"] == ["accountant", "manager"] or result["users"]["test_user"]["default_roles_list"] == ["manager", "accountant"]
 
 - name: Set another role as default in real mode
   register: result
@@ -244,7 +246,7 @@
     that:
     - result is changed
     - result.executed_statements[0] == "GRANT sales TO test_user"
-    - result.executed_statements[1] == "REVOKE account, manager FROM test_user"
+    - result.executed_statements[1] == "REVOKE accountant, manager FROM test_user" or result.executed_statements[1] == "REVOKE manager, accountant FROM test_user"
     - result.executed_statements[2] == "ALTER USER test_user DEFAULT ROLE sales"
 
 - name: Check the actual state
@@ -308,8 +310,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == ["GRANT accountant TO test_user"]
-    - result.executed_statements[1] == ["ALTER USER test_user DEFAULT ROLE sales, accountant"]
+    - result.executed_statements[0] == "GRANT accountant TO test_user"
+    - result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE sales, accountant" or result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE accountant, sales"
 
 - name: Check the actual state
   register: result
@@ -320,5 +322,160 @@
   ansible.builtin.assert:
     that:
     - result is not changed
-    - result["users"]["test_user"]["roles"] == ["sales", "accountant"]
-    - result["users"]["test_user"]["default_roles_list"] == ["sales", "accountant"]
+    - result["users"]["test_user"]["roles"] == ["sales", "accountant"] or result["users"]["test_user"]["roles"] == ["accountant", "sales"]
+    - result["users"]["test_user"]["default_roles_list"] == ["sales", "accountant"] or result["users"]["test_user"]["default_roles_list"] == ["accountant", "sales"]
+
+- name: Unset all default roles in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    default_roles: []
+
+- name: Check ret values 
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements[0] == "SET DEFAULT ROLE NONE TO test_user"
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result["users"]["test_user"]["roles"] == ["sales", "accountant"] or result["users"]["test_user"]["roles"] == ["accountant", "sales"]
+    - result["users"]["test_user"]["default_roles_list"] == ["sales", "accountant"] or result["users"]["test_user"]["default_roles_list"] == ["accountant", "sales"]
+
+- name: Unset all default roles in real mode
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    default_roles: []
+
+- name: Check ret values 
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements[0] == "SET DEFAULT ROLE NONE TO test_user"
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result["users"]["test_user"]["roles"] == ["sales", "accountant"] or result["users"]["test_user"]["roles"] == ["accountant", "sales"]
+    - result["users"]["test_user"]["default_roles_list"] == []
+
+- name: Revoke all roles in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    roles: []
+
+- name: Check ret values 
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements[0] == "REVOKE accountant, sales FROM test_user" or result.executed_statements[0] == "REVOKE sales, accountant FROM test_user"
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result["users"]["test_user"]["roles"] == ["sales", "accountant"] or result["users"]["test_user"]["roles"] == ["accountant", "sales"]
+    - result["users"]["test_user"]["default_roles_list"] == []
+
+- name: Revoke all roles in real mode
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    roles: []
+
+- name: Check ret values 
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements[0] == "REVOKE accountant, sales FROM test_user" or result.executed_statements[0] == "REVOKE sales, accountant FROM test_user"
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result["users"]["test_user"]["roles"] == []
+    - result["users"]["test_user"]["default_roles_list"] == []
+
+- name: Revoke all roles and unset all default roles in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    roles: []
+    default_roles: []
+
+- name: Check ret values 
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result["users"]["test_user"]["roles"] == []
+    - result["users"]["test_user"]["default_roles_list"] == []
+
+- name: Revoke all roles and unset all default roles in real mode
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    roles: []
+    default_roles: []
+
+- name: Check ret values 
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result["users"]["test_user"]["roles"] == []
+    - result["users"]["test_user"]["default_roles_list"] == []
