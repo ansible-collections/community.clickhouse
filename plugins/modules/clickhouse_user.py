@@ -85,6 +85,7 @@ options:
   roles:
     description:
       - Grants specified roles for the user.
+      - To append specified roles to existing ones, also add I(append=true) to your task.
     type: list
     elements: str
     version_added: '0.6.0'
@@ -94,13 +95,32 @@ options:
       - The roles must be explicitly granted to the user whether manually
         before using this argument or by using the I(roles)
         argument in the same task.
+      - To append specified roles to existing ones, also add I(append_roles=true) to your task.
     type: list
     elements: str
+    version_added: '0.6.0'
+  append_roles:
+    description:
+     - When set to C(true), appends roles specified in I(roles) to existing
+       user roles instead of removing the user from not specified roles.
+     - The default is C(false), which will remove the user from all not specified roles.
+     - Requires I(roles) to be set in the task.
+    type: bool
+    default: false
+    version_added: '0.6.0'
+  append_default_roles:
+    description:
+     - When set to C(true), appends roles specified in I(default_roles) to existing
+       default roles instead of unsetting not specified ones.
+     - The default is C(false), which will unset all not specified roles.
+     - Requires I(default_roles) to be set in the task.
+    type: bool
+    default: false
     version_added: '0.6.0'
 '''
 
 EXAMPLES = r'''
-- name: Create user
+- name: Create user granting roles and setting default role
   community.clickhouse.clickhouse_user:
     login_host: localhost
     login_user: alice
@@ -114,6 +134,18 @@ EXAMPLES = r'''
     - manager
     default_roles:
     - accountant
+    append_roles: true
+
+- name: Append the sales role to alice's roles
+  community.clickhouse.clickhouse_user:
+    login_host: localhost
+    login_user: alice
+    login_db: foo
+    login_password: my_password
+    name: test_user
+    roles:
+    - sales
+    append_roles: true
 
 - name: If user exists, update password
   community.clickhouse.clickhouse_user:
@@ -251,23 +283,40 @@ class ClickHouseUser():
         if self.module.params['roles']:
             desired_roles = self.module.params['roles']
 
-            roles_to_set = []
+            roles_to_grant = []
             for role in desired_roles:
                 if role not in self.current_roles:
-                    roles_to_set.append(role)
+                    roles_to_grant.append(role)
 
-            if roles_to_set:
-                self.__grant_roles(roles_to_set)
+            if roles_to_grant:
+                self.__grant_roles(roles_to_grant)
+
+            if not self.module.params['append_roles']:
+                roles_to_revoke = []
+                for role in self.current_roles:
+                    if role not in self.desired_roles:
+                        roles_to_revoke.append(role)
+
+                if roles_to_revoke:
+                    self.__revoke_roles(roles_to_revoke)
 
         if self.module.params['default_roles']:
             default_roles = self.module.params['default_roles']
 
-            roles_to_set = []
-            for role in default_roles:
-                if role not in self.current_default_roles:
-                    roles_to_set.append(role)
+            if self.module.params['append_roles']:
+                roles_to_set = []
+                for role in default_roles:
+                    if role not in self.current_default_roles:
+                        roles_to_set.append(role)
 
-            if roles_to_set:
+                if roles_to_set:
+                    self.__set_default_roles(roles_to_set)
+
+            elif not self.module.params['append_roles']:
+                # Use sets to make a list of unique roles
+                set1 = set(self.current_default_roles)
+                set2 = set(default_roles)
+                roles_to_set = list(set1.union(set2))
                 self.__set_default_roles(roles_to_set)
 
         if update_password == 'on_create':
@@ -299,12 +348,20 @@ class ClickHouseUser():
         return True
 
     def __grant_roles(self, roles_to_set):
-        for role in roles_to_set:
-            query = "GRANT %s TO %s" % (role, self.name)
-            executed_statements.append(query)
+        query = "GRANT %s TO %s" % (', '.join(roles_to_set), self.name)
+        executed_statements.append(query)
 
-            if not self.module.check_mode:
-                execute_query(self.module, self.client, query)
+        if not self.module.check_mode:
+            execute_query(self.module, self.client, query)
+
+        self.changed = True
+
+    def __revoke_roles(self, roles_to_revoke):
+        query = "REVOKE %s FROM %s" % (' ,'.join(roles_to_revoke), self.name)
+        executed_statements.append(query)
+
+        if not self.module.check_mode:
+            execute_query(self.module, self.client, query)
 
         self.changed = True
 
@@ -333,6 +390,8 @@ def main():
         settings=dict(type='list', elements='str'),
         roles=dict(type='list', elements='str', default=None),
         default_roles=dict(type='list', elements='str', default=None),
+        append_roles=dict(type='bool', default=False),
+        append_default_roles=dict(type='bool', default=False),
     )
 
     # Instantiate an object of module class

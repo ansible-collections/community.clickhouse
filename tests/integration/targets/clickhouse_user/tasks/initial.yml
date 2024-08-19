@@ -156,7 +156,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["GRANT accountant TO test_user", "GRANT manager TO test_user", "ALTER USER test_user DEFAULT ROLE accountant, manager"]
+    - result.executed_statements == ["GRANT accountant, manager TO test_user", "ALTER USER test_user DEFAULT ROLE accountant, manager"]
 
 - name: Check the actual state
   register: result
@@ -167,6 +167,7 @@
   ansible.builtin.assert:
     that:
     - result is not changed
+    - result["users"]["test_user"]["roles"] == []
     - result["users"]["test_user"]["default_roles_list"] == []
 
 - name: Set default role in real mode
@@ -185,7 +186,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["GRANT accountant TO test_user", "GRANT manager TO test_user", "ALTER USER test_user DEFAULT ROLE accountant, manager"]
+    - result.executed_statements == ["GRANT accountant, manager TO test_user", "ALTER USER test_user DEFAULT ROLE accountant, manager"]
 
 - name: Check the actual state
   register: result
@@ -196,6 +197,7 @@
   ansible.builtin.assert:
     that:
     - result is not changed
+    - result["users"]["test_user"]["roles"] == ["accountant", "manager"]
     - result["users"]["test_user"]["default_roles_list"] == ["accountant", "manager"]
 
 - name: Set another role as default in check mode
@@ -213,7 +215,9 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["GRANT sales TO test_user", "ALTER USER test_user DEFAULT ROLE sales"]
+    - result.executed_statements[0] == "GRANT sales TO test_user"
+    - result.executed_statements[1] == "REVOKE account, manager FROM test_user"
+    - result.executed_statements[2] == "ALTER USER test_user DEFAULT ROLE sales"
 
 - name: Check the actual state
   register: result
@@ -224,6 +228,7 @@
   ansible.builtin.assert:
     that:
     - result is not changed
+    - result["users"]["test_user"]["roles"] == ["accountant", "manager"]
     - result["users"]["test_user"]["default_roles_list"] == ["accountant", "manager"]
 
 - name: Set another role as default in real mode
@@ -238,7 +243,9 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["GRANT sales TO test_user", "ALTER USER test_user DEFAULT ROLE sales"]
+    - result.executed_statements[0] == "GRANT sales TO test_user"
+    - result.executed_statements[1] == "REVOKE account, manager FROM test_user"
+    - result.executed_statements[2] == "ALTER USER test_user DEFAULT ROLE sales"
 
 - name: Check the actual state
   register: result
@@ -249,6 +256,7 @@
   ansible.builtin.assert:
     that:
     - result is not changed
+    - result["users"]["test_user"]["roles"] == ["sales"]
     - result["users"]["test_user"]["default_roles_list"] == ["sales"]
 
 - name: Set the role again
@@ -284,7 +292,7 @@
     - result is not changed
     - result.executed_statements == []
 
-- name: Set the first role in real mode
+- name: Append the first role in real mode
   register: result
   community.clickhouse.clickhouse_user:
     state: present
@@ -293,12 +301,15 @@
     - accountant
     default_roles:
     - accountant
+    append_roles: true
+    append_default_roles: true
 
 - name: Check ret values 
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["ALTER USER test_user DEFAULT ROLE accountant"]
+    - result.executed_statements[0] == ["GRANT accountant TO test_user"]
+    - result.executed_statements[1] == ["ALTER USER test_user DEFAULT ROLE sales, accountant"]
 
 - name: Check the actual state
   register: result
@@ -309,4 +320,5 @@
   ansible.builtin.assert:
     that:
     - result is not changed
-    - result["users"]["test_user"]["default_roles_list"] == ["accountant"]
+    - result["users"]["test_user"]["roles"] == ["sales", "accountant"]
+    - result["users"]["test_user"]["default_roles_list"] == ["sales", "accountant"]
