@@ -435,7 +435,8 @@ def get_users(module, client):
 
     user_info = {}
     for row in result:
-        user_info[row[0]] = {
+        user_name = row[0]
+        user_info[user_name] = {
             "id": str(row[1]),
             "storage": row[2],
             "auth_type": row[3],
@@ -449,7 +450,20 @@ def get_users(module, client):
             "default_roles_except": row[11],
         }
 
+        user_info[user_name]["roles"] = get_user_roles(module, client, user_name)
+
     return user_info
+
+
+def get_user_roles(module, client, user_name):
+    """Get user roles.
+
+    Returns a list of roles.
+    """
+    query = ("SELECT granted_role_name FROM system.role_grants "
+             "WHERE user_name = '%s'" % user_name)
+    result = execute_query(module, client, query)
+    return [row[0] for row in result]
 
 
 def get_settings_profiles(module, client):

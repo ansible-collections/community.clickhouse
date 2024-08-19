@@ -1,0 +1,2 @@
+minor_changes:
+- clickhouse_info - add the ``roles`` field to user information.
