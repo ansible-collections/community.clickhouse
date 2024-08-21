@@ -138,7 +138,7 @@ EXAMPLES = r'''
     - accountant
     append_roles: true
 
-- name: Append the sales role to alice's roles
+- name: Append the sales role to test_user's roles
   community.clickhouse.clickhouse_user:
     login_host: localhost
     login_user: alice
@@ -149,7 +149,7 @@ EXAMPLES = r'''
     - sales
     append_roles: true
 
-- name: Unset all alice's default roles
+- name: Unset all test_user's default roles
   community.clickhouse.clickhouse_user:
     login_host: localhost
     login_user: alice
@@ -158,7 +158,7 @@ EXAMPLES = r'''
     name: test_user
     default_roles: []
 
-- name: Revoke all roles from alice
+- name: Revoke all roles from test_user
   community.clickhouse.clickhouse_user:
     login_host: localhost
     login_user: alice
