@@ -130,7 +130,7 @@
     - result is changed
     - result.executed_statements != []
 
-# Test default_roles argument
+# Test roles and default_roles argument
 - name: Create test roles
   loop:
   - accountant
@@ -303,8 +303,8 @@
     - accountant
     default_roles:
     - accountant
-    append_roles: true
-    append_default_roles: true
+    roles_mode: append
+    default_roles_mode: append
 
 - name: Check ret values 
   ansible.builtin.assert:

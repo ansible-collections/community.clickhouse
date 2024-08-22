@@ -84,9 +84,9 @@ options:
     version_added: '0.5.0'
   roles:
     description:
-      - Grants specified roles for the user.
-      - To append specified roles to existing ones, also add I(append_roles=true) to your task.
-      - To revoke all roles, pass an empty list and I(append_roles=false).
+      - Grants specified roles to the user.
+      - To append or remove roles, use the I(roles_mode) argument.
+      - To revoke all roles, pass an empty list (C([]))and I(default_roles_mode=listed_only).
     type: list
     elements: str
     version_added: '0.6.0'
@@ -96,28 +96,33 @@ options:
       - The roles must be explicitly granted to the user whether manually
         before using this argument or by using the I(roles)
         argument in the same task.
-      - To append specified roles to existing ones, also add I(append_default_roles=true) to your task.
-      - To unset all roles as default, pass an empty list and I(append_default_roles=false).
+      - To append or remove roles, use the I(default_roles_mode) argument.
+      - To unset all roles as default, pass an empty list (C([])) and I(default_roles_mode=listed_only).
     type: list
     elements: str
     version_added: '0.6.0'
-  append_roles:
+  roles_mode:
     description:
-     - When set to C(true), appends roles specified in I(roles) to existing
-       user roles instead of removing the user from not specified roles.
-     - The default is C(false), which will remove the user from all not specified roles.
-     - Ignored without I(roles) set.
-    type: bool
-    default: false
+     - When C(listed_only) (default), makes the user a member of only roles specified in I(roles).
+       It will remove the user from all other roles.
+     - When C(append), appends roles specified in I(roles) to existing user roles.
+     - When C(remove), removes roles specified in I(roles) from user roles.
+     - The argument is ignored without I(roles) set.
+    type: str
+    choices: ['append', 'listed_only', 'remove']
+    default: 'listed_only'
     version_added: '0.6.0'
-  append_default_roles:
+  default_roles_mode:
     description:
-     - When set to C(true), appends roles specified in I(default_roles) to existing
+     - When C(listed_only) (default), sets only roles specified in I(default_roles) as user default roles.
+       It will unset all other roles as default roles.
+     - When C(append), appends roles specified in I(default_roles) to existing user default roles.
        default roles instead of unsetting not specified ones.
-     - The default is C(false), which will unset all not specified roles.
+     - When C(remove), removes roles specified in I(default_roles) from user default roles.
      - Ignored without I(default_roles) set.
-    type: bool
-    default: false
+    type: str
+    choices: ['append', 'listed_only', 'remove']
+    default: 'listed_only'
     version_added: '0.6.0'
 '''
 
@@ -136,7 +141,6 @@ EXAMPLES = r'''
     - manager
     default_roles:
     - accountant
-    append_roles: true
 
 - name: Append the sales role to test_user's roles
   community.clickhouse.clickhouse_user:
@@ -147,7 +151,7 @@ EXAMPLES = r'''
     name: test_user
     roles:
     - sales
-    append_roles: true
+    roles_mode: append
 
 - name: Unset all test_user's default roles
   community.clickhouse.clickhouse_user:
@@ -291,58 +295,62 @@ class ClickHouseUser():
         if not self.module.check_mode:
             execute_query(self.module, self.client, query)
 
-        if self.module.params['roles']:
+        if self.module.params['roles'] and self.module.params['roles_mode'] != 'remove':
             self.__grant_role(self.module.params['roles'])
 
-        if self.module.params['default_roles']:
+        if self.module.params['default_roles'] and self.module.params['default_roles_mode'] != 'remove':
             self.__set_default_roles(self.module.params['default_roles'])
 
         return True
 
     def update(self, update_password):
         if self.module.params['roles'] is not None:
-            desired_roles = self.module.params['roles']
+            desired = set(self.module.params['roles'])
+            current = set(self.current_roles)
 
-            roles_to_grant = []
-            for role in desired_roles:
-                if role not in self.current_roles:
-                    roles_to_grant.append(role)
-
-            if roles_to_grant:
-                self.__grant_roles(roles_to_grant)
-
-            if not self.module.params['append_roles']:
-                roles_to_revoke = []
-                for role in self.current_roles:
-                    if role not in desired_roles:
-                        roles_to_revoke.append(role)
-
+            if self.module.params['roles_mode'] == 'remove':
+                # Remove only roles already present in current roles
+                roles_to_revoke = list(desired & current)
                 if roles_to_revoke:
                     self.__revoke_roles(roles_to_revoke)
 
+            elif self.module.params['roles_mode'] == 'append':
+                # Grant only roles from decired that
+                # are not already present in current roles
+                roles_to_grant = list(desired - current)
+                if roles_to_grant:
+                    self.__grant_roles(roles_to_grant)
+
+            elif self.module.params['roles_mode'] == 'listed_only':
+                if self.module.params['roles'] == [] and self.current_roles:
+                    self.__revoke_roles(self.current_roles)
+                elif self.module.params['roles'] != []:
+                    roles_to_grant = list(desired - current)
+                    roles_to_revoke = list(current - desired)
+                    if roles_to_grant:
+                        self.__grant_roles(roles_to_grant)
+                    if roles_to_revoke:
+                        self.__revoke_roles(roles_to_revoke)
+
         if self.module.params['default_roles'] is not None:
-            default_roles = self.module.params['default_roles']
-            cur_def_roles_set = set(self.current_default_roles)
-            req_def_roles_set = set(default_roles)
+            desired = set(self.module.params['default_roles'])
+            current = set(self.current_default_roles)
 
-            if self.module.params['append_roles'] is False:
-                if not req_def_roles_set:
-                    # Update roles info in case all roles were revoked
-                    # in the same task and then unset if the roles list
-                    # is not empty
-                    self.current_roles = self.__fetch_user_groups()
-                    if self.current_roles:
-                        self.__unset_default_roles()
+            if self.module.params['default_roles_mode'] == 'remove':
+                if self.module.params['default_roles'] != []:
+                    # In this case, "desired" means "desired to get removed"
+                    self.__set_default_roles(list(current - desired))
 
-                elif cur_def_roles_set != req_def_roles_set:
-                    self.__set_default_roles(default_roles)
+            elif self.module.params['default_roles_mode'] == 'append':
+                if self.module.params['default_roles'] != [] and desired != current:
+                    self.__set_default_roles(list(current.union(desired)))
 
-            else:
-                if cur_def_roles_set != req_def_roles_set:
-                    # Append roles to default roles.
-                    # Use set union to make a list of unique roles
-                    roles_to_set = list(cur_def_roles_set.union(req_def_roles_set))
-                    self.__set_default_roles(roles_to_set)
+            elif self.module.params['default_roles_mode'] == 'listed_only':
+                if self.module.params['default_roles'] == [] and self.current_roles:
+                    self.__unset_default_roles()
+
+                elif self.module.params['default_roles'] != [] and desired != current:
+                    self.__set_default_roles(self.module.params['default_roles'])
 
         if update_password == 'on_create':
             return False or self.changed
@@ -429,8 +437,10 @@ def main():
         settings=dict(type='list', elements='str'),
         roles=dict(type='list', elements='str', default=None),
         default_roles=dict(type='list', elements='str', default=None),
-        append_roles=dict(type='bool', default=False),
-        append_default_roles=dict(type='bool', default=False),
+        roles_mode=dict(type='str', choices=['listed_only', 'append', 'remove'],
+                        default='listed_only'),
+        default_roles_mode=dict(type='str', choices=['listed_only', 'append', 'remove'],
+                                default='listed_only'),
     )
 
     # Instantiate an object of module class
