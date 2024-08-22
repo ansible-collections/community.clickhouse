@@ -336,7 +336,7 @@ class ClickHouseUser():
             desired = set(self.module.params['default_roles'])
             current = set(self.current_default_roles)
 
-            if self.module.params['default_roles_mode'] == 'remove':
+            if self.module.params['default_roles_mode'] == 'remove' and desired & current:
                 if self.module.params['default_roles'] != []:
                     # In this case, "desired" means "desired to get removed"
                     self.__set_default_roles(list(current - desired))

@@ -156,7 +156,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "GRANT accountant, manager TO test_user"
+    - result.executed_statements[0] == "GRANT accountant, manager TO test_user" or result.executed_statements[0] == "GRANT manager, accountant TO test_user"
     - result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE accountant, manager" or result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE manager, accountant"
 
 - name: Check the actual state
@@ -187,7 +187,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "GRANT accountant, manager TO test_user"
+    - result.executed_statements[0] == "GRANT accountant, manager TO test_user" or result.executed_statements[0] == "GRANT manager, accountant TO test_user"
     - result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE accountant, manager" or result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE manager, accountant"
 
 - name: Check the actual state
@@ -479,3 +479,108 @@
     - result is not changed
     - result["users"]["test_user"]["roles"] == []
     - result["users"]["test_user"]["default_roles_list"] == []
+
+- name: Set default role in real mode
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    roles:
+    - accountant
+    - manager
+    default_roles:
+    - accountant
+    - manager
+
+- name: Remove role and default role in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    roles:
+    - manager
+    default_roles:
+    - manager
+    roles_mode: remove
+    default_roles_mode: remove
+
+- name: Check ret values 
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements[0] == "REVOKE manager FROM test_user"
+    - result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE accountant"
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result["users"]["test_user"]["roles"] == ["accountant", "manager"] or result["users"]["test_user"]["roles"] == ["manager", "accountant"]
+    - result["users"]["test_user"]["default_roles_list"] == ["accountant", "manager"]
+
+- name: Remove role and default role in real mode
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    roles:
+    - manager
+    default_roles:
+    - manager
+    roles_mode: remove
+    default_roles_mode: remove
+
+- name: Check ret values 
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements[0] == "REVOKE manager FROM test_user"
+    - result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE accountant"
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result["users"]["test_user"]["roles"] == ["accountant"]
+    - result["users"]["test_user"]["default_roles_list"] == ["accountant"]
+
+- name: Remove role and default role in real mode again
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    roles:
+    - manager
+    default_roles:
+    - manager
+    roles_mode: remove
+    default_roles_mode: remove
+
+- name: Check ret values 
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result["users"]["test_user"]["roles"] == ["accountant"]
+    - result["users"]["test_user"]["default_roles_list"] == ["accountant"]
