@@ -1,0 +1,5 @@
+minor_changes:
+- clickhouse_user - add the ``roles`` argument to grant roles (https://github.com/ansible-collections/community.clickhouse/pull/70).
+- clickhouse_user - add the ``default_roles`` argument to set default roles (https://github.com/ansible-collections/community.clickhouse/pull/70).
+- clickhouse_user - add the ``roles_mode`` argument to specify how to handle roles passed through ``roles`` argument (https://github.com/ansible-collections/community.clickhouse/pull/70).
+- clickhouse_user - add the ``default_roles_mode`` argument to specify how to handle roles passed through ``default_roles`` argument (https://github.com/ansible-collections/community.clickhouse/pull/70).

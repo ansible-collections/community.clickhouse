@@ -82,10 +82,52 @@ options:
     type: list
     elements: str
     version_added: '0.5.0'
+  roles:
+    description:
+      - Grants specified roles to the user.
+      - To append or remove roles, use the I(roles_mode) argument.
+      - To revoke all roles, pass an empty list (C([])) and I(default_roles_mode=listed_only).
+    type: list
+    elements: str
+    version_added: '0.6.0'
+  default_roles:
+    description:
+      - Sets specified roles as default for the user.
+      - The roles must be explicitly granted to the user whether manually
+        before using this argument or by using the I(roles)
+        argument in the same task.
+      - To append or remove roles, use the I(default_roles_mode) argument.
+      - To unset all roles as default, pass an empty list (C([])) and I(default_roles_mode=listed_only).
+    type: list
+    elements: str
+    version_added: '0.6.0'
+  roles_mode:
+    description:
+     - When C(listed_only) (default), makes the user a member of only roles specified in I(roles).
+       It will remove the user from all other roles.
+     - When C(append), appends roles specified in I(roles) to existing user roles.
+     - When C(remove), removes roles specified in I(roles) from user roles.
+     - The argument is ignored without I(roles) set.
+    type: str
+    choices: ['append', 'listed_only', 'remove']
+    default: 'listed_only'
+    version_added: '0.6.0'
+  default_roles_mode:
+    description:
+     - When C(listed_only) (default), sets only roles specified in I(default_roles) as user default roles.
+       It will unset all other roles as default roles.
+     - When C(append), appends roles specified in I(default_roles) to existing user default roles.
+       default roles instead of unsetting not specified ones.
+     - When C(remove), removes roles specified in I(default_roles) from user default roles.
+     - Ignored without I(default_roles) set.
+    type: str
+    choices: ['append', 'listed_only', 'remove']
+    default: 'listed_only'
+    version_added: '0.6.0'
 '''
 
 EXAMPLES = r'''
-- name: Create user
+- name: Create user granting roles and setting default role
   community.clickhouse.clickhouse_user:
     login_host: localhost
     login_user: alice
@@ -94,6 +136,40 @@ EXAMPLES = r'''
     name: test_user
     password: qwerty
     type_password: sha256_password
+    roles:
+    - accountant
+    - manager
+    default_roles:
+    - accountant
+
+- name: Append the sales role to test_user's roles
+  community.clickhouse.clickhouse_user:
+    login_host: localhost
+    login_user: alice
+    login_db: foo
+    login_password: my_password
+    name: test_user
+    roles:
+    - sales
+    roles_mode: append
+
+- name: Unset all test_user's default roles
+  community.clickhouse.clickhouse_user:
+    login_host: localhost
+    login_user: alice
+    login_db: foo
+    login_password: my_password
+    name: test_user
+    default_roles: []
+
+- name: Revoke all roles from test_user
+  community.clickhouse.clickhouse_user:
+    login_host: localhost
+    login_user: alice
+    login_db: foo
+    login_password: my_password
+    name: test_user
+    roles: []
 
 - name: If user exists, update password
   community.clickhouse.clickhouse_user:
@@ -155,6 +231,7 @@ executed_statements = []
 
 class ClickHouseUser():
     def __init__(self, module, client, name, password, type_password, cluster):
+        self.changed = False
         self.module = module
         self.client = client
         self.name = name
@@ -163,11 +240,15 @@ class ClickHouseUser():
         self.cluster = cluster
         # Set default values, then update
         self.user_exists = False
+        self.current_default_roles = []
+        self.current_roles = []
+        # Fetch actual values from DB and
+        # update the attributes with them
         self.__populate_info()
 
     def __populate_info(self):
         # Collecting user information
-        query = ("SELECT name, storage, auth_type "
+        query = ("SELECT name, storage, auth_type, default_roles_list "
                  "FROM system.users "
                  "WHERE name = '%s'" % self.name)
 
@@ -180,6 +261,16 @@ class ClickHouseUser():
 
         if result != []:
             self.user_exists = True
+            self.current_default_roles = result[0][3]
+
+        if self.user_exists:
+            self.current_roles = self.__fetch_user_groups()
+
+    def __fetch_user_groups(self):
+        query = ("SELECT granted_role_name FROM system.role_grants "
+                 "WHERE user_name = '%s'" % self.name)
+        result = execute_query(self.module, self.client, query)
+        return [row[0] for row in result]
 
     def create(self):
         list_settings = self.module.params['settings']
@@ -204,11 +295,65 @@ class ClickHouseUser():
         if not self.module.check_mode:
             execute_query(self.module, self.client, query)
 
+        if self.module.params['roles'] and self.module.params['roles_mode'] != 'remove':
+            self.__grant_role(self.module.params['roles'])
+
+        if self.module.params['default_roles'] and self.module.params['default_roles_mode'] != 'remove':
+            self.__set_default_roles(self.module.params['default_roles'])
+
         return True
 
     def update(self, update_password):
+        if self.module.params['roles'] is not None:
+            desired = set(self.module.params['roles'])
+            current = set(self.current_roles)
+
+            if self.module.params['roles_mode'] == 'remove':
+                # Remove only roles already present in current roles
+                roles_to_revoke = list(desired & current)
+                if roles_to_revoke:
+                    self.__revoke_roles(roles_to_revoke)
+
+            elif self.module.params['roles_mode'] == 'append':
+                # Grant only roles from decired that
+                # are not already present in current roles
+                roles_to_grant = list(desired - current)
+                if roles_to_grant:
+                    self.__grant_roles(roles_to_grant)
+
+            elif self.module.params['roles_mode'] == 'listed_only':
+                if self.module.params['roles'] == [] and self.current_roles:
+                    self.__revoke_roles(self.current_roles)
+                elif self.module.params['roles'] != []:
+                    roles_to_grant = list(desired - current)
+                    roles_to_revoke = list(current - desired)
+                    if roles_to_grant:
+                        self.__grant_roles(roles_to_grant)
+                    if roles_to_revoke:
+                        self.__revoke_roles(roles_to_revoke)
+
+        if self.module.params['default_roles'] is not None:
+            desired = set(self.module.params['default_roles'])
+            current = set(self.current_default_roles)
+
+            if self.module.params['default_roles_mode'] == 'remove' and desired & current:
+                if self.module.params['default_roles'] != []:
+                    # In this case, "desired" means "desired to get removed"
+                    self.__set_default_roles(list(current - desired))
+
+            elif self.module.params['default_roles_mode'] == 'append':
+                if self.module.params['default_roles'] != [] and desired != current:
+                    self.__set_default_roles(list(current.union(desired)))
+
+            elif self.module.params['default_roles_mode'] == 'listed_only':
+                if self.module.params['default_roles'] == [] and self.current_roles:
+                    self.__unset_default_roles()
+
+                elif self.module.params['default_roles'] != [] and desired != current:
+                    self.__set_default_roles(self.module.params['default_roles'])
+
         if update_password == 'on_create':
-            return False
+            return False or self.changed
 
         # If update_password is always
         # TODO: When ClickHouse will allow to retrieve password hashes,
@@ -235,6 +380,47 @@ class ClickHouseUser():
 
         return True
 
+    def __grant_roles(self, roles_to_set):
+        query = "GRANT %s TO %s" % (', '.join(roles_to_set), self.name)
+        executed_statements.append(query)
+
+        if not self.module.check_mode:
+            execute_query(self.module, self.client, query)
+
+        self.changed = True
+
+    def __revoke_roles(self, roles_to_revoke):
+        query = "REVOKE %s FROM %s" % (', '.join(roles_to_revoke), self.name)
+        executed_statements.append(query)
+
+        if not self.module.check_mode:
+            execute_query(self.module, self.client, query)
+
+        self.changed = True
+
+    def __set_default_roles(self, roles_to_set):
+        self.current_roles = self.__fetch_user_groups()
+        for role in roles_to_set:
+            if role not in self.current_roles and role not in self.module.params["roles"]:
+                self.module.fail_json("User %s is not in %s role. Grant it explicitly first." % (self.name, role))
+
+        query = "ALTER USER %s DEFAULT ROLE %s" % (self.name, ', '.join(roles_to_set))
+        executed_statements.append(query)
+
+        if not self.module.check_mode:
+            execute_query(self.module, self.client, query)
+
+        self.changed = True
+
+    def __unset_default_roles(self):
+        query = "SET DEFAULT ROLE NONE TO %s" % self.name
+        executed_statements.append(query)
+
+        if not self.module.check_mode:
+            execute_query(self.module, self.client, query)
+
+        self.changed = True
+
 
 def main():
     argument_spec = client_common_argument_spec()
@@ -249,6 +435,12 @@ def main():
             default='on_create', no_log=False
         ),
         settings=dict(type='list', elements='str'),
+        roles=dict(type='list', elements='str', default=None),
+        default_roles=dict(type='list', elements='str', default=None),
+        roles_mode=dict(type='str', choices=['listed_only', 'append', 'remove'],
+                        default='listed_only'),
+        default_roles_mode=dict(type='str', choices=['listed_only', 'append', 'remove'],
+                                default='listed_only'),
     )
 
     # Instantiate an object of module class
