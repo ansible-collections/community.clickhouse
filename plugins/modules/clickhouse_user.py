@@ -86,7 +86,7 @@ options:
     description:
       - Grants specified roles to the user.
       - To append or remove roles, use the I(roles_mode) argument.
-      - To revoke all roles, pass an empty list (C([]))and I(default_roles_mode=listed_only).
+      - To revoke all roles, pass an empty list (C([])) and I(default_roles_mode=listed_only).
     type: list
     elements: str
     version_added: '0.6.0'
