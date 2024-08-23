@@ -313,12 +313,12 @@ class ClickHouseUser():
 
         # TODO Add a possibility to update settings idempotently
 
-        return True
+        return self.changed
 
-    def drop(self):
+    def drop(self, cluster):
         query = "DROP USER %s" % self.name
-        if self.cluster:
-            query += " ON CLUSTER %s" % self.cluster
+        if cluster:
+            query += " ON CLUSTER %s" % cluster
 
         executed_statements.append(query)
 
@@ -389,6 +389,8 @@ class ClickHouseUser():
 
         if not self.module.check_mode:
             execute_query(self.module, self.client, query)
+
+        self.changed = True
 
     def __grant_roles(self, roles_to_set):
         query = "GRANT %s TO %s" % (', '.join(roles_to_set), self.name)
@@ -499,7 +501,7 @@ def main():
     else:
         # If state is absent
         if user.user_exists:
-            changed = user.drop()
+            changed = user.drop(cluster)
 
     # Close connection
     client.disconnect_connection()
