@@ -4,6 +4,24 @@ CHANGE THIS IN changelogs/config.yaml! Release Notes
 
 .. contents:: Topics
 
+v0.6.0
+======
+
+Release Summary
+---------------
+
+This is a minor release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Minor Changes
+-------------
+
+- clickhouse_info - add the ``roles`` field to user information.
+- clickhouse_user - add the ``default_roles_mode`` argument to specify how to handle roles passed through ``default_roles`` argument (https://github.com/ansible-collections/community.clickhouse/pull/70).
+- clickhouse_user - add the ``default_roles`` argument to set default roles (https://github.com/ansible-collections/community.clickhouse/pull/70).
+- clickhouse_user - add the ``roles_mode`` argument to specify how to handle roles passed through ``roles`` argument (https://github.com/ansible-collections/community.clickhouse/pull/70).
+- clickhouse_user - add the ``roles`` argument to grant roles (https://github.com/ansible-collections/community.clickhouse/pull/70).
 
 v0.5.0
 ======
