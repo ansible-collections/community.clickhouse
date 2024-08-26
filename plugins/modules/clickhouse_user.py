@@ -230,14 +230,11 @@ executed_statements = []
 
 
 class ClickHouseUser():
-    def __init__(self, module, client, name, password, type_password, cluster):
+    def __init__(self, module, client, name):
         self.changed = False
         self.module = module
         self.client = client
         self.name = name
-        self.password = password
-        self.type_password = type_password
-        self.cluster = cluster
         # Set default values, then update
         self.user_exists = False
         self.current_default_roles = []
@@ -272,22 +269,22 @@ class ClickHouseUser():
         result = execute_query(self.module, self.client, query)
         return [row[0] for row in result]
 
-    def create(self):
-        list_settings = self.module.params['settings']
+    def create(self, type_password, password, cluster, settings,
+               roles, roles_mode, default_roles, default_roles_mode):
+
         query = "CREATE USER %s" % self.name
 
-        if self.password is not None:
-            query += (" IDENTIFIED WITH %s"
-                      " BY '%s'") % (self.type_password, self.password)
+        if password is not None:
+            query += (" IDENTIFIED WITH %s BY '%s'") % (type_password, password)
 
-        if self.cluster:
-            query += " ON CLUSTER %s" % self.cluster
+        if cluster:
+            query += " ON CLUSTER %s" % cluster
 
-        if list_settings:
+        if settings:
             query += " SETTINGS"
-            for index, value in enumerate(list_settings):
+            for index, value in enumerate(settings):
                 query += " %s" % value
-                if index < len(list_settings) - 1:
+                if index < len(settings) - 1:
                     query += ","
 
         executed_statements.append(query)
@@ -295,63 +292,90 @@ class ClickHouseUser():
         if not self.module.check_mode:
             execute_query(self.module, self.client, query)
 
-        if self.module.params['roles'] and self.module.params['roles_mode'] != 'remove':
-            self.__grant_role(self.module.params['roles'])
+        if roles and roles_mode != 'remove':
+            self.__grant_role(roles)
 
-        if self.module.params['default_roles'] and self.module.params['default_roles_mode'] != 'remove':
-            self.__set_default_roles(self.module.params['default_roles'])
+        if default_roles and default_roles_mode != 'remove':
+            self.__set_default_roles(default_roles)
 
         return True
 
-    def update(self, update_password):
-        if self.module.params['roles'] is not None:
-            desired = set(self.module.params['roles'])
-            current = set(self.current_roles)
+    def update(self, update_password, type_password, password,
+               roles, roles_mode, default_roles, default_roles_mode):
 
-            if self.module.params['roles_mode'] == 'remove':
-                # Remove only roles already present in current roles
-                roles_to_revoke = list(desired & current)
+        if roles is not None:
+            self.__update_roles(roles, roles_mode)
+
+        if default_roles is not None:
+            self.__update_default_roles(default_roles, default_roles_mode)
+
+        self.__update_passwd(update_password, type_password, password)
+
+        # TODO Add a possibility to update settings idempotently
+
+        return self.changed
+
+    def drop(self, cluster):
+        query = "DROP USER %s" % self.name
+        if cluster:
+            query += " ON CLUSTER %s" % cluster
+
+        executed_statements.append(query)
+
+        if not self.module.check_mode:
+            execute_query(self.module, self.client, query)
+
+        return True
+
+    def __update_roles(self, desired_roles, mode):
+        des = set(desired_roles)
+        cur = set(self.current_roles)
+
+        if mode == 'remove':
+            # Remove only roles already present in current roles
+            roles_to_revoke = list(des & cur)
+            if roles_to_revoke:
+                self.__revoke_roles(roles_to_revoke)
+
+        elif mode == 'append':
+            # Grant only roles from decired that
+            # are not already present in current roles
+            roles_to_grant = list(des - cur)
+            if roles_to_grant:
+                self.__grant_roles(roles_to_grant)
+
+        elif mode == 'listed_only':
+            if desired_roles == [] and self.current_roles:
+                self.__revoke_roles(self.current_roles)
+            elif desired_roles != []:
+                roles_to_grant = list(des - cur)
+                roles_to_revoke = list(cur - des)
+                if roles_to_grant:
+                    self.__grant_roles(roles_to_grant)
                 if roles_to_revoke:
                     self.__revoke_roles(roles_to_revoke)
 
-            elif self.module.params['roles_mode'] == 'append':
-                # Grant only roles from decired that
-                # are not already present in current roles
-                roles_to_grant = list(desired - current)
-                if roles_to_grant:
-                    self.__grant_roles(roles_to_grant)
+    def __update_default_roles(self, desired_def_roles, mode):
+        des = set(desired_def_roles)
+        cur = set(self.current_default_roles)
 
-            elif self.module.params['roles_mode'] == 'listed_only':
-                if self.module.params['roles'] == [] and self.current_roles:
-                    self.__revoke_roles(self.current_roles)
-                elif self.module.params['roles'] != []:
-                    roles_to_grant = list(desired - current)
-                    roles_to_revoke = list(current - desired)
-                    if roles_to_grant:
-                        self.__grant_roles(roles_to_grant)
-                    if roles_to_revoke:
-                        self.__revoke_roles(roles_to_revoke)
+        if mode == 'remove' and des & cur:
+            if desired_def_roles != []:
+                # In this case, "desired" means "desired to get removed"
+                self.__set_default_roles(list(cur - des))
 
-        if self.module.params['default_roles'] is not None:
-            desired = set(self.module.params['default_roles'])
-            current = set(self.current_default_roles)
+        elif mode == 'append':
+            if desired_def_roles != [] and des != cur:
+                self.__set_default_roles(list(cur.union(des)))
 
-            if self.module.params['default_roles_mode'] == 'remove' and desired & current:
-                if self.module.params['default_roles'] != []:
-                    # In this case, "desired" means "desired to get removed"
-                    self.__set_default_roles(list(current - desired))
+        elif mode == 'listed_only':
+            if desired_def_roles == [] and self.current_roles:
+                self.__unset_default_roles()
 
-            elif self.module.params['default_roles_mode'] == 'append':
-                if self.module.params['default_roles'] != [] and desired != current:
-                    self.__set_default_roles(list(current.union(desired)))
+            elif desired_def_roles != [] and des != cur:
+                self.__set_default_roles(desired_def_roles)
 
-            elif self.module.params['default_roles_mode'] == 'listed_only':
-                if self.module.params['default_roles'] == [] and self.current_roles:
-                    self.__unset_default_roles()
-
-                elif self.module.params['default_roles'] != [] and desired != current:
-                    self.__set_default_roles(self.module.params['default_roles'])
-
+    def __update_passwd(self, update_password, type_pwd, pwd):
         if update_password == 'on_create':
             return False or self.changed
 
@@ -359,26 +383,14 @@ class ClickHouseUser():
         # TODO: When ClickHouse will allow to retrieve password hashes,
         # make this idempotent, i.e. execute this only if the passwords don't match
         query = ("ALTER USER %s IDENTIFIED WITH %s "
-                 "BY '%s'") % (self.name, self.type_password, self.password)
+                 "BY '%s'") % (self.name, type_pwd, pwd)
 
         executed_statements.append(query)
 
         if not self.module.check_mode:
             execute_query(self.module, self.client, query)
 
-        return True
-
-    def drop(self):
-        query = "DROP USER %s" % self.name
-        if self.cluster:
-            query += " ON CLUSTER %s" % self.cluster
-
-        executed_statements.append(query)
-
-        if not self.module.check_mode:
-            execute_query(self.module, self.client, query)
-
-        return True
+        self.changed = True
 
     def __grant_roles(self, roles_to_set):
         query = "GRANT %s TO %s" % (', '.join(roles_to_set), self.name)
@@ -462,6 +474,11 @@ def main():
     type_password = module.params["type_password"]
     cluster = module.params['cluster']
     update_password = module.params['update_password']
+    settings = module.params['settings']
+    roles = module.params['roles']
+    roles_mode = module.params['roles_mode']
+    default_roles = module.params['default_roles']
+    default_roles_mode = module.params['default_roles_mode']
 
     # Will fail if no driver informing the user
     check_clickhouse_driver(module)
@@ -471,19 +488,20 @@ def main():
 
     # Do the job
     changed = False
-    user = ClickHouseUser(module, client, name, password,
-                          type_password, cluster)
+    user = ClickHouseUser(module, client, name)
 
     if state == 'present':
         if not user.user_exists:
-            changed = user.create()
+            changed = user.create(type_password, password, cluster, settings,
+                                  roles, roles_mode, default_roles, default_roles_mode)
         else:
             # If user exists
-            changed = user.update(update_password)
+            changed = user.update(update_password, type_password, password,
+                                  roles, roles_mode, default_roles, default_roles_mode)
     else:
         # If state is absent
         if user.user_exists:
-            changed = user.drop()
+            changed = user.drop(cluster)
 
     # Close connection
     client.disconnect_connection()
