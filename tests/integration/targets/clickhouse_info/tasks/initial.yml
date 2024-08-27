@@ -16,10 +16,11 @@
 
 - name: Grant role
   community.clickhouse.clickhouse_client:
-    execute: "GRANT {{ item }} TO bob"
-  loop:
-  - accountant
-  - sales
+    execute: "GRANT accountant, sales TO bob"
+
+- name: Grant role
+  community.clickhouse.clickhouse_client:
+    execute: "GRANT sales TO accountant"
 
 - name: Get info
   register: result
@@ -34,7 +35,9 @@
     - result is not changed
     - result["users"]["default"] != {}
     - result["users"]["bob"]["roles"] == ["accountant", "sales"] or result["users"]["bob"]["roles"] == ["sales", "accountant"]
+    - result["users"]["bob"]["grants"] == ["GRANT accountant, sales TO bob"]
     - result["roles"]["accountant"] != {}
+    - result["roles"]["accountant"]["grants"] == ["GRANT sales TO accountant"]
     - result["databases"]["default"]["engine"] == "Atomic"
     - result["version"] != {}
     - result["driver"]["version"] != {}
