@@ -270,10 +270,12 @@ def get_roles(module, client):
 
     roles_info = {}
     for row in result:
-        roles_info[row[0]] = {
+        role_name = row[0]
+        roles_info[role_name] = {
             "id": str(row[1]),
             "storage": row[2],
         }
+        roles_info[role_name]["grants"] = get_grants(module, client, role_name)
 
     return roles_info
 
@@ -451,8 +453,19 @@ def get_users(module, client):
         }
 
         user_info[user_name]["roles"] = get_user_roles(module, client, user_name)
+        user_info[user_name]["grants"] = get_grants(module, client, user_name)
 
     return user_info
+
+
+def get_grants(module, client, name):
+    """Get grants.
+
+    Return a list of grants.
+    """
+    query = ("SHOW GRANTS FOR '%s'" % name)
+    result = execute_query(module, client, query)
+    return [row[0] for row in result]
 
 
 def get_user_roles(module, client, user_name):
