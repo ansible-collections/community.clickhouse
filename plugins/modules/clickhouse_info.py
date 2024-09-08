@@ -161,6 +161,13 @@ storage_policies:
   type: dict
   sample: { "storage_policies": "..." }
   version_added: '0.4.0'
+grants:
+  description:
+    - The content of the system.grants table with user_name and role_name names as keys.
+  returned: success
+  type: dict
+  sample: { "role_name": {"..."}, "user_name": {"..."} }
+  version_added: '0.7.0'
 '''
 
 from ansible.module_utils.basic import AnsibleModule
@@ -532,6 +539,47 @@ def get_quotas(module, client):
     return quota_info
 
 
+def get_all_grants(module, client):
+    """Get grants.
+
+    Returns a dictionary with users and roles names as keys.
+    """
+    query = ("SELECT user_name, role_name, access_type, database, "
+             "table, column, is_partial_revoke, grant_option FROM system.grants")
+
+    result = execute_query(module, client, query)
+
+    if result == PRIV_ERR_CODE:
+        return {PRIV_ERR_CODE: "Not enough privileges"}
+
+    grants_info = {'user_name': {},
+                   'role_name': {},
+                   }
+
+    for row in result:
+        if row[0] is not None:
+            dict_name = 'user_name'
+            name = row[0]
+            if row[0] not in grants_info[dict_name]:
+                grants_info[dict_name][name] = []
+        else:
+            dict_name = 'role_name'
+            name = row[1]
+            if row[1] not in grants_info[dict_name]:
+                grants_info[dict_name][name] = []
+
+        grants_info[dict_name][name].append({
+            "access_type": row[2],
+            "database": row[3],
+            "table": row[4],
+            "column": row[5],
+            "is_partial_revoke": row[6],
+            "grant_option": row[7],
+        })
+
+    return grants_info
+
+
 def get_functions(module, client):
     """Get functions.
 
@@ -661,6 +709,7 @@ def main():
         'settings_profiles': get_settings_profiles,
         'functions': get_functions,
         'storage_policies': get_storage_policies,
+        'grants': get_all_grants,
     }
     # Check if the limit is provided, it contains correct values
     limit = module.params['limit']
