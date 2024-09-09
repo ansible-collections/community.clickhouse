@@ -57,7 +57,7 @@
     - result["quotas"]["default"] != {}
     - result["settings_profiles"]["default"] != {}
     - result["storage_policies"] != {}
-    - result["grants"]["user_name"]["eva"][0]["access_type"] == "INSERT"
+    - result["grants"]["users"]["eva"][0]["access_type"] == "INSERT"
 
 - name: Debug
   ansible.builtin.debug:

@@ -163,10 +163,10 @@ storage_policies:
   version_added: '0.4.0'
 grants:
   description:
-    - The content of the system.grants table with user_name and role_name names as keys.
+    - The content of the system.grants table for users and roles as keys.
   returned: success
   type: dict
-  sample: { "role_name": {"..."}, "user_name": {"..."} }
+  sample: { "roles": {"..."}, "users": {"..."} }
   version_added: '0.7.0'
 '''
 
@@ -552,18 +552,19 @@ def get_all_grants(module, client):
     if result == PRIV_ERR_CODE:
         return {PRIV_ERR_CODE: "Not enough privileges"}
 
-    grants_info = {'user_name': {},
-                   'role_name': {},
-                   }
+    grants_info = {
+        'users': {},
+        'roles': {},
+    }
 
     for row in result:
         if row[0] is not None:
-            dict_name = 'user_name'
+            dict_name = 'users'
             name = row[0]
             if row[0] not in grants_info[dict_name]:
                 grants_info[dict_name][name] = []
         else:
-            dict_name = 'role_name'
+            dict_name = 'roles'
             name = row[1]
             if row[1] not in grants_info[dict_name]:
                 grants_info[dict_name][name] = []
