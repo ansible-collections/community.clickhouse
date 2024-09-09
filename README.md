@@ -97,7 +97,7 @@ If you encounter abusive behavior violating the [Ansible Code of Conduct](https:
 * Join the Ansible forum:
     * [ClickHouse Team](https://forum.ansible.com/g/ClickHouseTeam): by joining the team you will automatically get subscribed to the posts tagged with [clickhouse](https://forum.ansible.com/tag/clickhouse).
     * [Get Help](https://forum.ansible.com/c/help/6/none): get help or help others.
-    * [Posts tagged with 'clickhouse'](https://forum.ansible.com/tag/clickhouse): leverage tags to narrow the scope.
+    * [Posts tagged with 'clickhouse'](https://forum.ansible.com/tag/clickhouse): use tags to narrow the scope.
     * [Social Spaces](https://forum.ansible.com/c/chat/4): gather and interact with fellow enthusiasts.
     * [News & Announcements](https://forum.ansible.com/c/news/5/none): track project-wide announcements including social events.
 
