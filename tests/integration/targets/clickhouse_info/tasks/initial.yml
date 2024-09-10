@@ -10,9 +10,17 @@
   - accountant
   - sales
 
-- name: Create user
+- name: Create user bob
   community.clickhouse.clickhouse_user:
     name: bob
+
+- name: Create user eva
+  community.clickhouse.clickhouse_user:
+    name: eva
+
+- name: Grant to INSERT for user eva
+  community.clickhouse.clickhouse_client:
+    execute: "GRANT INSERT ON system.users TO eva"
 
 - name: Grant role
   community.clickhouse.clickhouse_client:
@@ -49,6 +57,7 @@
     - result["quotas"]["default"] != {}
     - result["settings_profiles"]["default"] != {}
     - result["storage_policies"] != {}
+    - result["grants"]["users"]["eva"][0]["access_type"] == "INSERT"
 
 - name: Debug
   ansible.builtin.debug:
