@@ -168,6 +168,13 @@ grants:
   type: dict
   sample: { "roles": {"..."}, "users": {"..."} }
   version_added: '0.7.0'
+settings_profile_elements:
+  description:
+    - The content of the system.settings_profile_elements table for users, roles, profiles as keys.
+  returned: success
+  type: dict
+  sample: { "roles": {"..."}, "users": {"..."}, "profiles": {"..."} }
+  version_added: '0.7.0'
 '''
 
 from ansible.module_utils.basic import AnsibleModule
@@ -581,6 +588,53 @@ def get_all_grants(module, client):
     return grants_info
 
 
+def get_settings_profile_elements(module, client):
+    """Get settings_profile_elements.
+
+    Returns a dictionary with roles, profiles and users names as keys.
+    """
+    query = ("SELECT profile_name, user_name, role_name, "
+             "index, setting_name, value, min, max, "
+             "inherit_profile FROM system.settings_profile_elements")
+    result = execute_query(module, client, query)
+
+    if result == PRIV_ERR_CODE:
+        return {PRIV_ERR_CODE: "Not enough privileges"}
+
+    settings_profile_elements = {'profiles': {},
+                                 'users': {},
+                                 'roles': {},
+                                 }
+
+    for row in result:
+        if row[0] is not None:
+            dict_name = 'profiles'
+            name = row[0]
+            if row[0] not in settings_profile_elements[dict_name]:
+                settings_profile_elements[dict_name][name] = []
+        elif row[1] is not None:
+            dict_name = 'users'
+            name = row[1]
+            if row[1] not in settings_profile_elements[dict_name]:
+                settings_profile_elements[dict_name][name] = []
+        else:
+            dict_name = 'roles'
+            name = row[2]
+            if row[2] not in settings_profile_elements[dict_name]:
+                settings_profile_elements[dict_name][name] = []
+
+        settings_profile_elements[dict_name][name].append({
+            "index": row[3],
+            "setting_name": row[4],
+            "value": row[5],
+            "min": row[6],
+            "max": row[7],
+            "inherit_profile": row[8],
+        })
+
+    return settings_profile_elements
+
+
 def get_functions(module, client):
     """Get functions.
 
@@ -708,6 +762,7 @@ def main():
         'merge_tree_settings': get_merge_tree_settings,
         'quotas': get_quotas,
         'settings_profiles': get_settings_profiles,
+        'settings_profile_elements': get_settings_profile_elements,
         'functions': get_functions,
         'storage_policies': get_storage_policies,
         'grants': get_all_grants,

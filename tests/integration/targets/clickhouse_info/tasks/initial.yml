@@ -17,6 +17,8 @@
 - name: Create user eva
   community.clickhouse.clickhouse_user:
     name: eva
+    settings:
+      - max_memory_usage = 15000 MIN 15000 MAX 16000 READONLY
 
 - name: Grant to INSERT for user eva
   community.clickhouse.clickhouse_client:
@@ -58,6 +60,8 @@
     - result["settings_profiles"]["default"] != {}
     - result["storage_policies"] != {}
     - result["grants"]["users"]["eva"][0]["access_type"] == "INSERT"
+    - result["settings_profile_elements"]["users"]["eva"][0]["setting_name"] == "max_memory_usage"
+    - result["settings_profile_elements"]["users"]["eva"][0]["value"] == "15000"
 
 - name: Debug
   ansible.builtin.debug:
