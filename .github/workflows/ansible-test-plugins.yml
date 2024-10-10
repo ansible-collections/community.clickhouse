@@ -24,9 +24,9 @@ jobs:
     strategy:
       matrix:
         ansible:
-          - stable-2.15
           - stable-2.16
           - stable-2.17
+          - stable-2.18
           - devel
     steps:
 
@@ -56,9 +56,9 @@ jobs:
       fail-fast: true
       matrix:
         ansible:
-          - stable-2.15
           - stable-2.16
           - stable-2.17
+          - stable-2.18
           - devel
 
     steps:
@@ -100,9 +100,9 @@ jobs:
       fail-fast: false
       matrix:
         ansible:
-          - stable-2.15
           - stable-2.16
           - stable-2.17
+          - stable-2.18
           - devel
         clickhouse:
           - 21.8.15.7
