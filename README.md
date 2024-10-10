@@ -15,6 +15,10 @@ you are encouraged to contribute, share insights, and collaborate with fellow en
 We strive to make managing ClickHouse deployments as effortless and efficient as possible with automation,
 enabling users to focus on their core objectives.
 
+## Included content
+
+See the list of included modules and their documentation for your installed version on the [collection Galaxy page](https://galaxy.ansible.com/ui/repo/published/community/clickhouse/docs/).
+
 ## External requirements
 
 - [clickhouse-driver](https://clickhouse-driver.readthedocs.io/en/latest/) Python connector installed on a target machine.
@@ -47,7 +51,7 @@ ansible-galaxy collection install community.clickhouse --upgrade
 You can also install a specific version of the collection, for example, if you need to downgrade when something is broken in the latest version (please report an issue in this repository). Use the following syntax:
 
 ```bash
-ansible-galaxy collection install community.clickhouse:==0.1.0
+ansible-galaxy collection install community.clickhouse:==0.6.0
 ```
 
 See [Ansible Using collections](https://docs.ansible.com/ansible/latest/user_guide/collections_using.html) for more details.
@@ -70,12 +74,10 @@ See [Ansible Using collections](https://docs.ansible.com/ansible/latest/user_gui
   ansible.builtin.debug:
     var: result
 
-# Note: it runs SELECT version() just for the sake of example.
-# You can get it with the task above much more conveniently.
 - name: Query DB using non-default user & DB to connect to
   register: result
   community.clickhouse.clickhouse_client:
-    execute: SELECT version()
+    execute: SELECT * FROM my_table
     login_host: localhost
     login_user: alice
     login_db: foo
@@ -143,10 +145,6 @@ We maintain each major release version (1.x.y, 2.x.y, ...) for two years after t
 
 Here is the table for the support timeline:
 - 1.x.y: to be released
-
-## Included content
-
-See the list of included modules and their documentation for your installed version on the [collection Galaxy page](https://galaxy.ansible.com/ui/repo/published/community/clickhouse/docs/).
 
 ## Tested with
 
