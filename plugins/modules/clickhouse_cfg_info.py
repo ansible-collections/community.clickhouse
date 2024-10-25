@@ -13,6 +13,8 @@ module: clickhouse_cfg_info
 
 short_description: Retrieves ClickHouse config file content and returns it as JSON
 
+version_added: '0.7.0'
+
 description:
   - Retrieves ClickHouse config file content and returns it as JSON.
   - Only config files in YAML format are supported at the moment.
