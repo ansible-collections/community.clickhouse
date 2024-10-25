@@ -1,0 +1,20 @@
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+- name: Put config.yaml file in place
+  ansible.builtin.copy:
+    src: config.yaml
+    dest: /tmp/config.yaml
+
+- name: Retrieve info from config.yaml
+  register: result
+  community.clickhouse.clickhouse_cfg_info:
+    path: /tmp/config.yaml
+
+- name: Check the content
+  ansible.builtin.assert:
+    that:
+    - result['http_port'] == 8123
+    - result['grpc']['compression_level'] == 'medium'
