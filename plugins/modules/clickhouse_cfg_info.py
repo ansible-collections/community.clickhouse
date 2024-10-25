@@ -37,12 +37,6 @@ requirements:
   - pyyaml
 '''
 
-# TODO: add the "dir" option
-# mutually exclusive with path.
-# If specified, it'll search the cfg files
-# in that directory and in config.d directory there.
-# Let's discuss it first
-
 # TODO: it should also handle xml configs
 
 EXAMPLES = r'''
