@@ -8,6 +8,11 @@
     src: config.yaml
     dest: /tmp/config.yaml
 
+- name: Put config.yaml file in place
+  ansible.builtin.copy:
+    src: config.xml
+    dest: /tmp/config.xml
+
 - name: Retrieve info from config.yaml
   register: result
   community.clickhouse.clickhouse_cfg_info:
@@ -16,8 +21,19 @@
 - name: Check the content
   ansible.builtin.assert:
     that:
-    - result['http_port'] == 8123
-    - result['grpc']['compression_level'] == 'medium'
+    - result['config']['http_port'] == 8123
+    - result['config']['tcp_port'] == 9000
+
+- name: Retrieve info from config.xml
+  register: result
+  community.clickhouse.clickhouse_cfg_info:
+    path: /tmp/config.xml
+
+- name: Check the content
+  ansible.builtin.assert:
+    that:
+    - result['config']['http_port'] == '8123'
+    - result['config']['tcp_port'] == '9000'
 
 - name: Try to retreive info from a non-existing file
   register: result
@@ -29,4 +45,4 @@
   ansible.builtin.assert:
     that:
     - result is failed
-    - result.msg is search('Could not open/load YAML from the file')
+    - result.msg is search('Could not open/load from file')

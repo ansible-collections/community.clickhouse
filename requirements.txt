@@ -1,2 +1,3 @@
 clickhouse_driver
 pyyaml
+xmltodict
