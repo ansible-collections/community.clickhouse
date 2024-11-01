@@ -8,7 +8,7 @@
     src: config.yaml
     dest: /tmp/config.yaml
 
-- name: Put config.yaml file in place
+- name: Put config.xml file in place
   ansible.builtin.copy:
     src: config.xml
     dest: /tmp/config.xml
