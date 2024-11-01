@@ -18,3 +18,15 @@
     that:
     - result['http_port'] == 8123
     - result['grpc']['compression_level'] == 'medium'
+
+- name: Try to retreive info from a non-existing file
+  register: result
+  ignore_errors: true
+  community.clickhouse.clickhouse_cfg_info:
+    path: /tmp/non-existing.yaml
+
+- name: Assert failure
+  ansible.builtin.assert:
+    that:
+    - result is failed
+    - result.msg is search('Could not open/load YAML from the file')

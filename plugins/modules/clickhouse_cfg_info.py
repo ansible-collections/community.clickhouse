@@ -66,10 +66,15 @@ from ansible.module_utils.basic import (
 )
 
 
-def load_from_yaml(path):
-    with open(path, 'r') as f:
+def load_from_yaml(module, path):
+    try:
+        f = open(path, 'r')
         content = yaml.safe_load(f)
-    return content
+    except Exception as e:
+        module.fail_json(msg="Could not open/load YAML from the file %s: %s" % (path, e))
+    else:
+        f.close()
+        return content
 
 
 def main():
@@ -87,7 +92,7 @@ def main():
     if not HAS_PYYAML:
         module.fail_json(msg=missing_required_lib('pyyaml'))
 
-    cfg_content = load_from_yaml(module.params['path'])
+    cfg_content = load_from_yaml(module, module.params['path'])
 
     # Users will get this in JSON output after execution
     module.exit_json(changed=False, **cfg_content)
