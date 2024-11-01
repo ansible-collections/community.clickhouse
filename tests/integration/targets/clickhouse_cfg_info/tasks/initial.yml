@@ -23,6 +23,10 @@
     that:
     - result['config']['http_port'] == 8123
     - result['config']['tcp_port'] == 9000
+    - result['config']['error_log']['collect_interval_milliseconds'] == 1000
+    - result['config']['graphite_rollup_example']['default']['retention'][0]['age'] == 0
+    - result['config']['crash_log']['partition_by'] == ''
+    - result['config']['grpc']['enable_ssl'] == false
 
 - name: Retrieve info from config.xml
   register: result
@@ -32,8 +36,12 @@
 - name: Check the content
   ansible.builtin.assert:
     that:
-    - result['config']['http_port'] == '8123'
-    - result['config']['tcp_port'] == '9000'
+    - result['config']['http_port'] == 8123
+    - result['config']['tcp_port'] == 9000
+    - result['config']['error_log']['collect_interval_milliseconds'] == 1000
+    - result['config']['graphite_rollup_example']['default']['retention'][0]['age'] == 0
+    - result['config']['crash_log']['partition_by'] == none
+    - result['config']['grpc']['enable_ssl'] == false
 
 - name: Try to retreive info from a non-existing file
   register: result

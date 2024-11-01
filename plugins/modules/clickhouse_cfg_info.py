@@ -18,7 +18,6 @@ version_added: '0.7.0'
 description:
   - Retrieves ClickHouse config file content and returns it as JSON.
   - Supports config files in the YAML and XML formats.
-  - When the config file is XML, options values are returned as strings.
   - Does not change server state.
 
 attributes:
@@ -56,8 +55,6 @@ RETURN = r'''
 config:
   description:
     - The content of the config file.
-    - When the file is XML, options values
-      are returned as strings.
   returned: success
   type: dict
 '''
@@ -97,11 +94,49 @@ def load_from_yaml(f):
 
 
 def load_from_xml(f):
-    return xmltodict.parse(f.read())['clickhouse']
+    content = xmltodict.parse(f.read())['clickhouse']
+    # This lib loads all values including boolean
+    # or numerical as strings. Let's convert if possible.
+    return convert_str_vals_in_dict(content)
 
 
 def is_xml(path):
     return True if len(path) > 4 and path[-4:] == '.xml' else False
+
+
+def convert_str_vals_in_dict(d):
+    """Recursively traverse a dict and covert
+    string values to appropirate types.
+    """
+    for key, val in d.items():
+        if isinstance(val, dict):
+            convert_str_vals_in_dict(val)
+
+        elif isinstance(val, list):
+            for i, v in enumerate(val):
+                if isinstance(v, dict):
+                    convert_str_vals_in_dict(val[i])
+        else:
+            d[key] = convert(val)
+
+    return d
+
+
+def convert(val):
+    # Try to convert or just return it back
+    try:
+        if val == 'false':
+            val = False
+        elif val == 'true':
+            val = True
+        elif val.isnumeric():
+            val = int(val)
+        else:
+            val = float(val)
+    except Exception:
+        return val
+
+    return val
 
 
 def main():
