@@ -17,7 +17,7 @@ version_added: '0.7.0'
 
 description:
   - Retrieves ClickHouse config file content and returns it as JSON.
-  - Only config files in YAML format are supported at the moment.
+  - Supports config files in the YAML and XML formats.
   - Does not change server state.
 
 attributes:
@@ -36,10 +36,9 @@ options:
     required: true
 
 requirements:
-  - pyyaml
+  - pyyaml (for YAML config files)
+  - xmltodict (for XML config files)
 '''
-
-# TODO: it should also handle xml configs
 
 EXAMPLES = r'''
 - name: Get server information
@@ -52,7 +51,13 @@ EXAMPLES = r'''
     var: result
 '''
 
-RETURN = r''' # '''
+RETURN = r'''
+config:
+  description:
+    - The content of the config file.
+  returned: success
+  type: dict
+'''
 
 try:
     import yaml
@@ -60,21 +65,78 @@ try:
 except ImportError:
     HAS_PYYAML = False
 
+try:
+    import xmltodict
+    HAS_XMLTODICT = True
+except ImportError:
+    HAS_XMLTODICT = False
+
 from ansible.module_utils.basic import (
     AnsibleModule,
     missing_required_lib,
 )
 
 
-def load_from_yaml(module, path):
+def load_config(module, load_func, path):
     try:
         f = open(path, 'r')
-        content = yaml.safe_load(f)
+        content = load_func(f)
     except Exception as e:
-        module.fail_json(msg="Could not open/load YAML from the file %s: %s" % (path, e))
+        fail_msg = "Could not open/load from file %s: %s" % (path, e)
+        module.fail_json(msg=fail_msg)
     else:
         f.close()
         return content
+
+
+def load_from_yaml(f):
+    return yaml.safe_load(f)
+
+
+def load_from_xml(f):
+    content = xmltodict.parse(f.read())['clickhouse']
+    # This lib loads all values including boolean
+    # or numerical as strings. Let's convert if possible.
+    return convert_str_vals_in_dict(content)
+
+
+def is_xml(path):
+    return True if len(path) > 4 and path[-4:] == '.xml' else False
+
+
+def convert_str_vals_in_dict(d):
+    """Recursively traverse a dict and covert
+    string values to appropirate types.
+    """
+    for key, val in d.items():
+        if isinstance(val, dict):
+            convert_str_vals_in_dict(val)
+
+        elif isinstance(val, list):
+            for i, v in enumerate(val):
+                if isinstance(v, dict):
+                    convert_str_vals_in_dict(val[i])
+        else:
+            d[key] = convert(val)
+
+    return d
+
+
+def convert(val):
+    # Try to convert or just return it back
+    try:
+        if val == 'false':
+            val = False
+        elif val == 'true':
+            val = True
+        elif val.isnumeric():
+            val = int(val)
+        else:
+            val = float(val)
+    except Exception:
+        return val
+
+    return val
 
 
 def main():
@@ -89,13 +151,25 @@ def main():
         supports_check_mode=True,
     )
 
-    if not HAS_PYYAML:
-        module.fail_json(msg=missing_required_lib('pyyaml'))
+    path = module.params['path']
 
-    cfg_content = load_from_yaml(module, module.params['path'])
+    # When XML
+    if is_xml(path):
+        if not HAS_XMLTODICT:
+            module.fail_json(msg=missing_required_lib('xmltodict'))
+        load_func = load_from_xml
+
+    # When YAML, the default
+    else:
+        if not HAS_PYYAML:
+            module.fail_json(msg=missing_required_lib('pyyaml'))
+        load_func = load_from_yaml
+
+    # Load content as dict
+    cfg_content = load_config(module, load_func, path)
 
     # Users will get this in JSON output after execution
-    module.exit_json(changed=False, **cfg_content)
+    module.exit_json(changed=False, config=cfg_content)
 
 
 if __name__ == '__main__':
