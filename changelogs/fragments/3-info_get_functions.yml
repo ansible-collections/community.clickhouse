@@ -1,2 +1,0 @@
-breaking_changes:
-- clickhouse_info - removed ``functions`` for collecting information of created functions. A rare and unpopular feature.

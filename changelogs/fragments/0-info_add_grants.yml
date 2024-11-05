@@ -1,2 +1,0 @@
-minor_changes:
-- clickhouse_info - add the ``grants`` return value for users and roles.

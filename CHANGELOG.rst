@@ -4,6 +4,33 @@ CHANGE THIS IN changelogs/config.yaml! Release Notes
 
 .. contents:: Topics
 
+v0.7.0
+======
+
+Release Summary
+---------------
+
+This is a minor release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Minor Changes
+-------------
+
+- clickhouse_info - add the ``grants`` return value for users and roles.
+- clickhouse_info - add the ``grants`` returns all grants for users and roles.
+- clickhouse_info - add the ``settings_profile_elements`` returns all settings for users, profiles and roles.
+
+Breaking Changes / Porting Guide
+--------------------------------
+
+- clickhouse_info - removed ``functions`` for collecting information of created functions. A rare and unpopular feature.
+
+New Modules
+-----------
+
+- clickhouse_cfg_info - Retrieves ClickHouse config file content and returns it as JSON
+
 v0.6.0
 ======
 
