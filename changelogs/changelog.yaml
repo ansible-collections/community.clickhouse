@@ -143,3 +143,29 @@ releases:
     - 0-clickhouse_user.yml
     - 0.6.0.yml
     release_date: '2024-08-26'
+  0.7.0:
+    changes:
+      breaking_changes:
+      - clickhouse_info - removed ``functions`` for collecting information of created
+        functions. A rare and unpopular feature.
+      minor_changes:
+      - clickhouse_info - add the ``grants`` return value for users and roles.
+      - clickhouse_info - add the ``grants`` returns all grants for users and roles.
+      - clickhouse_info - add the ``settings_profile_elements`` returns all settings
+        for users, profiles and roles.
+      release_summary: 'This is a minor release of the ``community.clickhouse`` collection.
+
+        This changelog contains all changes to the modules and plugins in this collection
+
+        that have been made after the previous release.'
+    fragments:
+    - 0-info_add_grants.yml
+    - 0.7.0.yml
+    - 1-info_add_all_grants.yml
+    - 2-info_add_all_settings_profiles.yml
+    - 3-info_get_functions.yml
+    modules:
+    - description: Retrieves ClickHouse config file content and returns it as JSON
+      name: clickhouse_cfg_info
+      namespace: ''
+    release_date: '2024-11-05'
