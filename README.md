@@ -132,6 +132,8 @@ It is necessary for maintainers of this collection to be subscribed to:
 
 * The collection itself (the `Watch` button -> `All Activity` in the upper right corner of the repository's homepage).
 * The [news-for-maintainers repository](https://github.com/ansible-collections/news-for-maintainers).
+* The [news-for-maintainers tag](https://forum.ansible.com/tag/news-for-maintainers) on the forum.
+* The [clickhouse tag](https://forum.ansible.com/tag/clickhouse) on the forum (optional).
 
 They also should be subscribed to Ansible's [The Bullhorn newsletter](https://docs.ansible.com/ansible/devel/community/communication.html#the-bullhorn).
 
