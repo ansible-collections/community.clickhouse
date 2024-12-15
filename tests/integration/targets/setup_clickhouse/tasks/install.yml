@@ -45,6 +45,14 @@
     group: clickhouse
     mode: '0600'
 
+- name: Copy cluster file
+  ansible.builtin.copy:
+    src: cluster.xml
+    dest: /etc/clickhouse-server/config.d/cluster.xml
+    owner: clickhouse
+    group: clickhouse
+    mode: '0600'
+
 - name: Enable and start clickhouse
   ansible.builtin.systemd_service:
     name: clickhouse-server
