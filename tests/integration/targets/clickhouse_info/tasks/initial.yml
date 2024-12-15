@@ -39,10 +39,6 @@
     client_kwargs:
       connect_timeout: 20
 
-- name: debug
-  debug:
-    msg: "{{ result }}"
-
 - name: Check result
   ansible.builtin.assert:
     that:
