@@ -107,6 +107,7 @@ jobs:
         clickhouse:
           - 22.8.9.24
           - 23.8.9.54
+          - 24.8.6.70
         python:
           - "3.10"
     steps:
@@ -126,10 +127,6 @@ jobs:
 
       - name: Set Clickhouse version (${{ matrix.clickhouse }})
         run: "sed -i 's/^clickhouse_version:.*/clickhouse_version: \"${{ matrix.clickhouse }}\"/g' ${{ env.clickhouse_version_file }}"
-
-      - name: Set Clickhouse version (${{ matrix.clickhouse }})
-        run: "sed -i 's/test_shard_localhost/default/g' ${{ env.clickhouse_test_info_file }}"
-        if: ${{ matrix.clickhouse == '23.8.9.54' }}
 
       - name: Run integration tests
         run: ansible-test integration --docker ubuntu2204 -v --color --retry-on-error --continue-on-error --python ${{ matrix.python }} --diff --coverage
