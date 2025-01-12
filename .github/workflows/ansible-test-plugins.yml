@@ -105,7 +105,6 @@ jobs:
           - stable-2.18
           - devel
         clickhouse:
-          - 22.8.9.24
           - 23.8.9.54
           - 24.8.6.70
         python:
