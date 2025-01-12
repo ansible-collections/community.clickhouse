@@ -189,7 +189,8 @@ def get_databases(module, client):
 
     Returns a dictionary with database names as keys.
     """
-    query = "SELECT name, engine, data_path, uuid FROM system.databases"
+    query = ("SELECT name, engine, data_path, metadata_path, uuid, "
+             "engine_full, comment FROM system.databases")
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
@@ -200,7 +201,10 @@ def get_databases(module, client):
         db_info[row[0]] = {
             "engine": row[1],
             "data_path": row[2],
-            "uuid": str(row[3]),
+            "metadata_path": row[3],
+            "uuid": str(row[4]),
+            "engine_full": row[5],
+            "comment": row[6],
         }
 
     return db_info
@@ -213,7 +217,7 @@ def get_clusters(module, client):
     """
     query = ("SELECT cluster, shard_num, shard_weight, replica_num, host_name, "
              "host_address, port, is_local, user, default_database, errors_count, "
-             "estimated_recovery_time FROM system.clusters")
+             "slowdowns_count, estimated_recovery_time FROM system.clusters")
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
@@ -233,7 +237,8 @@ def get_clusters(module, client):
         user = row[8]
         default_database = row[9]
         errors_count = row[10]
-        estimated_recovery_time = row[11]
+        slowdowns_count = row[11]
+        estimated_recovery_time = row[12]
 
         # Add cluster if not already there
         if cluster not in cluster_info:
@@ -256,6 +261,7 @@ def get_clusters(module, client):
                 "user": user,
                 "default_database": default_database,
                 "errors_count": errors_count,
+                "slowdowns_count": slowdowns_count,
                 "estimated_recovery_time": estimated_recovery_time,
             }
 
@@ -293,9 +299,11 @@ def get_tables(module, client):
     """
     query = ("SELECT database, name, uuid, engine, is_temporary, data_paths, "
              "metadata_path, metadata_modification_time, dependencies_database, "
-             "dependencies_table, create_table_query, engine_full, partition_key, "
+             "dependencies_table, create_table_query, engine_full, as_select, partition_key, "
              "sorting_key, primary_key, sampling_key, storage_policy, total_rows, total_bytes, "
-             "lifetime_rows, lifetime_bytes FROM system.tables")
+             "parts, active_parts, total_marks, lifetime_rows, lifetime_bytes, comment, "
+             "has_own_data, loading_dependencies_database, loading_dependencies_table, "
+             "loading_dependent_database, loading_dependent_table FROM system.tables")
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
@@ -316,15 +324,25 @@ def get_tables(module, client):
             "dependencies_table": row[9],
             "create_table_query": row[10],
             "engine_full": row[11],
-            "partition_key": row[12],
-            "sorting_key": row[13],
-            "primary_key": row[14],
-            "sampling_key": row[15],
-            "storage_policy": row[16],
-            "total_rows": row[17],
-            "total_bytes": row[18],
-            "lifetime_rows": row[19],
-            "lifetime_bytes": row[20],
+            "as_select": row[12],
+            "partition_key": row[13],
+            "sorting_key": row[14],
+            "primary_key": row[15],
+            "sampling_key": row[16],
+            "storage_policy": row[17],
+            "total_rows": row[18],
+            "total_bytes": row[19],
+            "parts": row[20],
+            "active_parts": row[21],
+            "total_marks": row[22],
+            "lifetime_rows": row[23],
+            "lifetime_bytes": row[24],
+            "comment": row[25],
+            "has_own_data": row[26],
+            "loading_dependencies_database": row[27],
+            "loading_dependencies_table": row[28],
+            "loading_dependent_database": row[29],
+            "loading_dependent_table": row[30],
         }
 
     return tables_info
