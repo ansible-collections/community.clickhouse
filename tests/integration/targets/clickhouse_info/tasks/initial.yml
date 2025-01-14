@@ -64,9 +64,9 @@
     - result["settings_profile_elements"]["users"]["eva"][0]["setting_name"] == "max_memory_usage"
     - result["settings_profile_elements"]["users"]["eva"][0]["value"] == "15000"
 
-- name: Debug
-  ansible.builtin.debug:
-    var: result
+# - name: Debug
+#   ansible.builtin.debug:
+#     var: result
 
 - name: Create user
   community.clickhouse.clickhouse_client:

@@ -354,11 +354,12 @@ def get_dictionaries(module, client):
     Returns a dictionary with databases name as dictionary,
     and the name of the 'dictionary' in this dictionary is the key.
     """
-    query = ("SELECT database, name, uuid, status, origin, type, key, "
-             "attribute.names, attribute.types, bytes_allocated, query_count, "
-             "hit_rate, element_count, load_factor, source, lifetime_min, "
+    query = ("SELECT database, name, uuid, status, origin, key.names, key.types, "
+             "attribute.names, attribute.types, bytes_allocated, "
+             "hierarchical_index_bytes_allocated, query_count, hit_rate, found_rate, "
+             "element_count, load_factor, source, lifetime_min, "
              "lifetime_max, loading_start_time, last_successful_update_time, "
-             "loading_duration, last_exception FROM system.dictionaries")
+             "loading_duration, last_exception, comment FROM system.dictionaries")
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
@@ -373,22 +374,24 @@ def get_dictionaries(module, client):
             "uuid": str(row[2]),
             "status": row[3],
             "origin": row[4],
-            "type": row[5],
-            "key": row[6],
+            "key.names": row[5],
+            "key.types": row[6],
             "attribute.names": row[7],
             "attribute.types": row[8],
             "bytes_allocated": row[9],
-            "query_count": row[10],
-            "hit_rate": row[11],
-            "element_count": row[12],
-            "load_factor": row[13],
-            "source": row[14],
-            "lifetime_min": row[15],
-            "lifetime_max": row[16],
-            "loading_start_time": row[17],
-            "last_successful_update_time": row[18],
-            "loading_duration": row[19],
-            "last_exception": row[20],
+            "hierarchical_index_bytes_allocated": row[10],
+            "query_count": row[11],
+            "hit_rate": row[12],
+            "found_rate": row[13],
+            "element_count": row[14],
+            "load_factor": row[15],
+            "source": row[16],
+            "lifetime_min": row[17],
+            "lifetime_max": row[18],
+            "loading_start_time": row[19],
+            "last_successful_update_time": row[20],
+            "loading_duration": row[21],
+            "last_exception": row[22],
         }
 
     return dictionaries_info
@@ -400,7 +403,7 @@ def get_settings(module, client):
     Returns a dictionary with settings names as keys.
     """
     query = ("SELECT name, value, changed, description, min, max, readonly, "
-             "type FROM system.settings")
+             "type, default, alias_for FROM system.settings")
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
@@ -416,6 +419,8 @@ def get_settings(module, client):
             "max": row[5],
             "readonly": row[6],
             "type": row[7],
+            "default": row[8],
+            "alias_for": row[9],
         }
 
     return settings_info
@@ -426,8 +431,8 @@ def get_merge_tree_settings(module, client):
 
     Returns a dictionary with merge_tree_settings names as keys.
     """
-    query = ("SELECT name, value, changed, description, "
-             "type FROM system.merge_tree_settings")
+    query = ("SELECT name, value, changed, description, min, max, "
+             "readonly, type FROM system.merge_tree_settings")
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
@@ -439,7 +444,10 @@ def get_merge_tree_settings(module, client):
             "value": row[1],
             "changed": row[2],
             "description": row[3],
-            "type": row[4],
+            "min": row[4],
+            "max": row[5],
+            "readonly": row[6],
+            "type": row[7],
         }
 
     return merge_tree_settings_info
@@ -452,7 +460,8 @@ def get_users(module, client):
     """
     query = ("SELECT name, id, storage, auth_type, auth_params, host_ip, host_names, "
              "host_names_regexp, host_names_like, default_roles_all, "
-             "default_roles_list, default_roles_except FROM system.users")
+             "default_roles_list, default_roles_except, grantees_any, "
+             "grantees_list, grantees_except, default_database FROM system.users")
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
@@ -473,6 +482,11 @@ def get_users(module, client):
             "default_roles_all": row[9],
             "default_roles_list": row[10],
             "default_roles_except": row[11],
+            "grantees_any": row[12],
+            "grantees_list": row[13],
+            "grantees_except": row[14],
+            "default_database": row[15],
+
         }
 
         user_info[user_name]["roles"] = get_user_roles(module, client, user_name)
@@ -603,7 +617,7 @@ def get_settings_profile_elements(module, client):
     Returns a dictionary with roles, profiles and users names as keys.
     """
     query = ("SELECT profile_name, user_name, role_name, "
-             "index, setting_name, value, min, max, "
+             "index, setting_name, value, min, max, writability, "
              "inherit_profile FROM system.settings_profile_elements")
     result = execute_query(module, client, query)
 
@@ -638,7 +652,8 @@ def get_settings_profile_elements(module, client):
             "value": row[5],
             "min": row[6],
             "max": row[7],
-            "inherit_profile": row[8],
+            "writability": row[8],
+            "inherit_profile": row[9],
         })
 
     return settings_profile_elements

@@ -1,0 +1,2 @@
+major_changes:
+- clickhouse_info - removed support for clickhouse versions 21 and 22.
