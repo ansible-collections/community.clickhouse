@@ -15,7 +15,7 @@
       connect_timeout: 20
     execute: >
       CREATE TABLE IF NOT EXISTS foo.test_table1
-      (a String, b String, c String) ENGINE = Memory
+      (x String) ENGINE = Memory
     execute_kwargs:
       types_check: false
 
