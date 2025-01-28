@@ -5,7 +5,7 @@
 
 - name: Create a test dabase
   community.clickhouse.clickhouse_client:
-    execute: CREATE DATABASE foo
+    execute: CREATE DATABASE IF NOT EXISTS foo
 
 - name: Create a test table
   register: result
@@ -14,15 +14,15 @@
     client_kwargs:
       connect_timeout: 20
     execute: >
-      CREATE TABLE IF NOT EXISTS foo.test_table_1
-      (id UInt64, x String) ENGINE = Memory
+      CREATE TABLE IF NOT EXISTS foo.test_table1
+      (a String, b String, c String) ENGINE = Memory
     execute_kwargs:
       types_check: false
 
 - name: Insert into test table using named args
   register: result
   community.clickhouse.clickhouse_client:
-    execute: "INSERT INTO test_table_1 (x) VALUES (%(a)s), (%(b)s), (%(c)s)"
+    execute: "INSERT INTO test_table1 (x) VALUES (%(a)s), (%(b)s), (%(c)s)"
     execute_kwargs:
       params:
         a: one
