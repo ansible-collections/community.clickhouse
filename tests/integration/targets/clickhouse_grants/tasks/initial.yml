@@ -22,7 +22,7 @@
 - name: Insert into test table using named args
   register: result
   community.clickhouse.clickhouse_client:
-    execute: "INSERT INTO test_table1 (x) VALUES (%(a)s), (%(b)s), (%(c)s)"
+    execute: "INSERT INTO foo.test_table1 (x) VALUES (%(a)s), (%(b)s), (%(c)s)"
     execute_kwargs:
       params:
         a: one
