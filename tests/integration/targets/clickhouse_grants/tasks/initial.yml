@@ -11,8 +11,6 @@
   register: result
   community.clickhouse.clickhouse_client:
     login_host: localhost
-    client_kwargs:
-      connect_timeout: 20
     execute: >
       CREATE TABLE IF NOT EXISTS foo.test_table1
       (x String) ENGINE = Memory
@@ -29,6 +27,25 @@
         b: two
         c: three
 
+- name: Create a test table 2
+  register: result
+  community.clickhouse.clickhouse_client:
+    login_host: localhost
+    execute: >
+      CREATE TABLE IF NOT EXISTS foo.test_table2
+      (y String, z String) ENGINE = Memory
+    execute_kwargs:
+      types_check: false
+
+- name: Insert into test table using named args
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "INSERT INTO foo.test_table2 (y, z) VALUES (%(a)s, %(b)s)"
+    execute_kwargs:
+      params:
+        a: one
+        b: two
+
 - name: Create a test user
   community.clickhouse.clickhouse_user:
     state: present
@@ -39,10 +56,38 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
-    client_kwargs:
-      connect_timeout: 20
 
-- name: Check user's attributes
+- name: Check user's grants, they are empty
   ansible.builtin.assert:
     that:
-    - result["users"]["alice"] != {}
+    - result["users"]["alice"]["grants"] == []
+
+- name: Grant SELECT on a column WITH GRANT OPTION
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: GRANT SELECT(x) ON foo.test_table1 TO alice WITH GRANT OPTION
+
+- name: Grant SELECT on a table
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: GRANT SELECT ON foo.test_table2 TO alice
+
+- name: Grant SELECT on a column in the same table
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: GRANT SELECT(y) ON foo.test_table2 TO alice
+
+- name: Grant UPDATE on another column in the same table
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: GRANT UPDATE(z) ON foo.test_table2 TO alice
+
+- name: Get user info
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check user's grants again, not empty
+  ansible.builtin.assert:
+    that:
+    - result["users"]["alice"]["grants"] != []
