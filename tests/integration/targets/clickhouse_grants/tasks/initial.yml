@@ -91,3 +91,17 @@
   ansible.builtin.assert:
     that:
     - result["users"]["alice"]["grants"] != []
+
+- name: Grant privs
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: bob
+
+- name: Check
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    # TODO Must be updated to use diff
+    - result["start_grants"] == {}
+    - result["end_grants"] == {}
