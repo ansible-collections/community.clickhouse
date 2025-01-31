@@ -62,25 +62,22 @@
     that:
     - result["users"]["alice"]["grants"] == []
 
-- name: Grant SELECT on a column WITH GRANT OPTION
+- name: Grant privs 
   register: result
   community.clickhouse.clickhouse_client:
-    execute: GRANT SELECT(x) ON foo.test_table1 TO alice WITH GRANT OPTION
-
-- name: Grant SELECT on a table
-  register: result
-  community.clickhouse.clickhouse_client:
-    execute: GRANT SELECT ON foo.test_table2 TO alice
-
-- name: Grant SELECT on a column in the same table
-  register: result
-  community.clickhouse.clickhouse_client:
-    execute: GRANT SELECT(y) ON foo.test_table2 TO alice
-
-- name: Grant UPDATE on another column in the same table
-  register: result
-  community.clickhouse.clickhouse_client:
-    execute: GRANT UPDATE(z) ON foo.test_table2 TO alice
+    execute: '{{ item }}'
+  with_items:
+  - GRANT SELECT(x) ON foo.test_table1 TO alice WITH GRANT OPTION
+  - GRANT SELECT ON foo.test_table2 TO alice
+  - REVOKE SELECT(y) ON foo.test_table2 FROM alice
+  - GRANT UPDATE(z) ON foo.test_table2 TO alice
+  - GRANT DELETE ON foo.test_table2 TO alice
+  - GRANT CREATE TABLE ON foo.* TO alice
+  - GRANT CREATE DATABASE ON *.* TO alice
+  - GRANT KILL QUERY ON *.* TO alice
+  - GRANT CREATE USER ON *.* TO alice
+  - GRANT ALTER USER ON *.* TO alice
+  - GRANT DROP USER ON *.* TO alice
 
 - name: Get user info
   register: result
