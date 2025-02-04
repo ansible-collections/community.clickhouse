@@ -111,6 +111,8 @@ class ClickHouseGrants():
 
         if result != []:
             self.grantee_exists = True
+        else:
+            self.module.fail_json(msg="Grantee %s does not exist" % self.grantee)
 
     def get(self):
         # WIP

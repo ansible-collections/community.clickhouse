@@ -89,11 +89,24 @@
     that:
     - result["users"]["alice"]["grants"] != []
 
+- name: Grant privs to non-existent grantee, must fail
+  register: result
+  ignore_errors: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: notexists
+
+- name: Check that it failed
+  ansible.builtin.assert:
+    that:
+    - result is failed
+    - result.msg is search("does not exist")
+
 - name: Grant privs
   register: result
   community.clickhouse.clickhouse_grants:
     state: present
-    grantee: bob
+    grantee: alice
 
 - name: Check
   ansible.builtin.assert:
