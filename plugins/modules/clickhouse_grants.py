@@ -52,7 +52,7 @@ EXAMPLES = r'''
     login_user: alice
     login_db: foo
     login_password: my_password
-    grantee: bob
+    grantee: alice
     # TBD
 '''
 
