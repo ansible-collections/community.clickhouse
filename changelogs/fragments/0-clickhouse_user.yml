@@ -1,0 +1,2 @@
+bugfixes:
+- clickhouse_user - fixes failure when creating a new user and role_mode is not remove (https://github.com/ansible-collections/community.clickhouse/issues/97).

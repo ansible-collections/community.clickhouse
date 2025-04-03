@@ -136,6 +136,7 @@
   - accountant
   - manager
   - sales
+  - test_listed_only
   community.clickhouse.clickhouse_role:
     name: "{{ item }}"
   
@@ -584,3 +585,36 @@
     - result is not changed
     - result["users"]["test_user"]["roles"] == ["accountant"]
     - result["users"]["test_user"]["default_roles_list"] == ["accountant"]
+
+# https://github.com/ansible-collections/community.clickhouse/issues/97
+- name: Grant listed only roles in real mode for a new user
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user_1
+    roles:
+    - test_listed_only
+    default_roles:
+    - test_listed_only
+    roles_mode: listed_only
+    default_roles_mode: listed_only
+
+- name: Check ret values 
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements[0] == "CREATE USER test_user_1"
+    - result.executed_statements[1] == "GRANT test_listed_only TO test_user_1"
+    - result.executed_statements[2] == "ALTER USER test_user_1 DEFAULT ROLE test_listed_only"
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result["users"]["test_user_1"]["roles"] == ["test_listed_only"]
+    - result["users"]["test_user_1"]["default_roles_list"] == ["test_listed_only"]

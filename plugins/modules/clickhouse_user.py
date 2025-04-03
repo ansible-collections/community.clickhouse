@@ -293,7 +293,7 @@ class ClickHouseUser():
             execute_query(self.module, self.client, query)
 
         if roles and roles_mode != 'remove':
-            self.__grant_role(roles)
+            self.__grant_roles(roles)
 
         if default_roles and default_roles_mode != 'remove':
             self.__set_default_roles(default_roles)
