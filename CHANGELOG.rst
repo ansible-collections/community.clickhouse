@@ -1,8 +1,33 @@
-====================================================
-CHANGE THIS IN changelogs/config.yaml! Release Notes
-====================================================
+===============================================================
+Ansible community.clickhouse collection changelog Release Notes
+===============================================================
 
 .. contents:: Topics
+
+v0.8.0
+======
+
+Release Summary
+---------------
+
+This is a minor release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Major Changes
+-------------
+
+- clickhouse_info - removed support for clickhouse versions 21 and 22 (https://github.com/ansible-collections/community.clickhouse/pull/93).
+
+Minor Changes
+-------------
+
+- clickhouse_info - columns are extracted from clickhouse version 23 system tables, the affected system tables are - databases, clusters, tables, dictionaries, settings, merge_tree_settings, users, settings_profile_elements (https://github.com/ansible-collections/community.clickhouse/pull/93).
+
+Bugfixes
+--------
+
+- clickhouse_user - fixes failure when creating a new user and role_mode is not remove (https://github.com/ansible-collections/community.clickhouse/issues/97).
 
 v0.7.0
 ======

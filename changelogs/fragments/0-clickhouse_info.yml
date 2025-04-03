@@ -1,7 +1,0 @@
-major_changes:
-- clickhouse_info - removed support for clickhouse versions 21 and 22 (https://github.com/ansible-collections/community.clickhouse/pull/93).
-
-minor_changes:
-- clickhouse_info - columns are extracted from clickhouse version 23 system tables,
-  the affected system tables are - databases, clusters, tables, dictionaries, settings, merge_tree_settings, users, settings_profile_elements
-  (https://github.com/ansible-collections/community.clickhouse/pull/93).
