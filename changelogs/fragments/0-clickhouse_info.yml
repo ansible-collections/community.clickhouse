@@ -1,0 +1,2 @@
+breaking_changes:
+- clickhouse_info - explicitly convert some return values keys of integer type to string to ensure compatibility with ansible-core 2.19.
