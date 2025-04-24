@@ -194,7 +194,7 @@ def get_databases(module, client):
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
-        return {PRIV_ERR_CODE: "Not enough privileges"}
+        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     db_info = {}
     for row in result:
@@ -221,15 +221,15 @@ def get_clusters(module, client):
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
-        return {PRIV_ERR_CODE: "Not enough privileges"}
+        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     cluster_info = {}
 
     for row in result:
         cluster = row[0]
-        shard_num = row[1]
+        shard_num = str(row[1])
         shard_weight = row[2]
-        replica_num = row[3]
+        replica_num = str(row[3])
         host_name = row[4]
         host_address = row[5]
         port = row[6]
@@ -277,7 +277,7 @@ def get_roles(module, client):
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
-        return {PRIV_ERR_CODE: "Not enough privileges"}
+        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     roles_info = {}
     for row in result:
@@ -307,7 +307,7 @@ def get_tables(module, client):
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
-        return {PRIV_ERR_CODE: "Not enough privileges"}
+        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     tables_info = {}
     for row in result:
@@ -363,7 +363,7 @@ def get_dictionaries(module, client):
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
-        return {PRIV_ERR_CODE: "Not enough privileges"}
+        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     dictionaries_info = {}
     for row in result:
@@ -407,7 +407,7 @@ def get_settings(module, client):
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
-        return {PRIV_ERR_CODE: "Not enough privileges"}
+        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     settings_info = {}
     for row in result:
@@ -436,7 +436,7 @@ def get_merge_tree_settings(module, client):
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
-        return {PRIV_ERR_CODE: "Not enough privileges"}
+        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     merge_tree_settings_info = {}
     for row in result:
@@ -465,7 +465,7 @@ def get_users(module, client):
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
-        return {PRIV_ERR_CODE: "Not enough privileges"}
+        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     user_info = {}
     for row in result:
@@ -526,7 +526,7 @@ def get_settings_profiles(module, client):
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
-        return {PRIV_ERR_CODE: "Not enough privileges"}
+        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     profile_info = {}
     for row in result:
@@ -552,7 +552,7 @@ def get_quotas(module, client):
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
-        return {PRIV_ERR_CODE: "Not enough privileges"}
+        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     quota_info = {}
     for row in result:
@@ -580,7 +580,7 @@ def get_all_grants(module, client):
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
-        return {PRIV_ERR_CODE: "Not enough privileges"}
+        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     grants_info = {
         'users': {},
@@ -622,7 +622,7 @@ def get_settings_profile_elements(module, client):
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
-        return {PRIV_ERR_CODE: "Not enough privileges"}
+        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     settings_profile_elements = {'profiles': {},
                                  'users': {},
@@ -670,7 +670,7 @@ def get_storage_policies(module, client):
     result = execute_query(module, client, query)
 
     if result == PRIV_ERR_CODE:
-        return {PRIV_ERR_CODE: "Not enough privileges"}
+        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     storage_policies_info = {}
     for row in result:
