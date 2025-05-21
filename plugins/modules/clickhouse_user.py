@@ -304,7 +304,7 @@ class ClickHouseUser():
                roles, roles_mode, default_roles, default_roles_mode):
 
         if roles is not None:
-            self.__update_roles(roles, roles_mode)
+            self.__update_roles(roles, roles_mode, cluster)
 
         if default_roles is not None:
             self.__update_default_roles(default_roles, default_roles_mode, cluster)
