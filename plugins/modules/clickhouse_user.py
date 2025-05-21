@@ -384,7 +384,6 @@ class ClickHouseUser():
         # make this idempotent, i.e. execute this only if the passwords don't match
         query = ("ALTER USER %s IDENTIFIED WITH %s "
                  "BY '%s'") % (self.name, type_pwd, pwd)
-        
         if cluster:
             query += " ON CLUSTER %s" % cluster
 
@@ -428,7 +427,6 @@ class ClickHouseUser():
         query = "ALTER USER %s DEFAULT ROLE %s" % (self.name, ', '.join(roles_to_set))
         if cluster:
             query += " ON CLUSTER %s" % cluster
-        
         executed_statements.append(query)
 
         if not self.module.check_mode:
