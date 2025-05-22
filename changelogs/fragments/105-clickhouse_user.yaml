@@ -1,0 +1,3 @@
+bugfixes:
+- clickhouse_user - fix the module to correct work clause "ON CLUSTER" when updating user attributes 
+  such as roles and passwords (https://github.com/ansible-collections/community.clickhouse/pull/105).
