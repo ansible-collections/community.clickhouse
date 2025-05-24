@@ -4,6 +4,21 @@ Ansible community.clickhouse collection changelog Release Notes
 
 .. contents:: Topics
 
+v0.8.2
+======
+
+Release Summary
+---------------
+
+This is a patch release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Bugfixes
+--------
+
+- clickhouse_user - fix the module to correct work clause "ON CLUSTER" when updating user attributes such as roles and passwords (https://github.com/ansible-collections/community.clickhouse/pull/105).
+
 v0.8.1
 ======
 
