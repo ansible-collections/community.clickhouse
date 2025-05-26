@@ -1,0 +1,3 @@
+bugfixes:
+- clickhouse_db - fix the module to correct position "ON CLUSTER" when create db 
+  with specifying engine type (https://github.com/ansible-collections/community.clickhouse/pull/108).
