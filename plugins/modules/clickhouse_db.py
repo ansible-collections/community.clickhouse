@@ -168,11 +168,11 @@ class ClickHouseDB():
 
     def create(self, engine, comment):
         query = "CREATE DATABASE %s" % self.name
-        if engine:
-            query += " ENGINE = %s" % engine
-
         if self.cluster:
             query += " ON CLUSTER %s" % self.cluster
+
+        if engine:
+            query += " ENGINE = %s" % engine
 
         if comment:
             query += " COMMENT '%s'" % comment
