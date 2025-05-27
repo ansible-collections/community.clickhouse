@@ -4,6 +4,21 @@ Ansible community.clickhouse collection changelog Release Notes
 
 .. contents:: Topics
 
+v0.8.3
+======
+
+Release Summary
+---------------
+
+This is a patch release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Bugfixes
+--------
+
+- clickhouse_db - fix the module to correct position "ON CLUSTER" when create db with specifying engine type (https://github.com/ansible-collections/community.clickhouse/pull/108).
+
 v0.8.2
 ======
 
