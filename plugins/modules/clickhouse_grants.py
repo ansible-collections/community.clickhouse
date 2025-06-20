@@ -157,8 +157,7 @@ class ClickHouseGrants():
                 if e["is_partial_revoke"]:
                     grants["global"]["part_revokes"] = e["access_type"]
                 else:
-                    grants["global"]["grants"][e["access_type"]] = {}
-                    grants["global"]["grants"][e["access_type"]]["grant_option"] = e["grant_option"]
+                    grants["global"]["grants"][e["access_type"]] = e["grant_option"]
             # If database is specified
             else:
                 grants["databases"][e["database"]] = {}
@@ -183,9 +182,7 @@ class ClickHouseGrants():
             # },
             # "global": {
             #     "grants": {
-            #         "access_type": {
-            #             "grant_option": 0
-            #         }
+            #          "ALTER USER": 0
             #     },
             #     "part_revokes": []
             # }
