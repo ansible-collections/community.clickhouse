@@ -58,13 +58,13 @@ EXAMPLES = r'''
 - name: Query DB using non-default user & DB to connect to
   register: result
   community.clickhouse.clickhouse_client:
-    execute: SELECT version()
+    execute: SELECT * FROM my_table
     login_host: localhost
     login_user: alice
     login_db: foo
     login_password: my_password
 
-- name: Print returned server version
+- name: Print returned rows
   ansible.builtin.debug:
     var: result.result
 
@@ -75,7 +75,6 @@ EXAMPLES = r'''
     set_settings:
       flatten_nested: 0
       short_circuit_function_evaluation: 'disable'
-
 
 - name: Insert into test table using named parameters
   register: result
@@ -98,7 +97,7 @@ EXAMPLES = r'''
   community.clickhouse.clickhouse_client:
     execute: "SELECT * FROM test_table_1"
 
-- name: Check return values
+- name: Check returned values
   ansible.builtin.assert:
     that:
     - result.result == [["one"], ["two"], ["three"]]
@@ -109,14 +108,14 @@ substituted_query:
   description:
   - Executed query with substituted arguments if any.
   returned: on success
-  sample: SHOW version()
+  sample: SELECT * FROM test_table_1
   type: str
 result:
   description:
   - Result returned by Client.execute().
   returned: on success
   type: list
-  sample: [["23.12.2.59"]]
+  sample: [["one"], ["two"], ["three"]]
 statistics:
   description:
   - Last executed query statistics retrieved from the
