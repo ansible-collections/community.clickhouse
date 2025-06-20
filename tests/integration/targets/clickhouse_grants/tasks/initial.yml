@@ -114,4 +114,4 @@
     - result is changed
     # TODO Must be updated to use diff
     - result["start_grants"] != {}
-    - result["end_grants"] == {}
+    - result["end_grants"] != {}
