@@ -28,7 +28,7 @@ author:
 extends_documentation_fragment:
   - community.clickhouse.client_inst_opts
 
-version_added: '0.8.0'
+version_added: '0.9.0'
 
 options:
   state:
@@ -80,6 +80,31 @@ PRIV_ERR_CODE = 497
 executed_statements = []
 
 
+def get_grants(module, client, name):
+    query = ("SELECT access_type, database, "
+             "table, column, is_partial_revoke, grant_option "
+             "FROM system.grants WHERE user_name = '%s' "
+             "OR role_name = '%s'" % (name, name))
+
+    result = execute_query(module, client, query)
+
+    if result == PRIV_ERR_CODE:
+        return {str(PRIV_ERR_CODE): "Not enough privileges"}
+
+    grants = []
+    for row in result:
+        grants.append({
+            "access_type": row[0],
+            "database": row[1],
+            "table": row[2],
+            "column": row[3],
+            "is_partial_revoke": row[4],
+            "grant_option": row[5],
+        })
+
+    return grants
+
+
 class ClickHouseGrants():
     def __init__(self, module, client, grantee):
         # TODO Maybe move the function determining if the
@@ -116,7 +141,8 @@ class ClickHouseGrants():
 
     def get(self):
         # WIP
-        return {}
+        grants_list = get_grants(self.module, self.client, self.grantee)
+        return grants_list
 
     def update(self):
         # WIP
