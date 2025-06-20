@@ -142,7 +142,55 @@ class ClickHouseGrants():
     def get(self):
         # WIP
         grants_list = get_grants(self.module, self.client, self.grantee)
-        return grants_list
+
+        grants = {
+            "global": {
+                "grants": {},
+                "part_revokes": set(),
+            },
+            "databases": {},
+        }
+
+        for e in grants_list:
+            # If database is not specified, grant it globally
+            if e["database"] is None:
+                if e["is_partial_revoke"]:
+                    grants["global"]["part_revokes"] = e["access_type"]
+                else:
+                    grants["global"]["grants"][e["access_type"]] = {}
+                    grants["global"]["grants"][e["access_type"]]["grant_option"] = e["grant_option"]
+            # If database is specified
+            else:
+                grants["databases"][e["database"]] = {}
+
+                # TODO First handle tables and columns
+                # if e["table"]
+                # if e["column"]
+
+                if e["is_partial_revoke"]:
+                    grants["databases"][e["database"]]["part_revokes"] = e["access_type"]
+                else:
+                    grants["databases"][e["database"]]["grants"] = {}
+                    grants["databases"][e["database"]]["grants"][e["access_type"]] = e["grant_option"]
+
+            # As of now, it returns:
+            # "databases": {
+            #     "foo": {
+            #         "grants": {
+            #             "ALTER UPDATE": 0
+            #         }
+            #     }
+            # },
+            # "global": {
+            #     "grants": {
+            #         "access_type": {
+            #             "grant_option": 0
+            #         }
+            #     },
+            #     "part_revokes": []
+            # }
+
+        return grants
 
     def update(self):
         # WIP
