@@ -166,11 +166,34 @@ class ClickHouseGrants():
                 # if e["table"]
                 # if e["column"]
 
-                if e["is_partial_revoke"]:
-                    grants["databases"][e["database"]]["part_revokes"] = e["access_type"]
+                # If table is not specified, grant it at the database level
+                if e["table"] is None:
+                    if e["is_partial_revoke"]:
+                        grants["databases"][e["database"]]["part_revokes"] = e["access_type"]
+                    else:
+                        grants["databases"][e["database"]]["grants"] = {}
+                        grants["databases"][e["database"]]["grants"][e["access_type"]] = e["grant_option"]
+
                 else:
-                    grants["databases"][e["database"]]["grants"] = {}
-                    grants["databases"][e["database"]]["grants"][e["access_type"]] = e["grant_option"]
+                    grants["databases"][e["database"]][e["table"]] = {}
+                    # If table is specified and columnt is not,
+                    # grant it at the table level
+                    if e["column"] is None:
+                        if e["is_partial_revoke"]:
+                            grants["databases"][e["database"]][e["table"]]["part_revokes"] = e["access_type"]
+                        else:
+                            grants["databases"][e["database"]][e["table"]]["grants"] = {}
+                            grants["databases"][e["database"]][e["table"]]["grants"][e["access_type"]] = e["grant_option"]
+
+                    # If column is specified, grant it for the column
+                    else:
+                        grants["databases"][e["database"]][e["table"]][e["column"]] = {}
+
+                        if e["is_partial_revoke"]:
+                            grants["databases"][e["database"]][e["table"]][e["column"]]["part_revokes"] = e["access_type"]
+                        else:
+                            grants["databases"][e["database"]][e["table"]][e["column"]]["grants"] = {}
+                            grants["databases"][e["database"]][e["table"]][e["column"]]["grants"][e["access_type"]] = e["grant_option"]
 
             # As of now, it returns:
             # "databases": {
