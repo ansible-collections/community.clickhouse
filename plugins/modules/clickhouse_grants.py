@@ -162,10 +162,6 @@ class ClickHouseGrants():
             else:
                 grants["databases"][e["database"]] = {}
 
-                # TODO First handle tables and columns
-                # if e["table"]
-                # if e["column"]
-
                 # If table is not specified, grant it at the database level
                 if e["table"] is None:
                     if e["is_partial_revoke"]:
@@ -194,21 +190,6 @@ class ClickHouseGrants():
                         else:
                             grants["databases"][e["database"]][e["table"]][e["column"]]["grants"] = {}
                             grants["databases"][e["database"]][e["table"]][e["column"]]["grants"][e["access_type"]] = e["grant_option"]
-
-            # As of now, it returns:
-            # "databases": {
-            #     "foo": {
-            #         "grants": {
-            #             "ALTER UPDATE": 0
-            #         }
-            #     }
-            # },
-            # "global": {
-            #     "grants": {
-            #          "ALTER USER": 0
-            #     },
-            #     "part_revokes": []
-            # }
 
         return grants
 
