@@ -75,6 +75,7 @@ from ansible.module_utils.basic import (
     AnsibleModule,
     missing_required_lib,
 )
+import json
 
 
 def load_config(module, load_func, path):
@@ -90,7 +91,11 @@ def load_config(module, load_func, path):
 
 
 def load_from_yaml(f):
-    return yaml.safe_load(f)
+    item = yaml.safe_load(f)
+    # Ensure structure is JSON-serializable to prevent hangs from recursive aliases
+    # See: https://github.com/ansible-collections/community.clickhouse/issues/111
+    json.dumps(item)
+    return item
 
 
 def load_from_xml(f):

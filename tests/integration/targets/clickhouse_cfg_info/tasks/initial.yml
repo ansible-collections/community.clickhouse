@@ -54,3 +54,24 @@
     that:
     - result is failed
     - result.msg is search('Could not open/load from file')
+
+
+- name: Prepare YAML config with recursive alias (invalid)
+  ansible.builtin.copy:
+    dest: /tmp/cfg_recursive.yaml
+    content: |
+      a: &a
+        b: *a
+
+- name: Try to retrieve YAML config with recursive alias
+  register: recursive_yaml_result
+  community.clickhouse.clickhouse_cfg_info:
+    path: /tmp/cfg_recursive.yaml
+  ignore_errors: true
+
+- name: Assert recursive alias in YAML fails
+  ansible.builtin.assert:
+    that:
+    - recursive_yaml_result.failed
+    - recursive_yaml_result.msg is search('Could not open/load from file')
+    - recursive_yaml_result.msg is search('Circular reference detected')
