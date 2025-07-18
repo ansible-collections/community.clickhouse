@@ -1,3 +1,0 @@
-bugfixes:
-  - clickhouse_cfg_info - Prevent infinite loop when parsing YAML files with recursive anchors by validating JSON serializability
-    (https://github.com/ansible-collections/community.clickhouse/pull/114).
