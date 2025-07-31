@@ -47,26 +47,41 @@ options:
   append:
     description:
       - If set to V(true) (default), the module will append
-        passed O(privs) to privileges the O(grantee) already has.
+        passed O(grants) to privileges the O(grantee) already has.
       - If set to V(false), the module will remove all
         current O(grantee) privileges.
     type: bool
     default: true
-  privs:
+  grants:
     description:
       - Privileges to grant, update, or revoke.
-    type: TBD
+    type: dict
+    requered: true
 '''
 
 EXAMPLES = r'''
-- name: TBD Grant privileges
+- name: Grant some global privs appending them to current privs
   community.clickhouse.clickhouse_user:
     login_host: localhost
     login_user: alice
     login_db: foo
     login_password: my_password
     grantee: alice
-    # TBD
+    state: present
+    append: true
+    grants:
+      global:                      # Globally
+        grants:                    # Grant privs
+            "ALTER USER": 1        # "1" means WITH GRANT OPTION
+            "CREATE DATABASE": 0   # "0" means withoug GRANT OPTION
+            "CREATE USER": 0
+            "DROP USER": 0
+      databases:                   # Database-specific privileges
+        foo:                       # In "foo" database
+          test:                    # In "test table
+            column1:               # For "column1" column
+              grants:              # Grant privs
+                "ALTER UPDATE": 0  # Without GRANT OPTION
 '''
 
 RETURN = r'''
@@ -219,6 +234,8 @@ def main():
     argument_spec.update(
         state=dict(type='str', choices=['present', 'absent'], default='present'),
         grantee=dict(type='str', required=True),
+        append=dict(type='bool', default=True),
+        grants=dict(type='dict', required=True),
     )
 
     # Instantiate an object of module class
@@ -235,7 +252,8 @@ def main():
     # Such data must be passed as module arguments (not nested deep in values).
     main_conn_kwargs = get_main_conn_kwargs(module)
     state = module.params['state']
-    grantee = module.params['grantee']
+    append = module.params['append']
+    grants = module.params['grants']
 
     # Will fail if no driver informing the user
     check_clickhouse_driver(module)
