@@ -57,7 +57,6 @@ EXAMPLES = r'''
 '''
 
 RETURN = r'''
-# TBD
 executed_statements:
   description:
   - Data-modifying executed statements.
@@ -194,11 +193,11 @@ class ClickHouseGrants():
         return grants
 
     def update(self):
-        # WIP
+        # TBD
         return True
 
     def revoke(self):
-        # WIP
+        # TBD
         return True
 
 
