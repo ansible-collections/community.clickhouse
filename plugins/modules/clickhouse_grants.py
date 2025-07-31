@@ -11,11 +11,11 @@ DOCUMENTATION = r'''
 ---
 module: clickhouse_grants
 
-short_description: TBD
+short_description: Manage grants for ClickHouse users and roles
 
 description:
-  - Grants, updates, or removes privileges using the
-    L(clickhouse-driver,https://clickhouse-driver.readthedocs.io/en/latest) Client interface.
+  - Grants, updates, or revokes privileges for ClickHouse users and roles.
+  - This module uses the L(clickhouse-driver,https://clickhouse-driver.readthedocs.io/en/latest) client interface.
 
 attributes:
   check_mode:
@@ -33,55 +33,135 @@ version_added: '0.9.0'
 options:
   state:
     description:
-      - User state.
-      - If V(present), the module will grant or update privileges.
-      - If V(absent), the module will revoke privileges if granted.
+      - If C(present), the module will grant or update privileges.
+      - If C(absent), the module will revoke all privileges from the O(grantee).
     type: str
     choices: ['present', 'absent']
     default: 'present'
   grantee:
     description:
-      - A user or a group to grant, update, or revoke privileges.
+      - A user or a role to grant, update, or revoke privileges for.
     type: str
     required: true
   append:
     description:
-      - If set to V(true) (default), the module will append
-        passed O(grants) to privileges the O(grantee) already has.
-      - If set to V(false), the module will remove all
-        current O(grantee) privileges.
+      - If set to C(true) (the default), the module will append
+        the privileges specified in O(grants) to the privileges the O(grantee)
+        already has.
+      - If set to C(false), the module will revoke all
+        current privileges from the O(grantee) before granting the new ones.
     type: bool
     default: true
   grants:
     description:
-      - Privileges to grant, update, or revoke.
+      - Privileges to grant. This option is required when C(state) is C(present).
     type: dict
-    requered: true
+    suboptions:
+      global:
+        description:
+          - A dictionary of global privileges to grant. These apply to all databases.
+        type: dict
+        suboptions:
+          grants:
+            description:
+              - A dictionary of privileges.
+              - Keys are the names of privileges, for example C(CREATE USER).
+              - Values are booleans (or C(0)/C(1)) indicating whether to grant the privilege
+                with the C(WITH GRANT OPTION).
+            type: dict
+            required: true
+      databases:
+        description:
+          - A dictionary of privileges on specific databases, tables, or columns.
+          - Keys are database names.
+        type: dict
+        suboptions:
+          '<database_name>':
+            description:
+              - Dictionary of privileges for a database. Use the actual database name as the key.
+            type: dict
+            suboptions:
+              grants:
+                description:
+                  - Privileges on all tables in the database.
+                  - See the description of C(global.grants) for more details.
+                type: dict
+              '<table_name>':
+                description:
+                  - Dictionary of privileges for a table. Use the actual table name as the key.
+                type: dict
+                suboptions:
+                  grants:
+                    description:
+                      - Privileges on all columns in the table.
+                      - See the description of C(global.grants) for more details.
+                    type: dict
+                  '<column_name>':
+                    description:
+                      - Dictionary of privileges for a column. Use the actual column name as the key.
+                    type: dict
+                    suboptions:
+                      grants:
+                        description:
+                          - Privileges on the column.
+                          - See the description of C(global.grants) for more details.
+                        type: dict
+                        required: true
 '''
 
 EXAMPLES = r'''
-- name: Grant some global privs appending them to current privs
-  community.clickhouse.clickhouse_user:
-    login_host: localhost
-    login_user: alice
-    login_db: foo
-    login_password: my_password
+- name: Grant global privileges to a user
+  community.clickhouse.clickhouse_grants:
     grantee: alice
     state: present
-    append: true
     grants:
-      global:                      # Globally
-        grants:                    # Grant privs
-            "ALTER USER": 1        # "1" means WITH GRANT OPTION
-            "CREATE DATABASE": 0   # "0" means withoug GRANT OPTION
-            "CREATE USER": 0
-            "DROP USER": 0
-      databases:                   # Database-specific privileges
-        foo:                       # In "foo" database
-          test:                    # In "test table
-            column1:               # For "column1" column
-              grants:              # Grant privs
-                "ALTER UPDATE": 0  # Without GRANT OPTION
+      global:
+        grants:
+          "ALTER USER": 1        # With grant option
+          "CREATE DATABASE": 0   # Without grant option
+          "CREATE USER": 0
+          "DROP USER": 0
+
+- name: Grant privileges on a specific database
+  community.clickhouse.clickhouse_grants:
+    grantee: bob
+    state: present
+    grants:
+      databases:
+        foo:
+          grants:
+            "SELECT": 0
+            "INSERT": 0
+
+- name: Grant privileges on a specific table and column
+  community.clickhouse.clickhouse_grants:
+    grantee: charlie
+    state: present
+    grants:
+      databases:
+        foo:
+          test:
+            grants:
+              "SELECT": 1
+            column1:
+              grants:
+                "ALTER UPDATE": 0
+
+- name: Replace all existing privileges for a user
+  community.clickhouse.clickhouse_grants:
+    grantee: david
+    state: present
+    append: false
+    grants:
+      databases:
+        bar:
+          grants:
+            "SELECT": 0
+
+- name: Revoke all privileges from a user
+  community.clickhouse.clickhouse_grants:
+    grantee: eve
+    state: absent
 '''
 
 RETURN = r'''
@@ -235,13 +315,16 @@ def main():
         state=dict(type='str', choices=['present', 'absent'], default='present'),
         grantee=dict(type='str', required=True),
         append=dict(type='bool', default=True),
-        grants=dict(type='dict', required=True),
+        grants=dict(type='dict'),
     )
 
     # Instantiate an object of module class
     module = AnsibleModule(
         argument_spec=argument_spec,
         supports_check_mode=True,
+        required_if=[
+            ('state', 'present', ['grants']),
+        ],
     )
 
     # Assign passed options to variables
