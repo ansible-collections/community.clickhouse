@@ -34,15 +34,28 @@ options:
   state:
     description:
       - User state.
-      - If C(present), will grant or update privileges.
-      - If C(absent), will revoke privileges if granted.
+      - If V(present), the module will grant or update privileges.
+      - If V(absent), the module will revoke privileges if granted.
     type: str
     choices: ['present', 'absent']
     default: 'present'
   grantee:
-    description: TBD
+    description:
+      - A user or a group to grant, update, or revoke privileges.
     type: str
     required: true
+  append:
+    description:
+      - If set to V(true) (default), the module will append
+        passed O(privs) to privileges the O(grantee) already has.
+      - If set to V(false), the module will remove all
+        current O(grantee) privileges.
+    type: bool
+    default: true
+  privs:
+    description:
+      - Privileges to grant, update, or revoke.
+    type: TBD
 '''
 
 EXAMPLES = r'''
