@@ -351,6 +351,7 @@ def main():
     main_conn_kwargs = get_main_conn_kwargs(module)
     state = module.params['state']
     append = module.params['append']
+    grantee = module.params['grantee']
     grants = module.params['grants']
 
     # Will fail if no driver informing the user
