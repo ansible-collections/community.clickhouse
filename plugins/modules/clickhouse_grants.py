@@ -116,11 +116,9 @@ EXAMPLES = r'''
     state: present
     grants:
       global:
-        grants:
-          "ALTER USER": 1        # With grant option
-          "CREATE DATABASE": 0   # Without grant option
-          "CREATE USER": 0
-          "DROP USER": 0
+        - "ALTER USER/grant_option"  # With grant option
+        - "CREATE DATABASE"          # Without grant option
+        - "CREATE USER"
 
 - name: Grant privileges on a specific database
   community.clickhouse.clickhouse_grants:
@@ -128,24 +126,41 @@ EXAMPLES = r'''
     state: present
     grants:
       databases:
-        foo:
-          grants:
-            "SELECT": 0
-            "INSERT": 0
+        - name: infra
+          privs:
+            - "SELECT/grant_option"
+            - "INSERT"
 
-- name: Grant privileges on a specific table and column
+- name: Grant privileges on specific tables
   community.clickhouse.clickhouse_grants:
     grantee: charlie
     state: present
     grants:
       databases:
-        foo:
-          test:
-            grants:
-              "SELECT": 1
-            column1:
-              grants:
-                "ALTER UPDATE": 0
+        - name: infra
+          tables:
+            - name: servers
+              privs:
+                - "SELECT/grant_option"
+                - "ALTER UPDATE"
+            - name: switches
+              privs:
+                - "SELECT"
+
+- name: Grant privileges on specific columns
+  community.clickhouse.clickhouse_grants:
+    grantee: charlie
+    state: present
+    grants:
+      databases:
+        - name: infra
+          tables:
+            - name: servers
+              columns:
+                - name: ip
+                  privs:
+                    - "SELECT"
+                    - "UPDATE"
 
 - name: Replace all existing privileges for a user
   community.clickhouse.clickhouse_grants:
@@ -154,9 +169,9 @@ EXAMPLES = r'''
     append: false
     grants:
       databases:
-        bar:
-          grants:
-            "SELECT": 0
+        - name: bar
+          privs:
+            - "SELECT"
 
 - name: Revoke all privileges from a user
   community.clickhouse.clickhouse_grants:
