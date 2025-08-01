@@ -116,9 +116,9 @@ EXAMPLES = r'''
     state: present
     grants:
       global:
-        - "ALTER USER/grant_option"  # With grant option
-        - "CREATE DATABASE"          # Without grant option
-        - "CREATE USER"
+        "ALTER USER": 1       # With grant option
+        "CREATE DATABASE": 0  # Without grant option
+        "CREATE USER": 0      # Without grant option
 
 - name: Grant privileges on a specific database
   community.clickhouse.clickhouse_grants:
@@ -126,41 +126,10 @@ EXAMPLES = r'''
     state: present
     grants:
       databases:
-        - name: infra
-          privs:
-            - "SELECT/grant_option"
-            - "INSERT"
-
-- name: Grant privileges on specific tables
-  community.clickhouse.clickhouse_grants:
-    grantee: charlie
-    state: present
-    grants:
-      databases:
-        - name: infra
-          tables:
-            - name: servers
-              privs:
-                - "SELECT/grant_option"
-                - "ALTER UPDATE"
-            - name: switches
-              privs:
-                - "SELECT"
-
-- name: Grant privileges on specific columns
-  community.clickhouse.clickhouse_grants:
-    grantee: charlie
-    state: present
-    grants:
-      databases:
-        - name: infra
-          tables:
-            - name: servers
-              columns:
-                - name: ip
-                  privs:
-                    - "SELECT"
-                    - "UPDATE"
+        infra:
+          grants:
+            "SELECT": 1  # With grant option
+            "INSERT": 0  # Without grant option
 
 - name: Replace all existing privileges for a user
   community.clickhouse.clickhouse_grants:
@@ -169,9 +138,9 @@ EXAMPLES = r'''
     append: false
     grants:
       databases:
-        - name: bar
-          privs:
-            - "SELECT"
+        bar:
+          grants:
+            "SELECT": 0  # Without grant option
 
 - name: Revoke all privileges from a user
   community.clickhouse.clickhouse_grants:
@@ -267,14 +236,14 @@ class ClickHouseGrants():
 
         grants = {
             "global": {
-                "grants": {},
+                "grants": [],
                 "part_revokes": set(),
             },
             "databases": {},
         }
 
         for e in grants_list:
-            # If database is not specified, grant it globally
+            # If database is not specified, it's about global grants
             if e["database"] is None:
                 if e["is_partial_revoke"]:
                     grants["global"]["part_revokes"] = e["access_type"]
@@ -283,8 +252,7 @@ class ClickHouseGrants():
             # If database is specified
             else:
                 grants["databases"][e["database"]] = {}
-
-                # If table is not specified, grant it at the database level
+                # If table is not specified, it's about database-level grants
                 if e["table"] is None:
                     if e["is_partial_revoke"]:
                         grants["databases"][e["database"]]["part_revokes"] = e["access_type"]
