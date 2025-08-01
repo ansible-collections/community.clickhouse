@@ -236,7 +236,7 @@ class ClickHouseGrants():
 
         grants = {
             "global": {
-                "grants": [],
+                "grants": {},
                 "part_revokes": set(),
             },
             "databases": {},
