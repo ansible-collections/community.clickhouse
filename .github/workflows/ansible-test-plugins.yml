@@ -129,7 +129,7 @@ jobs:
         run: "sed -i 's/^clickhouse_version:.*/clickhouse_version: \"${{ matrix.clickhouse }}\"/g' ${{ env.clickhouse_version_file }}"
 
       - name: Run integration tests
-        run: ansible-test integration --docker ubuntu2204 -v --color --retry-on-error --continue-on-error --python ${{ matrix.python }} --diff --coverage
+        run: ansible-test integration --docker ubuntu2404 -v --color --retry-on-error --continue-on-error --python ${{ matrix.python }} --diff --coverage
         working-directory: ./ansible_collections/community/clickhouse
 
       - name: Generate coverage report.
