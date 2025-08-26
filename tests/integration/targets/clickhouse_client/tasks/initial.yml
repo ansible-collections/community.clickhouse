@@ -109,3 +109,20 @@
     that:
     - result.result[0][0] == "0"
     - result.result[0][1] == 1
+
+# https://github.com/ansible-collections/community.clickhouse/issues/116
+- name: Create a user
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    password: querty
+
+- name: Grant all privs to the user
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: 'GRANT ALL ON *.* TO test_user WITH GRANT OPTION'
+
+- name: Check the tast succeeded
+  ansible.builtin.assert:
+    that:
+    - result is succeeded
