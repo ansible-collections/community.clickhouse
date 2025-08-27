@@ -114,13 +114,13 @@
 - name: Create a user
   community.clickhouse.clickhouse_user:
     state: present
-    name: test_user
+    name: test_user1
     password: querty
 
 - name: Grant all privs to the user
   register: result
   community.clickhouse.clickhouse_client:
-    execute: 'GRANT ALL ON *.* TO test_user WITH GRANT OPTION'
+    execute: 'GRANT ALL ON *.* TO test_user1 WITH GRANT OPTION'
 
 - name: Check the tast succeeded
   ansible.builtin.assert:
