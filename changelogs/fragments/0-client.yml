@@ -1,2 +1,0 @@
-bugfixes:
-- clickhouse_client - the module fails when executing DDL queries that return nothing via client object (https://github.com/ansible-collections/community.clickhouse/issues/116).

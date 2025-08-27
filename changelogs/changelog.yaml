@@ -245,3 +245,17 @@ releases:
     - 0.8.4.yml
     - 114-clickhouse-cfg-info.yml
     release_date: '2025-07-18'
+  0.8.5:
+    changes:
+      bugfixes:
+      - clickhouse_client - the module fails when executing DDL queries that return
+        nothing via client object (https://github.com/ansible-collections/community.clickhouse/issues/116).
+      release_summary: 'This is a patch release of the ``community.clickhouse`` collection.
+
+        This changelog contains all changes to the modules and plugins in this collection
+
+        that have been made after the previous release.'
+    fragments:
+    - 0-client.yml
+    - 0.8.5.yml
+    release_date: '2025-08-27'
