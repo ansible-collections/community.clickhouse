@@ -13,8 +13,8 @@ runs:
     - name: Install Python dependencies
       shell: bash
       run: |
-        pip install ansible-core==2.16.0
-        pip install ansible-lint==24.12.2
+        pip install ansible-core==2.17.1
+        pip install ansible-lint==24.2.1
         pip install galaxy-importer==0.4.31
 
     - name: Create galaxy-importer.cfg
@@ -27,6 +27,13 @@ runs:
         LOCAL_IMAGE_DOCKER = False
         EOF
 
-    - name: Run galaxy-importer
+    - name: Build collection artifact
       shell: bash
-      run: GALAXY_IMPORTER_CONFIG=galaxy-importer.cfg python -m galaxy_importer.main .
+      run: ansible-galaxy collection build
+
+    - name: Run galaxy-importer on the built artifact
+      shell: bash
+      run: |
+        ARTIFACT_NAME=$(ls *.tar.gz)
+        echo "Running importer on $ARTIFACT_NAME"
+        GALAXY_IMPORTER_CONFIG=galaxy-importer.cfg python -m galaxy_importer.main $ARTIFACT_NAME
