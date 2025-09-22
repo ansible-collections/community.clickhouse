@@ -6,7 +6,9 @@ runs:
   steps:
     - name: Install podman
       shell: bash
-      run: sudo dnf install -y podman
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y podman
 
     - name: Install Python dependencies
       shell: bash
