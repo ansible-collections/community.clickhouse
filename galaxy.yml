@@ -13,6 +13,7 @@ tags:
 # tags are all lower-case, no spaces, no dashes.
   - database
   - clickhouse
+  - InvalidTag
 # documentation: https://github.com/ansible-collection-migration/community.REPO_NAME/tree/main/docs
 repository: https://github.com/ansible-collections/community.clickhouse
 homepage: https://github.com/ansible-collections/community.clickhouse
