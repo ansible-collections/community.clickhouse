@@ -24,4 +24,4 @@ jobs:
           python-version: "3.12"
 
       - name: Run Galaxy Importer Action
-        uses: ./.github/actions/run-galaxy-importer
+        uses: ./ansible_collections/community/clickhouse/.github/actions/run-galaxy-importer
