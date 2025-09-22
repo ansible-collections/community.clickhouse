@@ -9,6 +9,9 @@ jobs:
   galaxy-importer:
     name: "Run galaxy-importer with ansible-test enabled"
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ansible_collections/community/clickhouse
     steps:
       - name: Check out code
         uses: actions/checkout@v4
