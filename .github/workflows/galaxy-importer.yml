@@ -16,7 +16,7 @@ jobs:
       - name: Check out community.clickhouse collection
         uses: actions/checkout@v4
         with:
-          repository: community-ansible/community.clickhouse
+          repository: ansible-collections/community.clickhouse
           path: ansible_collections/community/clickhouse
 
       - name: Set up Python
