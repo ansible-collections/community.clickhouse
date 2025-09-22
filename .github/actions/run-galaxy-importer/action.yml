@@ -4,12 +4,6 @@ description: 'Installs dependencies, creates a configuration, and runs the galax
 runs:
   using: "composite"
   steps:
-    - name: Install podman
-      shell: bash
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y podman
-
     - name: Install Python dependencies
       shell: bash
       run: |
