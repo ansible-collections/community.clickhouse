@@ -13,8 +13,8 @@ runs:
     - name: Install Python dependencies
       shell: bash
       run: |
-        pip install ansible-core==2.17.1
-        pip install ansible-lint==24.2.1
+        pip install ansible-core==2.16.0
+        pip install ansible-lint==24.12.2
         pip install galaxy-importer==0.4.31
 
     - name: Create galaxy-importer.cfg
