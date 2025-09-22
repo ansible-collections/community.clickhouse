@@ -686,7 +686,6 @@ def get_storage_policies(module, client):
 
     return storage_policies_info
 
-
 def get_driver(module, client):
     """Gets driver information.
 
@@ -696,6 +695,7 @@ def get_driver(module, client):
     Returns its version for now.
     """
     return {"version": version_clickhouse_driver()}
+
 
 
 def handle_limit_values(module, supported_ret_vals, limit):
