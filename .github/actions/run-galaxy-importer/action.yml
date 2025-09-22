@@ -29,4 +29,4 @@ runs:
 
     - name: Run galaxy-importer
       shell: bash
-      run: GALAXY_IMPORTER_CONFIG=galaxy-importer.cfg python -m galaxy_importer.main
+      run: GALAXY_IMPORTER_CONFIG=galaxy-importer.cfg python -m galaxy_importer.main .
