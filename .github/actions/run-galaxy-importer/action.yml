@@ -24,7 +24,6 @@ runs:
         [galaxy-importer]
         RUN_ANSIBLE_TEST = True
         ANSIBLE_TEST_LOCAL_IMAGE = False
-        LOCAL_IMAGE_DOCKER = False
         EOF
 
     - name: Build collection artifact
