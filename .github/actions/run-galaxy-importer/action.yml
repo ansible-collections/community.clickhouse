@@ -6,7 +6,9 @@ runs:
   steps:
     - name: Install podman
       shell: bash
-      run: sudo dnf install -y podman
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y podman
 
     - name: Install Python dependencies
       shell: bash
@@ -25,6 +27,26 @@ runs:
         LOCAL_IMAGE_DOCKER = False
         EOF
 
-    - name: Run galaxy-importer
+    - name: Build collection artifact
       shell: bash
-      run: GALAXY_IMPORTER_CONFIG=galaxy-importer.cfg python -m galaxy_importer.main
+      run: ansible-galaxy collection build
+
+    - name: Run galaxy-importer and check for errors
+      shell: bash
+      run: |
+        ARTIFACT_NAME=$(ls *.tar.gz)
+        echo "Running importer on $ARTIFACT_NAME"
+
+        # Run importer, redirecting all output to a file.
+        # We add `|| true` so the script doesn't exit if python returns a non-zero code.
+        # We want to check the log for "ERROR" ourselves to decide on failure.
+        GALAXY_IMPORTER_CONFIG=galaxy-importer.cfg python -m galaxy_importer.main $ARTIFACT_NAME &> output.log || true
+
+        # Show the captured output in the main log
+        cat output.log
+
+        # Now, check the file for the error string.
+        if grep -q "ERROR" output.log; then
+            echo "Found errors in galaxy-importer output. Failing the build."
+            exit 1
+        fi
