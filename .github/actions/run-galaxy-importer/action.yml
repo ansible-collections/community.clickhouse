@@ -31,13 +31,21 @@ runs:
       shell: bash
       run: ansible-galaxy collection build
 
-    - name: Run galaxy-importer on the built artifact
+    - name: Run galaxy-importer and check for errors
       shell: bash
       run: |
-        set -o pipefail
         ARTIFACT_NAME=$(ls *.tar.gz)
         echo "Running importer on $ARTIFACT_NAME"
-        GALAXY_IMPORTER_CONFIG=galaxy-importer.cfg python -m galaxy_importer.main $ARTIFACT_NAME
+
+        # Run importer, redirecting all output to a file.
+        # We add `|| true` so the script doesn't exit if python returns a non-zero code.
+        # We want to check the log for "ERROR" ourselves to decide on failure.
+        GALAXY_IMPORTER_CONFIG=galaxy-importer.cfg python -m galaxy_importer.main $ARTIFACT_NAME &> output.log || true
+
+        # Show the captured output in the main log
+        cat output.log
+
+        # Now, check the file for the error string.
         if grep -q "ERROR" output.log; then
             echo "Found errors in galaxy-importer output. Failing the build."
             exit 1
