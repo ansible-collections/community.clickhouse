@@ -1,1 +1,0 @@
-plugins/modules/clickhouse_client.py validate-modules:nonexistent-parameter-documented
