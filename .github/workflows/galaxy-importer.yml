@@ -1,0 +1,34 @@
+name: Plugins CI
+on:
+  push:
+    paths:
+      - 'plugins/**'
+      - 'tests/**'
+      - '.github/workflows/galaxy-importer.yml'
+  pull_request:
+    paths:
+      - 'plugins/**'
+      - 'tests/**'
+      - '.github/workflows/galaxy-importer.yml'
+  schedule:
+    - cron: '0 6 * * *'
+
+env:
+
+jobs:
+  galaxy-importer:
+    name: "Run galaxy-importer with ansible-test enabled"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+        with:
+          path: ansible_collections/community/clickhouse
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.12"
+
+      - name: Run Galaxy Importer Action
+        uses: ./.github/actions/run-galaxy-importer
