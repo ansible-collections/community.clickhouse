@@ -38,3 +38,7 @@ runs:
         ARTIFACT_NAME=$(ls *.tar.gz)
         echo "Running importer on $ARTIFACT_NAME"
         GALAXY_IMPORTER_CONFIG=galaxy-importer.cfg python -m galaxy_importer.main $ARTIFACT_NAME
+        if grep -q "ERROR" output.log; then
+            echo "Found errors in galaxy-importer output. Failing the build."
+            exit 1
+        fi
