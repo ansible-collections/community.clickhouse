@@ -1,0 +1,30 @@
+name: 'Run Galaxy Importer'
+description: 'Installs dependencies, creates a configuration, and runs the galaxy-importer.'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install podman
+      shell: bash
+      run: sudo dnf install -y podman
+
+    - name: Install Python dependencies
+      shell: bash
+      run: |
+        pip install ansible-core==2.16.0
+        pip install ansible-lint==24.12.2
+        pip install galaxy-importer==0.4.31
+
+    - name: Create galaxy-importer.cfg
+      shell: bash
+      run: |
+        cat <<EOF > galaxy-importer.cfg
+        [galaxy-importer]
+        RUN_ANSIBLE_TEST = True
+        ANSIBLE_TEST_LOCAL_IMAGE = True
+        LOCAL_IMAGE_DOCKER = False
+        EOF
+
+    - name: Run galaxy-importer
+      shell: bash
+      run: GALAXY_IMPORTER_CONFIG=galaxy-importer.cfg python -m galaxy_importer.main
