@@ -257,7 +257,7 @@ class ClickHouseGrants():
 
         for obj, privs in revokes_by_obj.items():
             privs_str = ', '.join(sorted(privs))
-            query = f"REVOKE {privs_str} ON {obj} FROM {self.grantee}"
+            query = "REVOKE {0} ON {1} FROM {2}".format(privs_str, obj, self.grantee)
             queries.append(query)
 
         grants_go_by_obj = defaultdict(list)
@@ -271,12 +271,12 @@ class ClickHouseGrants():
 
         for obj, privs in grants_go_by_obj.items():
             privs_str = ', '.join(sorted(privs))
-            query = f"GRANT {privs_str} ON {obj} TO {self.grantee} WITH GRANT OPTION"
+            query = "GRANT {0} ON {1} TO {2} WITH GRANT OPTION".format(privs_str, obj, self.grantee)
             queries.append(query)
 
         for obj, privs in grants_no_go_by_obj.items():
             privs_str = ', '.join(sorted(privs))
-            query = f"GRANT {privs_str} ON {obj} TO {self.grantee}"
+            query = "GRANT {0} ON {1} TO {2}".format(privs_str, obj, self.grantee)
             queries.append(query)
 
         executed_statements.extend(queries)
@@ -302,7 +302,7 @@ class ClickHouseGrants():
         queries = []
         for obj, privs in current.items():
             privs_str = ', '.join(sorted(privs))
-            query = f"REVOKE {privs_str} ON {obj} FROM {self.grantee}"
+            query = "REVOKE {0} ON {1} FROM {2}".format(privs_str, obj, self.grantee)
             queries.append(query)
         
         executed_statements.extend(queries)
