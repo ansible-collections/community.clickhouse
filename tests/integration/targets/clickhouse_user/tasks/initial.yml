@@ -15,7 +15,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["CREATE USER test_user IDENTIFIED WITH sha256_password BY '********'"]
+    - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH sha256_password BY '********'"]
 
 - name: Check the actual state
   register: result
@@ -107,7 +107,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["ALTER USER test_user IDENTIFIED WITH sha256_password BY '********'"]
+    - result.executed_statements == ["ALTER USER 'test_user' IDENTIFIED WITH sha256_password BY '********'"]
 
 - name: Drop test_user
   community.clickhouse.clickhouse_user:
@@ -157,8 +157,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "GRANT accountant, manager TO test_user" or result.executed_statements[0] == "GRANT manager, accountant TO test_user"
-    - result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE accountant, manager" or result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE manager, accountant"
+    - result.executed_statements[0] == "GRANT accountant, manager TO 'test_user'" or result.executed_statements[0] == "GRANT manager, accountant TO 'test_user'"
+    - result.executed_statements[1] == "ALTER USER 'test_user DEFAULT ROLE accountant, manager" or result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE manager, accountant"
 
 - name: Check the actual state
   register: result
@@ -188,8 +188,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "GRANT accountant, manager TO test_user" or result.executed_statements[0] == "GRANT manager, accountant TO test_user"
-    - result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE accountant, manager" or result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE manager, accountant"
+    - result.executed_statements[0] == "GRANT accountant, manager TO 'test_user'" or result.executed_statements[0] == "GRANT manager, accountant TO 'test_user'"
+    - result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE accountant, manager" or result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE manager, accountant"
 
 - name: Check the actual state
   register: result
@@ -218,9 +218,9 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "GRANT sales TO test_user"
-    - result.executed_statements[1] == "REVOKE accountant, manager FROM test_user" or result.executed_statements[1] == "REVOKE manager, accountant FROM test_user"
-    - result.executed_statements[2] == "ALTER USER test_user DEFAULT ROLE sales"
+    - result.executed_statements[0] == "GRANT sales TO 'test_user'"
+    - result.executed_statements[1] == "REVOKE accountant, manager FROM 'test_user'" or result.executed_statements[1] == "REVOKE manager, accountant FROM 'test_user'"
+    - result.executed_statements[2] == "ALTER USER 'test_user' DEFAULT ROLE sales"
 
 - name: Check the actual state
   register: result
@@ -246,9 +246,9 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "GRANT sales TO test_user"
-    - result.executed_statements[1] == "REVOKE accountant, manager FROM test_user" or result.executed_statements[1] == "REVOKE manager, accountant FROM test_user"
-    - result.executed_statements[2] == "ALTER USER test_user DEFAULT ROLE sales"
+    - result.executed_statements[0] == "GRANT sales TO 'test_user'"
+    - result.executed_statements[1] == "REVOKE accountant, manager FROM 'test_user'" or result.executed_statements[1] == "REVOKE manager, accountant FROM 'test_user'"
+    - result.executed_statements[2] == "ALTER USER 'test_user' DEFAULT ROLE sales"
 
 - name: Check the actual state
   register: result
@@ -311,8 +311,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "GRANT accountant TO test_user"
-    - result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE sales, accountant" or result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE accountant, sales"
+    - result.executed_statements[0] == "GRANT accountant TO 'test_user'"
+    - result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE sales, accountant" or result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE accountant, sales"
 
 - name: Check the actual state
   register: result
@@ -338,7 +338,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "SET DEFAULT ROLE NONE TO test_user"
+    - result.executed_statements[0] == "SET DEFAULT ROLE NONE TO 'test_user'"
 
 - name: Check the actual state
   register: result
@@ -363,7 +363,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "SET DEFAULT ROLE NONE TO test_user"
+    - result.executed_statements[0] == "SET DEFAULT ROLE NONE TO 'test_user'"
 
 - name: Check the actual state
   register: result
@@ -389,7 +389,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "REVOKE accountant, sales FROM test_user" or result.executed_statements[0] == "REVOKE sales, accountant FROM test_user"
+    - result.executed_statements[0] == "REVOKE accountant, sales FROM 'test_user'" or result.executed_statements[0] == "REVOKE sales, accountant FROM 'test_user'"
 
 - name: Check the actual state
   register: result
@@ -414,7 +414,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "REVOKE accountant, sales FROM test_user" or result.executed_statements[0] == "REVOKE sales, accountant FROM test_user"
+    - result.executed_statements[0] == "REVOKE accountant, sales FROM 'test_user'" or result.executed_statements[0] == "REVOKE sales, accountant FROM 'test_user'"
 
 - name: Check the actual state
   register: result
@@ -510,8 +510,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "REVOKE manager FROM test_user"
-    - result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE accountant"
+    - result.executed_statements[0] == "REVOKE manager FROM 'test_user'"
+    - result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE accountant"
 
 - name: Check the actual state
   register: result
@@ -541,8 +541,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "REVOKE manager FROM test_user"
-    - result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE accountant"
+    - result.executed_statements[0] == "REVOKE manager FROM 'test_user'"
+    - result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE accountant"
 
 - name: Check the actual state
   register: result
@@ -603,9 +603,9 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "CREATE USER test_user_1"
-    - result.executed_statements[1] == "GRANT test_listed_only TO test_user_1"
-    - result.executed_statements[2] == "ALTER USER test_user_1 DEFAULT ROLE test_listed_only"
+    - result.executed_statements[0] == "CREATE USER 'test_user_1'"
+    - result.executed_statements[1] == "GRANT test_listed_only TO 'test_user_1'"
+    - result.executed_statements[2] == "ALTER USER 'test_user_1' DEFAULT ROLE test_listed_only"
 
 - name: Check the actual state
   register: result
