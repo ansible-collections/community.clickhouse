@@ -7,6 +7,9 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
+import re
+from collections import defaultdict
+
 DOCUMENTATION = r'''
 ---
 module: clickhouse_grants
@@ -147,6 +150,9 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
 PRIV_ERR_CODE = 497
 executed_statements = []
 
+# Compile regex pattern once for performance
+GRANT_REGEX = re.compile(r'GRANT (.+?) ON (.+?) TO .+?( WITH GRANT OPTION)?$')
+
 
 class ClickHouseGrants():
     def __init__(self, module, client, grantee):
@@ -158,8 +164,11 @@ class ClickHouseGrants():
         self.__populate_info()
 
     def __populate_info(self):
-        query = ("SELECT 1 FROM system.users "
-                 "WHERE name = '%s'" % self.grantee)
+        # Check if grantee exists as either a user or a role
+        query = ("SELECT 1 FROM system.users WHERE name = '%s' "
+                 "UNION ALL "
+                 "SELECT 1 FROM system.roles WHERE name = '%s' "
+                 "LIMIT 1" % (self.grantee, self.grantee))
 
         result = execute_query(self.module, self.client, query)
 
@@ -183,10 +192,9 @@ class ClickHouseGrants():
             self.module.fail_json(msg=msg)
 
         grants = {}
-        import re
         for row in result:
             grant_statement = row[0]
-            match = re.match(r'GRANT (.+?) ON (.+?) TO .+?( WITH GRANT OPTION)?$', grant_statement)
+            match = GRANT_REGEX.match(grant_statement)
             if not match:
                 continue
 
@@ -225,20 +233,16 @@ class ClickHouseGrants():
         current = self.get()
         exclusive = self.module.params['exclusive']
 
-        all_current_privs = set()
-        for obj, privs in current.items():
-            for priv, go in privs.items():
-                all_current_privs.add((priv, obj, go))
+        # Use set comprehensions for better performance
+        all_current_privs = {(priv, obj, go) 
+                            for obj, privs in current.items() 
+                            for priv, go in privs.items()}
+        
+        all_desired_privs = {(priv, obj, go) 
+                            for obj, privs in desired.items() 
+                            for priv, go in privs.items()}
 
-        all_desired_privs = set()
-        for obj, privs in desired.items():
-            for priv, go in privs.items():
-                all_desired_privs.add((priv, obj, go))
-
-        to_revoke = set()
-        if exclusive:
-            to_revoke = all_current_privs - all_desired_privs
-
+        to_revoke = all_current_privs - all_desired_privs if exclusive else set()
         to_grant = all_desired_privs - all_current_privs
 
         if not to_revoke and not to_grant:
@@ -247,7 +251,6 @@ class ClickHouseGrants():
         self.changed = True
 
         queries = []
-        from collections import defaultdict
         revokes_by_obj = defaultdict(list)
         for priv, obj, go in to_revoke:
             revokes_by_obj[obj].append(priv)
@@ -295,15 +298,9 @@ class ClickHouseGrants():
         
         self.changed = True
         
+        # Build revoke queries for all current privileges
         queries = []
-        from collections import defaultdict
-        revokes_by_obj = defaultdict(list)
-        
         for obj, privs in current.items():
-            for priv in privs.keys():
-                revokes_by_obj[obj].append(priv)
-        
-        for obj, privs in revokes_by_obj.items():
             privs_str = ', '.join(sorted(privs))
             query = f"REVOKE {privs_str} ON {obj} FROM {self.grantee}"
             queries.append(query)
