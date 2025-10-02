@@ -148,50 +148,16 @@ PRIV_ERR_CODE = 497
 executed_statements = []
 
 
-def get_grants(module, client, name):
-    query = ("SELECT access_type, database, "
-             "table, column, is_partial_revoke, grant_option "
-             "FROM system.grants WHERE user_name = '%s' "
-             "OR role_name = '%s'" % (name, name))
-
-    result = execute_query(module, client, query)
-
-    if result == PRIV_ERR_CODE:
-        return {str(PRIV_ERR_CODE): "Not enough privileges"}
-
-    grants = []
-    for row in result:
-        grants.append({
-            "access_type": row[0],
-            "database": row[1],
-            "table": row[2],
-            "column": row[3],
-            "is_partial_revoke": row[4],
-            "grant_option": row[5],
-        })
-
-    return grants
-
-
 class ClickHouseGrants():
     def __init__(self, module, client, grantee):
-        # TODO Maybe move the function determining if the
-        # user/group exists or not from here to another class?
         self.changed = False
         self.module = module
         self.client = client
         self.grantee = grantee
-        # Set default values, then update
         self.grantee_exists = False
-        # Fetch actual values from DB and
-        # update the attributes with them
         self.__populate_info()
 
     def __populate_info(self):
-        # WIP
-        # TODO Should we check the existence for a group too?
-        # TODO Should we move it from here to a separate class instead?
-        # Collecting user information
         query = ("SELECT 1 FROM system.users "
                  "WHERE name = '%s'" % self.grantee)
 
@@ -202,67 +168,119 @@ class ClickHouseGrants():
             msg = "Not enough privileges for user: %s" % login_user
             self.module.fail_json(msg=msg)
 
-        if result != []:
+        if result:
             self.grantee_exists = True
         else:
             self.module.fail_json(msg="Grantee %s does not exist" % self.grantee)
 
     def get(self):
-        # WIP
-        grants_list = get_grants(self.module, self.client, self.grantee)
+        query = "SHOW GRANTS FOR %s" % self.grantee
+        result = execute_query(self.module, self.client, query)
 
-        grants = {
-            "global": {
-                "grants": {},
-                "part_revokes": set(),
-            },
-            "databases": {},
-        }
+        if result == PRIV_ERR_CODE:
+            login_user = self.module.params['login_user']
+            msg = "Not enough privileges for user: %s to SHOW GRANTS" % login_user
+            self.module.fail_json(msg=msg)
 
-        for e in grants_list:
-            # If database is not specified, it's about global grants
-            if e["database"] is None:
-                if e["is_partial_revoke"]:
-                    grants["global"]["part_revokes"] = e["access_type"]
-                else:
-                    grants["global"]["grants"][e["access_type"]] = e["grant_option"]
-            # If database is specified
-            else:
-                grants["databases"][e["database"]] = {}
-                # If table is not specified, it's about database-level grants
-                if e["table"] is None:
-                    if e["is_partial_revoke"]:
-                        grants["databases"][e["database"]]["part_revokes"] = e["access_type"]
-                    else:
-                        grants["databases"][e["database"]]["grants"] = {}
-                        grants["databases"][e["database"]]["grants"][e["access_type"]] = e["grant_option"]
+        grants = {}
+        import re
+        for row in result:
+            grant_statement = row[0]
+            match = re.match(r'GRANT (.+?) ON (.+?) TO .+?( WITH GRANT OPTION)?$', grant_statement)
+            if not match:
+                continue
 
-                else:
-                    grants["databases"][e["database"]][e["table"]] = {}
-                    # If table is specified and columnt is not,
-                    # grant it at the table level
-                    if e["column"] is None:
-                        if e["is_partial_revoke"]:
-                            grants["databases"][e["database"]][e["table"]]["part_revokes"] = e["access_type"]
-                        else:
-                            grants["databases"][e["database"]][e["table"]]["grants"] = {}
-                            grants["databases"][e["database"]][e["table"]]["grants"][e["access_type"]] = e["grant_option"]
+            privs_str, obj, grant_option_str = match.groups()
+            grant_option = (grant_option_str is not None)
 
-                    # If column is specified, grant it for the column
-                    else:
-                        grants["databases"][e["database"]][e["table"]][e["column"]] = {}
+            if obj not in grants:
+                grants[obj] = {}
 
-                        if e["is_partial_revoke"]:
-                            grants["databases"][e["database"]][e["table"]][e["column"]]["part_revokes"] = e["access_type"]
-                        else:
-                            grants["databases"][e["database"]][e["table"]][e["column"]]["grants"] = {}
-                            grants["databases"][e["database"]][e["table"]][e["column"]]["grants"][e["access_type"]] = e["grant_option"]
+            privs = [p.strip().upper() for p in privs_str.split(',')]
+            for priv in privs:
+                grants[obj][priv] = grant_option
 
         return grants
 
+    def _get_desired_grants(self):
+        privileges = self.module.params['privileges']
+        if not privileges:
+            return {}
+
+        desired_grants = {}
+        for p in privileges:
+            obj = p['object']
+            if obj not in desired_grants:
+                desired_grants[obj] = {}
+
+            grant_option_override = p.get('grant_option')
+            for priv, grant_option in p['privs'].items():
+                final_grant_option = grant_option_override if grant_option_override is not None else grant_option
+                desired_grants[obj][priv.upper()] = bool(final_grant_option)
+
+        return desired_grants
+
     def update(self):
-        # TBD
-        return True
+        desired = self._get_desired_grants()
+        current = self.get()
+        exclusive = self.module.params['exclusive']
+
+        all_current_privs = set()
+        for obj, privs in current.items():
+            for priv, go in privs.items():
+                all_current_privs.add((priv, obj, go))
+
+        all_desired_privs = set()
+        for obj, privs in desired.items():
+            for priv, go in privs.items():
+                all_desired_privs.add((priv, obj, go))
+
+        to_revoke = set()
+        if exclusive:
+            to_revoke = all_current_privs - all_desired_privs
+
+        to_grant = all_desired_privs - all_current_privs
+
+        if not to_revoke and not to_grant:
+            return self.changed
+
+        self.changed = True
+        if self.module.check_mode:
+            return self.changed
+
+        from collections import defaultdict
+        revokes_by_obj = defaultdict(list)
+        for priv, obj, go in to_revoke:
+            revokes_by_obj[obj].append(priv)
+
+        for obj, privs in revokes_by_obj.items():
+            privs_str = ', '.join(privs)
+            query = f"REVOKE {privs_str} ON {obj} FROM {self.grantee}"
+            execute_query(self.module, self.client, query)
+            executed_statements.append(query)
+
+        grants_go_by_obj = defaultdict(list)
+        grants_no_go_by_obj = defaultdict(list)
+
+        for priv, obj, go in to_grant:
+            if go:
+                grants_go_by_obj[obj].append(priv)
+            else:
+                grants_no_go_by_obj[obj].append(priv)
+
+        for obj, privs in grants_go_by_obj.items():
+            privs_str = ', '.join(privs)
+            query = f"GRANT {privs_str} ON {obj} TO {self.grantee} WITH GRANT OPTION"
+            execute_query(self.module, self.client, query)
+            executed_statements.append(query)
+
+        for obj, privs in grants_no_go_by_obj.items():
+            privs_str = ', '.join(privs)
+            query = f"GRANT {privs_str} ON {obj} TO {self.grantee}"
+            execute_query(self.module, self.client, query)
+            executed_statements.append(query)
+
+        return self.changed
 
     def revoke(self):
         # TBD
@@ -275,11 +293,7 @@ def main():
         state=dict(type='str', choices=['present', 'absent'], default='present'),
         grantee=dict(type='str', required=True),
         exclusive=dict(type='bool', default=False),
-        privileges=dict(type='list', elements='dict', suboptions=dict(
-            object=dict(type='str', required=True),
-            privs=dict(type='dict', required=True),
-            grant_option=dict(type='bool', required=False),
-        )),
+        privileges=dict(type='list', elements='dict'),
     )
 
     # Instantiate an object of module class
@@ -299,9 +313,7 @@ def main():
     # Such data must be passed as module arguments (not nested deep in values).
     main_conn_kwargs = get_main_conn_kwargs(module)
     state = module.params['state']
-    exclusive = module.params['exclusive']
     grantee = module.params['grantee']
-    privileges = module.params['privileges']
 
     # Will fail if no driver informing the user
     check_clickhouse_driver(module)
@@ -310,7 +322,6 @@ def main():
     client = connect_to_db_via_client(module, main_conn_kwargs, client_kwargs)
 
     # Do the job
-    # TODO Check if the grantee not exits, fail here
     changed = False
     grants = ClickHouseGrants(module, client, grantee)
     # Get current grants

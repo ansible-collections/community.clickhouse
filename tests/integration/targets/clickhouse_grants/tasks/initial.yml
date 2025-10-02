@@ -62,41 +62,16 @@
     that:
     - result["users"]["alice"]["grants"] == []
 
-- name: Grant privs 
-  register: result
-  community.clickhouse.clickhouse_client:
-    execute: '{{ item }}'
-  with_items:
-  - GRANT SELECT(x) ON foo.test_table1 TO alice WITH GRANT OPTION
-  - GRANT SELECT ON foo.test_table2 TO alice
-  - REVOKE SELECT(y) ON foo.test_table2 FROM alice
-  - GRANT UPDATE(z) ON foo.test_table2 TO alice
-  - GRANT DELETE ON foo.test_table2 TO alice
-  - GRANT CREATE TABLE ON foo.* TO alice
-  - GRANT CREATE DATABASE ON *.* TO alice
-  - GRANT KILL QUERY ON *.* TO alice
-  - GRANT CREATE USER ON *.* TO alice
-  - GRANT ALTER USER ON *.* TO alice
-  - GRANT DROP USER ON *.* TO alice
-
-- name: Get user info
-  register: result
-  community.clickhouse.clickhouse_info:
-    login_host: localhost
-
-- name: Check user's grants again, not empty
-  ansible.builtin.assert:
-    that:
-    - result["users"]["alice"]["grants"] != []
-
 - name: Grant privs to non-existent grantee, must fail
   register: result
   ignore_errors: true
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: notexists
-    grants:
-     global: TEST
+    privileges:
+     - object: '*.*'
+       privs:
+         TEST: false
 
 - name: Check that it failed
   ansible.builtin.assert:
@@ -104,18 +79,130 @@
     - result is failed
     - result.msg is search("does not exist")
 
-- name: Grant privs
+- name: Grant initial privileges to alice
   register: result
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: alice
-    grants:
-     global: TEST
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+      - object: '*.*'
+        privs:
+          "CREATE USER": false
 
-- name: Check
+- name: Check initial grant
   ansible.builtin.assert:
     that:
     - result is changed
-    # TODO Must be updated to use diff
-    - result["start_grants"] != {}
-    - result["end_grants"] != {}
+    - result.executed_statements | length == 3
+
+- name: Run the same grant again to check for idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+      - object: '*.*'
+        privs:
+          "CREATE USER": false
+
+- name: Check idempotency
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements | length == 0
+
+- name: Append privileges with exclusive=false (default)
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+          "DELETE": true
+      - object: '*.*'
+        privs:
+          "CREATE USER": false
+          "ALTER USER": true
+
+- name: Check appended privileges
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length == 2
+
+- name: Grant privileges with exclusive=true
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: true
+    privileges:
+      - object: 'foo.test_table1'
+        privs:
+          "SELECT(x)": false
+
+- name: Check exclusive grant
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    # 2 revokes and 1 grant
+    - result.executed_statements | length == 3
+
+- name: Run exclusive grant again for idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: true
+    privileges:
+      - object: 'foo.test_table1'
+        privs:
+          "SELECT(x)": false
+
+- name: Check exclusive grant idempotency
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements | length == 0
+
+- name: Revoke all from alice for cleanup
+  community.clickhouse.clickhouse_client:
+    execute: "REVOKE ALL ON *.* FROM alice"
+
+- name: Grant privileges in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": false
+
+- name: Check grant in check mode
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length == 0
+
+- name: Get user info to verify no changes were made
+  register: result_info
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert no grants for alice after check mode run
+  ansible.builtin.assert:
+    that:
+    - result_info["users"]["alice"]["grants"] == []
