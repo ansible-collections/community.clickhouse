@@ -7,9 +7,6 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-import re
-from collections import defaultdict
-
 DOCUMENTATION = r'''
 ---
 module: clickhouse_grants
@@ -75,13 +72,13 @@ options:
           - Keys are privilege names, like C(CREATE USER) or C(SELECT(column1, column2)).
           - Values are booleans indicating whether to grant the privilege
             with the C(WITH GRANT OPTION).
-          - Alternatively, you can use the O(grant_option) parameter to apply the same setting to all privileges in this set.
+          - Alternatively, you can use the C(grant_option) parameter to apply the same setting to all privileges in this set.
         type: dict
         required: true
       grant_option:
         description:
           - A boolean that applies to all privileges in this set.
-          - If specified, it overrides any individual grant option settings within O(privs).
+          - If specified, it overrides any individual grant option settings within C(privs).
         type: bool
 '''
 
@@ -136,6 +133,9 @@ executed_statements:
   type: list
   sample: ['GRANT SELECT ON foo.* TO alice', 'REVOKE INSERT ON foo.* FROM alice']
 '''
+
+import re
+from collections import defaultdict
 
 from ansible.module_utils.basic import AnsibleModule
 
@@ -234,13 +234,13 @@ class ClickHouseGrants():
         exclusive = self.module.params['exclusive']
 
         # Use set comprehensions for better performance
-        all_current_privs = {(priv, obj, go) 
-                            for obj, privs in current.items() 
-                            for priv, go in privs.items()}
-        
-        all_desired_privs = {(priv, obj, go) 
-                            for obj, privs in desired.items() 
-                            for priv, go in privs.items()}
+        all_current_privs = {(priv, obj, go)
+                             for obj, privs in current.items()
+                             for priv, go in privs.items()}
+
+        all_desired_privs = {(priv, obj, go)
+                             for obj, privs in desired.items()
+                             for priv, go in privs.items()}
 
         to_revoke = all_current_privs - all_desired_privs if exclusive else set()
         to_grant = all_desired_privs - all_current_privs
@@ -291,28 +291,28 @@ class ClickHouseGrants():
 
     def revoke(self):
         current = self.get()
-        
+
         if not current:
             # No grants to revoke
             return self.changed
-        
+
         self.changed = True
-        
+
         # Build revoke queries for all current privileges
         queries = []
         for obj, privs in current.items():
             privs_str = ', '.join(sorted(privs))
             query = "REVOKE {0} ON {1} FROM {2}".format(privs_str, obj, self.grantee)
             queries.append(query)
-        
+
         executed_statements.extend(queries)
-        
+
         if self.module.check_mode:
             return self.changed
-        
+
         for query in queries:
             execute_query(self.module, self.client, query)
-        
+
         return self.changed
 
 
