@@ -131,7 +131,7 @@ executed_statements:
   - Data-modifying executed statements.
   returned: on success
   type: list
-  sample: ["TBD"]
+  sample: ['GRANT SELECT ON foo.* TO alice', 'REVOKE INSERT ON foo.* FROM alice']
 '''
 
 from ansible.module_utils.basic import AnsibleModule
@@ -245,19 +245,17 @@ class ClickHouseGrants():
             return self.changed
 
         self.changed = True
-        if self.module.check_mode:
-            return self.changed
 
+        queries = []
         from collections import defaultdict
         revokes_by_obj = defaultdict(list)
         for priv, obj, go in to_revoke:
             revokes_by_obj[obj].append(priv)
 
         for obj, privs in revokes_by_obj.items():
-            privs_str = ', '.join(privs)
+            privs_str = ', '.join(sorted(privs))
             query = f"REVOKE {privs_str} ON {obj} FROM {self.grantee}"
-            execute_query(self.module, self.client, query)
-            executed_statements.append(query)
+            queries.append(query)
 
         grants_go_by_obj = defaultdict(list)
         grants_no_go_by_obj = defaultdict(list)
@@ -269,16 +267,22 @@ class ClickHouseGrants():
                 grants_no_go_by_obj[obj].append(priv)
 
         for obj, privs in grants_go_by_obj.items():
-            privs_str = ', '.join(privs)
+            privs_str = ', '.join(sorted(privs))
             query = f"GRANT {privs_str} ON {obj} TO {self.grantee} WITH GRANT OPTION"
-            execute_query(self.module, self.client, query)
-            executed_statements.append(query)
+            queries.append(query)
 
         for obj, privs in grants_no_go_by_obj.items():
-            privs_str = ', '.join(privs)
+            privs_str = ', '.join(sorted(privs))
             query = f"GRANT {privs_str} ON {obj} TO {self.grantee}"
+            queries.append(query)
+
+        executed_statements.extend(queries)
+
+        if self.module.check_mode:
+            return self.changed
+
+        for query in queries:
             execute_query(self.module, self.client, query)
-            executed_statements.append(query)
 
         return self.changed
 

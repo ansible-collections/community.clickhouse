@@ -139,7 +139,12 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements | length == 2
+    - >
+      result.executed_statements | sort ==
+      [
+        'GRANT ALTER USER ON *.* TO alice WITH GRANT OPTION',
+        'GRANT DELETE ON foo.* TO alice WITH GRANT OPTION'
+      ] | sort
 
 - name: Grant privileges with exclusive=true
   register: result
@@ -195,7 +200,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements | length == 0
+    - result.executed_statements | length == 1
+    - result.executed_statements[0] == 'GRANT SELECT ON foo.* TO alice'
 
 - name: Get user info to verify no changes were made
   register: result_info
