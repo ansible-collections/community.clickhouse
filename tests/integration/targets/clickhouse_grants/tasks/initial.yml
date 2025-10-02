@@ -212,3 +212,173 @@
   ansible.builtin.assert:
     that:
     - result_info["users"]["alice"]["grants"] == []
+
+# Test appending in check mode with existing grants
+- name: Grant some initial privileges to alice for check mode append test
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+
+- name: Append privileges with exclusive=false in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: false
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+          "ALTER DELETE": true
+
+- name: Check append in check mode
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length == 1
+    - result.executed_statements[0] == 'GRANT ALTER DELETE ON foo.* TO alice WITH GRANT OPTION'
+
+- name: Get user info to verify check mode didn't actually change grants
+  register: result_info
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert alice still has only the initial grants (ALTER DELETE not added)
+  ansible.builtin.assert:
+    that:
+    - result_info["users"]["alice"]["grants"] | length == 2
+    - "'ALTER DELETE' not in result_info['users']['alice']['grants'] | join(' ')"
+
+- name: Run the append again in check mode (idempotency test)
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: false
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+          "ALTER DELETE": true
+
+- name: Check append idempotency in check mode
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length == 1
+
+# Test exclusive mode in check mode
+- name: Replace all privileges with exclusive=true in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: true
+    privileges:
+      - object: 'foo.test_table2'
+        privs:
+          "SELECT(y)": false
+
+- name: Check exclusive mode in check mode
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    # Should revoke SELECT and INSERT on foo.*, then grant SELECT(y) on foo.test_table2
+    - result.executed_statements | length == 2
+
+- name: Get user info to verify check mode didn't actually change grants
+  register: result_info
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert alice still has the original grants (not replaced)
+  ansible.builtin.assert:
+    that:
+    - result_info["users"]["alice"]["grants"] | length == 2
+    - "'foo.*' in result_info['users']['alice']['grants'] | join(' ')"
+
+# Test actual append (not check mode) to verify it works after check mode
+- name: Actually append ALTER DELETE privilege
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: false
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+          "ALTER DELETE": true
+
+- name: Check actual append worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length == 1
+    - result.executed_statements[0] == 'GRANT ALTER DELETE ON foo.* TO alice WITH GRANT OPTION'
+
+- name: Run append again for idempotency check
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: false
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+          "ALTER DELETE": true
+
+- name: Check append idempotency
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements | length == 0
+
+# Test actual exclusive mode (not check mode)
+- name: Replace all privileges with exclusive=true
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: true
+    privileges:
+      - object: 'foo.test_table2'
+        privs:
+          "SELECT(z)": true
+
+- name: Check exclusive mode worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    # Should revoke all existing privileges and grant the new one
+    - result.executed_statements | length == 2
+
+- name: Run exclusive grant again for idempotency check
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: true
+    privileges:
+      - object: 'foo.test_table2'
+        privs:
+          "SELECT(z)": true
+
+- name: Check exclusive mode idempotency
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements | length == 0
