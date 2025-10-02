@@ -287,8 +287,36 @@ class ClickHouseGrants():
         return self.changed
 
     def revoke(self):
-        # TBD
-        return True
+        current = self.get()
+        
+        if not current:
+            # No grants to revoke
+            return self.changed
+        
+        self.changed = True
+        
+        queries = []
+        from collections import defaultdict
+        revokes_by_obj = defaultdict(list)
+        
+        for obj, privs in current.items():
+            for priv in privs.keys():
+                revokes_by_obj[obj].append(priv)
+        
+        for obj, privs in revokes_by_obj.items():
+            privs_str = ', '.join(sorted(privs))
+            query = f"REVOKE {privs_str} ON {obj} FROM {self.grantee}"
+            queries.append(query)
+        
+        executed_statements.extend(queries)
+        
+        if self.module.check_mode:
+            return self.changed
+        
+        for query in queries:
+            execute_query(self.module, self.client, query)
+        
+        return self.changed
 
 
 def main():

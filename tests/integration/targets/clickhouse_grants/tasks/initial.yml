@@ -382,3 +382,131 @@
     that:
     - result is not changed
     - result.executed_statements | length == 0
+
+# Test revoking all privileges with state=absent
+- name: Grant some privileges to alice for revoke test
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+      - object: '*.*'
+        privs:
+          "CREATE USER": false
+
+- name: Verify alice has grants
+  register: result_info
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert alice has grants before revoke
+  ansible.builtin.assert:
+    that:
+    - result_info["users"]["alice"]["grants"] | length > 0
+
+- name: Revoke all privileges with state=absent
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+- name: Check revoke worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length > 0
+
+- name: Verify alice has no grants after revoke
+  register: result_info
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert alice has no grants after revoke
+  ansible.builtin.assert:
+    that:
+    - result_info["users"]["alice"]["grants"] == []
+
+- name: Run revoke again for idempotency test
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+- name: Check revoke idempotency
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements | length == 0
+
+# Test revoking in check mode
+- name: Grant some privileges to alice for check mode revoke test
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": false
+          "INSERT": true
+
+- name: Revoke all privileges with state=absent in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+- name: Check revoke in check mode
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length > 0
+
+- name: Verify alice still has grants after check mode revoke
+  register: result_info
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert alice still has grants (check mode didn't actually revoke)
+  ansible.builtin.assert:
+    that:
+    - result_info["users"]["alice"]["grants"] | length > 0
+
+- name: Run revoke in check mode again for idempotency test
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+- name: Check revoke idempotency in check mode
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length > 0
+
+# Test actual revoke after check mode to clean up
+- name: Actually revoke all privileges from alice
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+- name: Check actual revoke worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length > 0
+
+- name: Verify alice has no grants after actual revoke
+  register: result_info
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert alice has no grants
+  ansible.builtin.assert:
+    that:
+    - result_info["users"]["alice"]["grants"] == []
