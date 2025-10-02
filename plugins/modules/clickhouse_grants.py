@@ -43,104 +43,81 @@ options:
       - A user or a role to grant, update, or revoke privileges for.
     type: str
     required: true
-  append:
+  exclusive:
     description:
-      - If set to C(true) (the default), the module will append
-        the privileges specified in O(grants) to the privileges the O(grantee)
+      - If set to C(false) (the default), the module will append
+        the privileges specified in O(privileges) to the privileges the O(grantee)
         already has.
-      - If set to C(false), the module will revoke all
+      - If set to C(true), the module will revoke all
         current privileges from the O(grantee) before granting the new ones.
     type: bool
-    default: true
-  grants:
+    default: false
+  privileges:
     description:
       - Privileges to grant. This option is required when C(state) is C(present).
-    type: dict
+      - It's a list of dictionaries, where each dictionary specifies a set of privileges on a database object.
+    type: list
+    elements: dict
     suboptions:
-      global:
+      object:
         description:
-          - A dictionary of global privileges to grant. These apply to all databases.
-        type: dict
-        suboptions:
-          grants:
-            description:
-              - A dictionary of privileges.
-              - Keys are the names of privileges, for example C(CREATE USER).
-              - Values are booleans (or C(0)/C(1)) indicating whether to grant the privilege
-                with the C(WITH GRANT OPTION).
-            type: dict
-            required: true
-      databases:
+          - The database object to grant privileges on.
+          - Use C(*.*) for global privileges, C(database.*) for all tables in a database,
+            and C(database.table) for a specific table.
+        type: str
+        required: true
+      privs:
         description:
-          - A dictionary of privileges on specific databases, tables, or columns.
-          - Keys are database names.
+          - A dictionary of privileges.
+          - Keys are privilege names, like C(CREATE USER) or C(SELECT(column1, column2)).
+          - Values are booleans indicating whether to grant the privilege
+            with the C(WITH GRANT OPTION).
+          - Alternatively, you can use the O(grant_option) parameter to apply the same setting to all privileges in this set.
         type: dict
-        suboptions:
-          '<database_name>':
-            description:
-              - Dictionary of privileges for a database. Use the actual database name as the key.
-            type: dict
-            suboptions:
-              grants:
-                description:
-                  - Privileges on all tables in the database.
-                  - See the description of C(global.grants) for more details.
-                type: dict
-              '<table_name>':
-                description:
-                  - Dictionary of privileges for a table. Use the actual table name as the key.
-                type: dict
-                suboptions:
-                  grants:
-                    description:
-                      - Privileges on all columns in the table.
-                      - See the description of C(global.grants) for more details.
-                    type: dict
-                  '<column_name>':
-                    description:
-                      - Dictionary of privileges for a column. Use the actual column name as the key.
-                    type: dict
-                    suboptions:
-                      grants:
-                        description:
-                          - Privileges on the column.
-                          - See the description of C(global.grants) for more details.
-                        type: dict
-                        required: true
+        required: true
+      grant_option:
+        description:
+          - A boolean that applies to all privileges in this set.
+          - If specified, it overrides any individual grant option settings within O(privs).
+        type: bool
 '''
 
 EXAMPLES = r'''
 - name: Grant global privileges to a user
   community.clickhouse.clickhouse_grants:
     grantee: alice
-    state: present
-    grants:
-      global:
-        "ALTER USER": 1       # With grant option
-        "CREATE DATABASE": 0  # Without grant option
-        "CREATE USER": 0      # Without grant option
+    privileges:
+      - object: '*.*'
+        privs:
+          "ALTER USER": true       # With grant option
+          "CREATE DATABASE": false # Without grant option
+          "CREATE USER": false     # Without grant option
 
 - name: Grant privileges on a specific database
   community.clickhouse.clickhouse_grants:
     grantee: bob
-    state: present
-    grants:
-      databases:
-        infra:
-          grants:
-            "SELECT": 1  # With grant option
-            "INSERT": 0  # Without grant option
+    privileges:
+      - object: 'infra.*'
+        privs:
+          "SELECT": true  # With grant option
+          "INSERT": false # Without grant option
+
+- name: Grant SELECT on specific columns of a table
+  community.clickhouse.clickhouse_grants:
+    grantee: carol
+    privileges:
+      - object: 'sales.customers'
+        privs:
+          "SELECT(name, email)": false # Without grant option
 
 - name: Replace all existing privileges for a user
   community.clickhouse.clickhouse_grants:
     grantee: david
-    state: present
-    append: false
-    grants:
-      databases:
-        bar:
-          grants:
-            "SELECT": 0  # Without grant option
+    exclusive: true
+    privileges:
+      - object: 'bar.*'
+        privs:
+          "SELECT": false  # Without grant option
 
 - name: Revoke all privileges from a user
   community.clickhouse.clickhouse_grants:
@@ -297,8 +274,12 @@ def main():
     argument_spec.update(
         state=dict(type='str', choices=['present', 'absent'], default='present'),
         grantee=dict(type='str', required=True),
-        append=dict(type='bool', default=True),
-        grants=dict(type='dict'),
+        exclusive=dict(type='bool', default=False),
+        privileges=dict(type='list', elements='dict', suboptions=dict(
+            object=dict(type='str', required=True),
+            privs=dict(type='dict', required=True),
+            grant_option=dict(type='bool', required=False),
+        )),
     )
 
     # Instantiate an object of module class
@@ -306,7 +287,7 @@ def main():
         argument_spec=argument_spec,
         supports_check_mode=True,
         required_if=[
-            ('state', 'present', ['grants']),
+            ('state', 'present', ['privileges']),
         ],
     )
 
@@ -318,9 +299,9 @@ def main():
     # Such data must be passed as module arguments (not nested deep in values).
     main_conn_kwargs = get_main_conn_kwargs(module)
     state = module.params['state']
-    append = module.params['append']
+    exclusive = module.params['exclusive']
     grantee = module.params['grantee']
-    grants = module.params['grants']
+    privileges = module.params['privileges']
 
     # Will fail if no driver informing the user
     check_clickhouse_driver(module)
