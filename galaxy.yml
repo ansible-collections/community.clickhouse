@@ -2,7 +2,7 @@
 
 namespace: community
 name: clickhouse
-version: 0.8.3
+version: 0.8.5
 readme: README.md
 authors:
   - Ansible ClickHouse community

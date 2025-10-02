@@ -4,6 +4,36 @@ Ansible community.clickhouse collection changelog Release Notes
 
 .. contents:: Topics
 
+v0.8.5
+======
+
+Release Summary
+---------------
+
+This is a patch release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Bugfixes
+--------
+
+- clickhouse_client - the module fails when executing DDL queries that return nothing via client object (https://github.com/ansible-collections/community.clickhouse/issues/116).
+
+v0.8.4
+======
+
+Release Summary
+---------------
+
+This is a patch release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Bugfixes
+--------
+
+- clickhouse_cfg_info - Prevent infinite loop when parsing YAML files with recursive anchors by validating JSON serializability (https://github.com/ansible-collections/community.clickhouse/pull/114).
+
 v0.8.3
 ======
 

@@ -208,10 +208,21 @@ def get_query_statistics(module, client):
     try:
         # IMPORTANT: When adding new values, use hassattr() to check
         # if supported as below! This is important for compatibility reasons.
-        statistics['elapsed'] = client.last_query.elapsed
-        statistics['processed_rows'] = client.last_query.progress.rows
-        statistics['processed_bytes'] = client.last_query.progress.bytes
-        statistics['total_rows'] = client.last_query.progress.total_rows
+        if hasattr(client.last_query, 'elapsed'):
+            statistics['elapsed'] = client.last_query.elapsed
+
+        if not hasattr(client.last_query, 'progress'):
+            return statistics
+
+        if hasattr(client.last_query.progress, 'rows'):
+            statistics['processed_rows'] = client.last_query.progress.rows
+
+        if hasattr(client.last_query.progress, 'bytes'):
+            statistics['processed_bytes'] = client.last_query.progress.bytes
+
+        if hasattr(client.last_query.progress, 'total_rows'):
+            statistics['total_rows'] = client.last_query.progress.total_rows
+
         if hasattr(client.last_query.progress, 'written_rows'):
             # As supported since driver version 0.1.3
             statistics['written_rows'] = client.last_query.progress.written_rows
@@ -299,10 +310,10 @@ def main():
     result = execute_query(module, client, query, execute_kwargs, set_settings)
 
     # Convert values not supported by ansible-core
-    if result:
+    if result and isinstance(result, (list, tuple)):
         result = vals_to_supported(result)
 
-    # Retreive statistics
+    # Retreive statistics if present
     statistics = get_query_statistics(module, client)
 
     # Andersson007 doesn't see any way of checking if anything in DB was changed
