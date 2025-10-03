@@ -201,6 +201,10 @@ class ClickHouseGrants():
             privs_str, obj, grant_option_str = match.groups()
             grant_option = (grant_option_str is not None)
 
+            # Normalize object name: ClickHouse 25.x returns '*' instead of '*.*' for global grants
+            if obj == '*':
+                obj = '*.*'
+
             if obj not in grants:
                 grants[obj] = {}
 
