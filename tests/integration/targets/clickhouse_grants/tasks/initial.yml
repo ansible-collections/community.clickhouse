@@ -688,3 +688,181 @@
     that:
     - after_check_grant["users"]["alice"]["grants"] == []
     - empty_state["users"]["alice"]["grants"] == after_check_grant["users"]["alice"]["grants"]
+
+##############################################################################
+# Test diff functionality
+##############################################################################
+
+- name: Clean up alice for diff tests
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+# Test 1: diff in check_mode when granting new privileges
+- name: Grant privileges in check mode (should return diff)
+  register: result_check_diff
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+
+- name: Verify diff is returned in check_mode for new grants
+  ansible.builtin.assert:
+    that:
+    - result_check_diff is changed
+    - result_check_diff.diff is defined
+    - result_check_diff.diff.before is defined
+    - result_check_diff.diff.after is defined
+    - result_check_diff.diff.before == {}
+    - result_check_diff.diff.after.keys() | list == ["foo.*"]
+    - result_check_diff.diff.after["foo.*"]["SELECT"] == true
+    - result_check_diff.diff.after["foo.*"]["INSERT"] == false
+
+# Test 2: Grant actual privileges, then test diff with append
+- name: Revoke all first for clean state
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+- name: Grant initial privileges to alice
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'bar.*'
+        privs:
+          "SELECT": true
+
+- name: Append privileges in check mode (should show diff)
+  register: result_append_diff
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: false
+    privileges:
+      - object: 'bar.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+
+- name: Verify diff is present for append
+  ansible.builtin.assert:
+    that:
+    - result_append_diff.diff is defined
+    - result_append_diff.diff.before is defined
+    - result_append_diff.diff.after is defined
+
+# Test 3: Test diff with exclusive mode
+- name: Grant privileges with exclusive mode in check mode
+  register: result_exclusive_diff
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: true
+    privileges:
+      - object: 'baz.*'
+        privs:
+          "DELETE": false
+
+- name: Verify diff is present for exclusive mode
+  ansible.builtin.assert:
+    that:
+    - result_exclusive_diff is changed
+    - result_exclusive_diff.diff is defined
+    - result_exclusive_diff.diff.before is defined
+    - result_exclusive_diff.diff.after is defined
+
+# Test 4: Test diff with revoke (state: absent)
+- name: Revoke all privileges in check mode
+  register: result_revoke_diff
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+- name: Verify diff shows grants being removed
+  ansible.builtin.assert:
+    that:
+    - result_revoke_diff is changed
+    - result_revoke_diff.diff is defined
+    - result_revoke_diff.diff.before != {}
+    - result_revoke_diff.diff.after == {}
+
+# Test 5: Test diff when no changes are made (idempotency)
+- name: Actually grant privileges (not check mode)
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'qux.*'
+        privs:
+          "SELECT": true
+
+- name: Try to grant same privileges again in check mode
+  register: result_nochange_diff
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'qux.*'
+        privs:
+          "SELECT": true
+
+- name: Verify diff shows no changes when idempotent
+  ansible.builtin.assert:
+    that:
+    - result_nochange_diff is not changed
+    - result_nochange_diff.diff is defined
+    - result_nochange_diff.diff.before == result_nochange_diff.diff.after
+
+# Test 6: Test diff with multiple objects
+- name: Clean and grant privileges on multiple objects
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: true
+    privileges:
+      - object: 'db1.*'
+        privs:
+          "SELECT": true
+      - object: 'db2.*'
+        privs:
+          "INSERT": false
+
+- name: Add more privileges in check mode
+  register: result_multi_diff
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: false
+    privileges:
+      - object: 'db1.*'
+        privs:
+          "SELECT": true
+          "DELETE": true
+      - object: 'db3.*'
+        privs:
+          "ALTER": false
+
+- name: Verify diff is present for multiple objects
+  ansible.builtin.assert:
+    that:
+    - result_multi_diff is changed
+    - result_multi_diff.diff is defined
+    - result_multi_diff.diff.before is defined
+    - result_multi_diff.diff.after is defined
+
+# Cleanup
+- name: Final cleanup - revoke all grants from alice
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice

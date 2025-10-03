@@ -132,6 +132,34 @@ executed_statements:
   returned: on success
   type: list
   sample: ['GRANT SELECT ON foo.* TO alice', 'REVOKE INSERT ON foo.* FROM alice']
+diff:
+  description:
+  - Differences between the previous and current state.
+  - Only returned when diff mode is enabled (with C(--diff) or in C(check_mode)).
+  returned: when diff mode is enabled or check_mode is true
+  type: dict
+  contains:
+    before:
+      description: Grants before the change.
+      returned: always
+      type: dict
+      sample:
+        "*.*":
+          "CREATE USER": false
+        "foo.*":
+          "INSERT": false
+          "SELECT": true
+    after:
+      description: Grants after the change.
+      returned: always
+      type: dict
+      sample:
+        "*.*":
+          "CREATE USER": false
+        "foo.*":
+          "DELETE": true
+          "INSERT": false
+          "SELECT": true
 '''
 
 import re
@@ -358,7 +386,6 @@ def main():
     changed = False
     grants = ClickHouseGrants(module, client, grantee)
     # Get current grants
-    # TODO Should be returned via diff
     start_grants = grants.get()
 
     if state == 'present':
@@ -366,18 +393,44 @@ def main():
     elif state == 'absent':
         changed = grants.revoke()
 
-    end_grants = grants.get()
+    # Get end grants - in check_mode, compute expected state
+    if module.check_mode and changed:
+        # In check mode, compute what the end state would be
+        if state == 'absent':
+            end_grants = {}
+        else:  # state == 'present'
+            desired_grants = grants._get_desired_grants()
+            if module.params['exclusive']:
+                end_grants = desired_grants
+            else:
+                # Merge current and desired grants (append mode)
+                end_grants = dict(start_grants)
+                for obj, privs in desired_grants.items():
+                    if obj not in end_grants:
+                        end_grants[obj] = {}
+                    end_grants[obj].update(privs)
+    else:
+        # In normal mode or if no changes, query actual state
+        end_grants = grants.get()
+
     # Close connection
     client.disconnect_connection()
 
+    # Prepare result
+    result = {
+        'changed': changed,
+        'executed_statements': executed_statements,
+    }
+
+    # Add diff if in diff mode or check mode
+    if module._diff or module.check_mode:
+        result['diff'] = {
+            'before': start_grants,
+            'after': end_grants,
+        }
+
     # Users will get this in JSON output after execution
-    module.exit_json(
-        changed=changed,
-        executed_statements=executed_statements,
-        # TODO Change the below to use diff
-        start_grants=start_grants,
-        end_grants=end_grants,
-    )
+    module.exit_json(**result)
 
 
 if __name__ == '__main__':
