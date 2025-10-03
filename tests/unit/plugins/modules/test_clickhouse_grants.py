@@ -3,7 +3,6 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 import pytest
-import re
 from unittest.mock import MagicMock, patch
 
 from ansible_collections.community.clickhouse.plugins.modules.clickhouse_grants import (
@@ -327,4 +326,3 @@ class TestClickHouseGrantsGetDesiredGrants:
         result = grants_obj._get_desired_grants()
 
         assert result == {}
-
