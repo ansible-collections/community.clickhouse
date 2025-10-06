@@ -79,9 +79,8 @@ options:
     description:
       - Settings with their constraints applied by default at user login.
       - You can also specify the profile from which the settings will be inherited.
-      - When specified for an existing user, the settings will always be updated.
-        This option is not idempotent. If in future ClickHouse will allow
-        to retrieve user settings in a reliable format, this behavior may be changed.
+      - When specified for an existing user, settings will only be updated if they differ from current settings.
+      - The module fetches current settings from C(system.settings_profile_elements) for comparison.
     type: list
     elements: str
     version_added: '0.5.0'
@@ -184,7 +183,7 @@ EXAMPLES = r'''
     password: qwerty123
     update_password: always
 
-- name: Update user settings (always updates, not idempotent)
+- name: Update user settings (idempotent - only updates if different)
   community.clickhouse.clickhouse_user:
     login_host: localhost
     login_user: alice
@@ -253,6 +252,7 @@ class ClickHouseUser():
         self.user_exists = False
         self.current_default_roles = []
         self.current_roles = []
+        self.current_settings = {}
         # Fetch actual values from DB and
         # update the attributes with them
         self.__populate_info()
@@ -276,12 +276,53 @@ class ClickHouseUser():
 
         if self.user_exists:
             self.current_roles = self.__fetch_user_groups()
+            self.current_settings = self.__fetch_user_settings()
 
     def __fetch_user_groups(self):
         query = ("SELECT granted_role_name FROM system.role_grants "
                  "WHERE user_name = '%s'" % self.name)
         result = execute_query(self.module, self.client, query)
         return [row[0] for row in result]
+
+    def __fetch_user_settings(self):
+        """Fetch current user settings from system.settings_profile_elements"""
+        query = ("SELECT setting_name, value, min, max, writability, inherit_profile "
+                 "FROM system.settings_profile_elements "
+                 "WHERE user_name = '%s'" % self.name)
+        result = execute_query(self.module, self.client, query)
+
+        # Build a dict of current settings with their full definition
+        settings_dict = {}
+        for row in result:
+            setting_name, value, min_val, max_val, writability, inherit_profile = row
+
+            # Handle PROFILE inheritance separately
+            if inherit_profile is not None:
+                settings_dict[inherit_profile] = "PROFILE %s" % inherit_profile
+                continue
+
+            # Skip if it's not a regular setting (setting_name could be None for profiles)
+            if setting_name is None:
+                continue
+
+            # Build the setting string as it would appear in ALTER USER
+            setting_parts = [setting_name]
+            if value is not None:
+                setting_parts.extend(["=", str(value)])
+            if min_val is not None:
+                setting_parts.extend(["MIN", str(min_val)])
+            if max_val is not None:
+                setting_parts.extend(["MAX", str(max_val)])
+            if writability is not None and writability != 'WRITABLE':
+                # Map writability enum to SQL keywords
+                if writability == 'CONST':
+                    setting_parts.append("READONLY")
+                elif writability == 'CHANGEABLE_IN_READONLY':
+                    setting_parts.append("CHANGEABLE_IN_READONLY")
+
+            settings_dict[setting_name] = " ".join(setting_parts)
+
+        return settings_dict
 
     def create(self, type_password, password, cluster, settings,
                roles, roles_mode, default_roles, default_roles_mode):
@@ -459,9 +500,53 @@ class ClickHouseUser():
         self.changed = True
 
     def __update_settings(self, settings, cluster):
-        # Since ClickHouse doesn't provide a way to retrieve current user settings
-        # in a reliable format, we always apply the settings when provided.
-        # This is similar to the password update with 'always' mode.
+        """Update user settings idempotently by comparing with current settings"""
+        # Parse desired settings into a comparable format
+        desired_settings = {}
+        desired_profiles = []
+
+        for setting in settings:
+            setting_upper = setting.upper()
+            # Handle PROFILE separately as it's not a regular setting
+            if 'PROFILE' in setting_upper:
+                # Extract profile name (handle both PROFILE 'name' and PROFILE name)
+                profile_part = setting.split(None, 1)[1].strip().strip("'\"")
+                desired_profiles.append(profile_part)
+            else:
+                # Extract setting name (first word before = or space)
+                setting_name = setting.split()[0].split('=')[0].strip()
+                # Normalize the setting string for comparison
+                normalized = ' '.join(setting.split())
+                desired_settings[setting_name] = normalized
+
+        # Compare current with desired
+        needs_update = False
+
+        # Check if any setting values differ
+        for setting_name, desired_def in desired_settings.items():
+            current_def = self.current_settings.get(setting_name, '')
+            # Normalize both for comparison (case-insensitive, whitespace-normalized)
+            current_normalized = ' '.join(current_def.upper().split())
+            desired_normalized = ' '.join(desired_def.upper().split())
+
+            if current_normalized != desired_normalized:
+                needs_update = True
+                break
+
+        # Check if there are settings to remove (current has settings not in desired)
+        if not needs_update:
+            for setting_name in self.current_settings:
+                if setting_name not in desired_settings:
+                    # There's a setting currently applied that's not in desired
+                    # We need to reapply to remove it
+                    needs_update = True
+                    break
+
+        # Only update if settings actually differ
+        if not needs_update:
+            return
+
+        # Build the ALTER USER query
         query = "ALTER USER %s SETTINGS" % self.name
         for index, value in enumerate(settings):
             query += " %s" % value

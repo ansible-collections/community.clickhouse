@@ -159,6 +159,22 @@
     - result is changed
     - result.executed_statements[0] == "ALTER USER test_user SETTINGS max_memory_usage = 20000 READONLY"
 
+- name: Verify settings in database using clickhouse_client
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE USER test_user"
+
+- name: Debug - show CREATE USER output
+  ansible.builtin.debug:
+    var: result.result
+
+- name: Check that settings are present in CREATE USER statement
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0] is search("SETTINGS")
+    - result.result[0][0] is search("max_memory_usage")
+    - result.result[0][0] is search("20000")
+
 - name: Update user settings again with same values
   register: result
   community.clickhouse.clickhouse_user:
@@ -167,11 +183,11 @@
     settings:
       - max_memory_usage = 20000 READONLY
 
-- name: Check that settings update is not idempotent (always updates)
+- name: Check that settings update is idempotent (no change when same)
   ansible.builtin.assert:
     that:
-    - result is changed
-    - result.executed_statements[0] == "ALTER USER test_user SETTINGS max_memory_usage = 20000 READONLY"
+    - result is not changed
+    - result.executed_statements == []
 
 - name: Update user without specifying settings
   register: result
@@ -200,6 +216,21 @@
     that:
     - result is changed
     - result.executed_statements[0] == "ALTER USER test_user SETTINGS max_memory_usage = 25000 READONLY, max_threads = 8, PROFILE 'readonly'"
+
+- name: Verify multiple settings in database using clickhouse_client
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE USER test_user"
+
+- name: Check that all settings are present in CREATE USER statement
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0] is search("SETTINGS")
+    - result.result[0][0] is search("max_memory_usage")
+    - result.result[0][0] is search("25000")
+    - result.result[0][0] is search("max_threads")
+    - result.result[0][0] is search("8")
+    - result.result[0][0] is search("readonly")
 
 # Test roles and default_roles argument
 - name: Create test roles
