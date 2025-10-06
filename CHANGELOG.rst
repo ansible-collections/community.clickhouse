@@ -4,6 +4,21 @@ Ansible community.clickhouse collection changelog Release Notes
 
 .. contents:: Topics
 
+v0.9.0
+======
+
+Release Summary
+---------------
+
+This is a minor release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+New Modules
+-----------
+
+- clickhouse_grants - Manage grants for ClickHouse users and roles
+
 v0.8.5
 ======
 
