@@ -188,10 +188,9 @@ class ClickHouseGrants():
         self.module = module
         self.client = client
         self.grantee = grantee
-        self.grantee_exists = False
-        self.__populate_info()
+        self.__check_grantee_exists()
 
-    def __populate_info(self):
+    def __check_grantee_exists(self):
         # Check if grantee exists as either a user or a role
         query = ("SELECT 1 FROM system.users WHERE name = '%s' "
                  "UNION ALL "
@@ -205,9 +204,7 @@ class ClickHouseGrants():
             msg = "Not enough privileges for user: %s" % login_user
             self.module.fail_json(msg=msg)
 
-        if result:
-            self.grantee_exists = True
-        else:
+        if not result:
             self.module.fail_json(msg="Grantee %s does not exist" % self.grantee)
 
     def get(self):
