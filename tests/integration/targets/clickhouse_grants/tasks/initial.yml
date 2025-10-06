@@ -932,3 +932,213 @@
   community.clickhouse.clickhouse_grants:
     state: absent
     grantee: alice
+
+##############################################################################
+# Test granting privileges to ROLES (not just users)
+##############################################################################
+
+- name: Create a test role
+  community.clickhouse.clickhouse_client:
+    execute: "CREATE ROLE IF NOT EXISTS test_role"
+
+- name: Verify role exists in database
+  register: db_roles
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.roles WHERE name = 'test_role'"
+
+- name: Assert role was created
+  ansible.builtin.assert:
+    that:
+    - db_roles.result | length == 1
+    - db_roles.result[0][0] == 'test_role'
+
+# Test 1: Grant privileges to a role
+- name: Grant privileges to test_role
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_role
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+      - object: '*.*'
+        privs:
+          "CREATE TABLE": false
+
+- name: Check grant to role worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length > 0
+
+- name: Query database to verify role grants
+  register: db_role_grants
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_role"
+
+- name: Verify grants exist for role in database
+  ansible.builtin.assert:
+    that:
+    - db_role_grants.result | length > 0
+    - "'SELECT' in db_role_grants.result | string"
+    - "'INSERT' in db_role_grants.result | string"
+    - "'CREATE TABLE' in db_role_grants.result | string"
+
+# Test 2: Append privileges to role
+- name: Append more privileges to test_role
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_role
+    exclusive: false
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "DELETE": true
+
+- name: Check append to role worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - "'DELETE' in result.executed_statements | string"
+
+- name: Query database to verify appended role grants
+  register: db_role_grants_appended
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_role"
+
+- name: Verify DELETE was appended to role
+  ansible.builtin.assert:
+    that:
+    - db_role_grants_appended.result | length > 0
+    - "'DELETE' in db_role_grants_appended.result | string"
+    - "'SELECT' in db_role_grants_appended.result | string"
+
+# Test 3: Test exclusive mode with role
+- name: Replace all role privileges with exclusive=true
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_role
+    exclusive: true
+    privileges:
+      - object: 'bar.*'
+        privs:
+          "ALTER": false
+
+- name: Check exclusive grant to role worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+
+- name: Query database to verify exclusive grant replaced role privileges
+  register: db_role_grants_exclusive
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_role"
+
+- name: Verify only ALTER on bar.* exists for role
+  ansible.builtin.assert:
+    that:
+    - "'ALTER' in db_role_grants_exclusive.result | string"
+    - "'bar.*' in db_role_grants_exclusive.result | string"
+    - "'foo.*' not in db_role_grants_exclusive.result | string"
+
+# Test 4: Revoke all privileges from role
+- name: Revoke all privileges from test_role
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: test_role
+
+- name: Check revoke from role worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+
+- name: Query database to verify role has no grants
+  register: db_role_grants_after_revoke
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_role"
+
+- name: Verify role has no grants
+  ansible.builtin.assert:
+    that:
+    - db_role_grants_after_revoke.result | length == 0
+
+# Test 5: Test role with check_mode
+- name: Grant privileges to role in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_role
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": false
+
+- name: Verify check mode reported change for role
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.diff is defined
+    - result.diff.before == {}
+    - result.diff.after["foo.*"]["SELECT"] == false
+
+- name: Query database to verify check mode didn't grant to role
+  register: db_role_grants_check
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_role"
+
+- name: Verify role still has no grants after check mode
+  ansible.builtin.assert:
+    that:
+    - db_role_grants_check.result | length == 0
+
+# Test 6: Grant role to user and verify privilege inheritance
+- name: Actually grant privileges to role (not check mode)
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_role
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": true
+
+- name: Grant test_role to alice
+  community.clickhouse.clickhouse_client:
+    execute: "GRANT test_role TO alice"
+
+- name: Query alice's grants (should show role assignment)
+  register: db_alice_with_role
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR alice"
+
+- name: Verify alice has the role granted
+  ansible.builtin.assert:
+    that:
+    - "'test_role' in db_alice_with_role.result | string"
+
+- name: Query role's grants
+  register: db_role_final_grants
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_role"
+
+- name: Verify role has its privileges
+  ansible.builtin.assert:
+    that:
+    - db_role_final_grants.result | length > 0
+    - "'SELECT' in db_role_final_grants.result | string"
+    - "'INSERT' in db_role_final_grants.result | string"
+
+# Cleanup roles
+- name: Revoke role from alice
+  community.clickhouse.clickhouse_client:
+    execute: "REVOKE test_role FROM alice"
+
+- name: Drop test role
+  community.clickhouse.clickhouse_client:
+    execute: "DROP ROLE IF EXISTS test_role"
