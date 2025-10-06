@@ -1,0 +1,1144 @@
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+- name: Create a test dabase
+  community.clickhouse.clickhouse_client:
+    execute: CREATE DATABASE IF NOT EXISTS foo
+
+- name: Create a test table
+  register: result
+  community.clickhouse.clickhouse_client:
+    login_host: localhost
+    execute: >
+      CREATE TABLE IF NOT EXISTS foo.test_table1
+      (x String) ENGINE = Memory
+    execute_kwargs:
+      types_check: false
+
+- name: Insert into test table using named args
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "INSERT INTO foo.test_table1 (x) VALUES (%(a)s), (%(b)s), (%(c)s)"
+    execute_kwargs:
+      params:
+        a: one
+        b: two
+        c: three
+
+- name: Create a test table 2
+  register: result
+  community.clickhouse.clickhouse_client:
+    login_host: localhost
+    execute: >
+      CREATE TABLE IF NOT EXISTS foo.test_table2
+      (y String, z String) ENGINE = Memory
+    execute_kwargs:
+      types_check: false
+
+- name: Insert into test table using named args
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "INSERT INTO foo.test_table2 (y, z) VALUES (%(a)s, %(b)s)"
+    execute_kwargs:
+      params:
+        a: one
+        b: two
+
+- name: Create a test user
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: alice
+    password: querty
+
+- name: Check the user exists
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check user's grants, they are empty
+  ansible.builtin.assert:
+    that:
+    - result["users"]["alice"]["grants"] == []
+
+- name: Grant privs to non-existent grantee, must fail
+  register: result
+  ignore_errors: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: notexists
+    privileges:
+     - object: '*.*'
+       privs:
+         TEST: false
+
+- name: Check that it failed
+  ansible.builtin.assert:
+    that:
+    - result is failed
+    - result.msg is search("does not exist")
+
+- name: Grant initial privileges to alice
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+      - object: '*.*'
+        privs:
+          "CREATE USER": false
+
+- name: Check initial grant
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length == 3
+
+- name: Query database directly to verify grants
+  register: db_grants
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR alice"
+
+- name: Verify grants exist in database
+  ansible.builtin.assert:
+    that:
+    - db_grants.result | length > 0
+    - "'SELECT' in db_grants.result | string"
+    - "'INSERT' in db_grants.result | string"
+    - "'CREATE USER' in db_grants.result | string"
+
+- name: Run the same grant again to check for idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+      - object: '*.*'
+        privs:
+          "CREATE USER": false
+
+- name: Check idempotency
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements | length == 0
+
+- name: Append privileges with exclusive=false (default)
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+          "DELETE": true
+      - object: '*.*'
+        privs:
+          "CREATE USER": false
+          "ALTER USER": true
+
+- name: Check appended privileges
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - >
+      result.executed_statements | sort ==
+      [
+        'GRANT ALTER USER ON *.* TO alice WITH GRANT OPTION',
+        'GRANT DELETE ON foo.* TO alice WITH GRANT OPTION'
+      ] | sort
+
+- name: Query database to verify appended grants
+  register: db_grants_appended
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR alice"
+
+- name: Verify DELETE and ALTER USER were appended in database
+  ansible.builtin.assert:
+    that:
+    - db_grants_appended.result | length > 0
+    - "'DELETE' in db_grants_appended.result | string"
+    - "'ALTER USER' in db_grants_appended.result | string"
+    - "'SELECT' in db_grants_appended.result | string"
+    - "'INSERT' in db_grants_appended.result | string"
+
+- name: Grant privileges with exclusive=true
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: true
+    privileges:
+      - object: 'foo.test_table1'
+        privs:
+          "SELECT(x)": false
+
+- name: Check exclusive grant
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    # 2 revokes and 1 grant
+    - result.executed_statements | length == 3
+
+- name: Query database to verify exclusive grant replaced everything
+  register: db_grants_exclusive
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR alice"
+
+- name: Verify only SELECT(x) on foo.test_table1 exists in database
+  ansible.builtin.assert:
+    that:
+    - db_grants_exclusive.result | length == 1
+    - db_grants_exclusive.result[0] is sequence
+    - db_grants_exclusive.result[0][0] is string
+    - "'SELECT' in db_grants_exclusive.result[0][0]"
+    - "'foo.test_table1' in db_grants_exclusive.result[0][0]"
+    - "'DELETE' not in db_grants_exclusive.result | string"
+    - "'ALTER USER' not in db_grants_exclusive.result | string"
+
+- name: Run exclusive grant again for idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: true
+    privileges:
+      - object: 'foo.test_table1'
+        privs:
+          "SELECT(x)": false
+
+- name: Check exclusive grant idempotency
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements | length == 0
+
+- name: Revoke all from alice for cleanup
+  community.clickhouse.clickhouse_client:
+    execute: "REVOKE ALL ON *.* FROM alice"
+
+- name: Grant privileges in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": false
+
+- name: Check grant in check mode
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length == 1
+    - result.executed_statements[0] == 'GRANT SELECT ON foo.* TO alice'
+
+- name: Get user info to verify no changes were made
+  register: result_info
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert no grants for alice after check mode run
+  ansible.builtin.assert:
+    that:
+    - result_info["users"]["alice"]["grants"] == []
+
+# Test appending in check mode with existing grants
+- name: Grant some initial privileges to alice for check mode append test
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+
+- name: Append privileges with exclusive=false in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: false
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+          "ALTER DELETE": true
+
+- name: Check append in check mode
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length == 1
+    - result.executed_statements[0] == 'GRANT ALTER DELETE ON foo.* TO alice WITH GRANT OPTION'
+
+- name: Get user info to verify check mode didn't actually change grants
+  register: result_info
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert alice still has only the initial grants (ALTER DELETE not added)
+  ansible.builtin.assert:
+    that:
+    - result_info["users"]["alice"]["grants"] | length == 2
+    - "'ALTER DELETE' not in result_info['users']['alice']['grants'] | join(' ')"
+
+- name: Run the append again in check mode (idempotency test)
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: false
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+          "ALTER DELETE": true
+
+- name: Check append idempotency in check mode
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length == 1
+
+# Test exclusive mode in check mode
+- name: Replace all privileges with exclusive=true in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: true
+    privileges:
+      - object: 'foo.test_table2'
+        privs:
+          "SELECT(y)": false
+
+- name: Check exclusive mode in check mode
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    # Should revoke SELECT and INSERT on foo.*, then grant SELECT(y) on foo.test_table2
+    - result.executed_statements | length == 2
+
+- name: Get user info to verify check mode didn't actually change grants
+  register: result_info
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert alice still has the original grants (not replaced)
+  ansible.builtin.assert:
+    that:
+    - result_info["users"]["alice"]["grants"] | length == 2
+    - "'foo.*' in result_info['users']['alice']['grants'] | join(' ')"
+
+# Test actual append (not check mode) to verify it works after check mode
+- name: Actually append ALTER DELETE privilege
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: false
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+          "ALTER DELETE": true
+
+- name: Check actual append worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length == 1
+    - result.executed_statements[0] == 'GRANT ALTER DELETE ON foo.* TO alice WITH GRANT OPTION'
+
+- name: Run append again for idempotency check
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: false
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+          "ALTER DELETE": true
+
+- name: Check append idempotency
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements | length == 0
+
+# Test actual exclusive mode (not check mode)
+- name: Replace all privileges with exclusive=true
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: true
+    privileges:
+      - object: 'foo.test_table2'
+        privs:
+          "SELECT(z)": true
+
+- name: Check exclusive mode worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    # Should revoke all existing privileges and grant the new one
+    - result.executed_statements | length == 2
+
+- name: Run exclusive grant again for idempotency check
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: true
+    privileges:
+      - object: 'foo.test_table2'
+        privs:
+          "SELECT(z)": true
+
+- name: Check exclusive mode idempotency
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements | length == 0
+
+# Test revoking all privileges with state=absent
+- name: Grant some privileges to alice for revoke test
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+      - object: '*.*'
+        privs:
+          "CREATE USER": false
+
+- name: Verify alice has grants
+  register: result_info
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert alice has grants before revoke
+  ansible.builtin.assert:
+    that:
+    - result_info["users"]["alice"]["grants"] | length > 0
+
+- name: Revoke all privileges with state=absent
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+- name: Check revoke worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length > 0
+
+- name: Verify alice has no grants after revoke
+  register: result_info
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert alice has no grants after revoke
+  ansible.builtin.assert:
+    that:
+    - result_info["users"]["alice"]["grants"] == []
+
+- name: Query database to confirm no grants exist
+  register: db_grants_after_revoke
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR alice"
+
+- name: Verify database shows no grants for alice
+  ansible.builtin.assert:
+    that:
+    - db_grants_after_revoke.result | length == 0
+
+- name: Run revoke again for idempotency test
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+- name: Check revoke idempotency
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements | length == 0
+
+# Test revoking in check mode
+- name: Grant some privileges to alice for check mode revoke test
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": false
+          "INSERT": true
+
+- name: Revoke all privileges with state=absent in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+- name: Check revoke in check mode
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length > 0
+
+- name: Verify alice still has grants after check mode revoke
+  register: result_info
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert alice still has grants (check mode didn't actually revoke)
+  ansible.builtin.assert:
+    that:
+    - result_info["users"]["alice"]["grants"] | length > 0
+
+- name: Run revoke in check mode again for idempotency test
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+- name: Check revoke idempotency in check mode
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length > 0
+
+# Test actual revoke after check mode to clean up
+- name: Actually revoke all privileges from alice
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+- name: Check actual revoke worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length > 0
+
+- name: Verify alice has no grants after actual revoke
+  register: result_info
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert alice has no grants
+  ansible.builtin.assert:
+    that:
+    - result_info["users"]["alice"]["grants"] == []
+
+# Test grant_option parameter (overrides individual privilege settings)
+- name: Grant privileges using grant_option parameter
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        grant_option: true
+        privs:
+          "SELECT": false  # Should be overridden to true
+          "INSERT": false  # Should be overridden to true
+
+- name: Check grant_option parameter worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length == 1
+    - "'WITH GRANT OPTION' in result.executed_statements[0]"
+
+- name: Verify grants were applied with grant option
+  register: result_info
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert alice has grants with grant option
+  ansible.builtin.assert:
+    that:
+    - result_info["users"]["alice"]["grants"] | length > 0
+    - "'WITH GRANT OPTION' in result_info['users']['alice']['grants'] | join(' ')"
+
+- name: Query database to verify WITH GRANT OPTION
+  register: db_grants_with_option
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR alice"
+
+- name: Verify WITH GRANT OPTION is in database
+  ansible.builtin.assert:
+    that:
+    - db_grants_with_option.result | length > 0
+    - "'WITH GRANT OPTION' in db_grants_with_option.result | string"
+    - "'SELECT' in db_grants_with_option.result | string"
+    - "'INSERT' in db_grants_with_option.result | string"
+
+- name: Run same grant again for idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        grant_option: true
+        privs:
+          "SELECT": false
+          "INSERT": false
+
+- name: Check grant_option idempotency
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements | length == 0
+
+# Test grant_option in check mode
+- name: Revoke all for clean state
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+- name: Grant some privileges without grant option
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": false
+          "INSERT": false
+
+- name: Get current state before check mode
+  register: before_check
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Update grants using grant_option in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: true
+    privileges:
+      - object: 'foo.*'
+        grant_option: true
+        privs:
+          "SELECT": false
+          "INSERT": false
+
+- name: Check that changes were detected in check mode
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length > 0
+
+- name: Get current state after check mode
+  register: after_check
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert grants are UNCHANGED after check mode (no WITH GRANT OPTION added)
+  ansible.builtin.assert:
+    that:
+    - before_check["users"]["alice"]["grants"] == after_check["users"]["alice"]["grants"]
+    - "'WITH GRANT OPTION' not in after_check['users']['alice']['grants'] | join(' ')"
+
+# Test grant_option=false explicitly
+- name: Revoke all for clean state
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+- name: Grant privileges with explicit grant_option=false
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        grant_option: false
+        privs:
+          "SELECT": true  # Should be overridden to false
+          "INSERT": true  # Should be overridden to false
+
+- name: Check grant_option=false worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+
+- name: Verify grants were applied without grant option
+  register: result_info
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert alice has grants without grant option
+  ansible.builtin.assert:
+    that:
+    - result_info["users"]["alice"]["grants"] | length > 0
+    - "'WITH GRANT OPTION' not in result_info['users']['alice']['grants'] | join(' ')"
+
+# Test that check mode NEVER modifies actual state
+- name: Revoke all for clean state
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+- name: Get empty state
+  register: empty_state
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert alice has no grants initially
+  ansible.builtin.assert:
+    that:
+    - empty_state["users"]["alice"]["grants"] == []
+
+- name: Try to grant in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+
+- name: Verify check mode reported change
+  ansible.builtin.assert:
+    that:
+    - result is changed
+
+- name: Get state after check mode grant
+  register: after_check_grant
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Assert NOTHING was actually granted in check mode
+  ansible.builtin.assert:
+    that:
+    - after_check_grant["users"]["alice"]["grants"] == []
+    - empty_state["users"]["alice"]["grants"] == after_check_grant["users"]["alice"]["grants"]
+
+##############################################################################
+# Test diff functionality
+##############################################################################
+
+- name: Clean up alice for diff tests
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+# Test 1: diff in check_mode when granting new privileges
+- name: Grant privileges in check mode (should return diff)
+  register: result_check_diff
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+
+- name: Verify diff is returned in check_mode for new grants
+  ansible.builtin.assert:
+    that:
+    - result_check_diff is changed
+    - result_check_diff.diff is defined
+    - result_check_diff.diff.before is defined
+    - result_check_diff.diff.after is defined
+    - result_check_diff.diff.before == {}
+    - result_check_diff.diff.after.keys() | list == ["foo.*"]
+    - result_check_diff.diff.after["foo.*"]["SELECT"] == true
+    - result_check_diff.diff.after["foo.*"]["INSERT"] == false
+
+# Test 2: Grant actual privileges, then test diff with append
+- name: Revoke all first for clean state
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+- name: Grant initial privileges to alice
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'bar.*'
+        privs:
+          "SELECT": true
+
+- name: Append privileges in check mode (should show diff)
+  register: result_append_diff
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: false
+    privileges:
+      - object: 'bar.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+
+- name: Verify diff is present for append
+  ansible.builtin.assert:
+    that:
+    - result_append_diff.diff is defined
+    - result_append_diff.diff.before is defined
+    - result_append_diff.diff.after is defined
+
+# Test 3: Test diff with exclusive mode
+- name: Grant privileges with exclusive mode in check mode
+  register: result_exclusive_diff
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: true
+    privileges:
+      - object: 'baz.*'
+        privs:
+          "DELETE": false
+
+- name: Verify diff is present for exclusive mode
+  ansible.builtin.assert:
+    that:
+    - result_exclusive_diff is changed
+    - result_exclusive_diff.diff is defined
+    - result_exclusive_diff.diff.before is defined
+    - result_exclusive_diff.diff.after is defined
+
+# Test 4: Test diff with revoke (state: absent)
+- name: Revoke all privileges in check mode
+  register: result_revoke_diff
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+- name: Verify diff shows grants being removed
+  ansible.builtin.assert:
+    that:
+    - result_revoke_diff is changed
+    - result_revoke_diff.diff is defined
+    - result_revoke_diff.diff.before != {}
+    - result_revoke_diff.diff.after == {}
+
+# Test 5: Test diff when no changes are made (idempotency)
+- name: Actually grant privileges (not check mode)
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'qux.*'
+        privs:
+          "SELECT": true
+
+- name: Try to grant same privileges again in check mode
+  register: result_nochange_diff
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    privileges:
+      - object: 'qux.*'
+        privs:
+          "SELECT": true
+
+- name: Verify diff shows no changes when idempotent
+  ansible.builtin.assert:
+    that:
+    - result_nochange_diff is not changed
+    - result_nochange_diff.diff is defined
+    - result_nochange_diff.diff.before == result_nochange_diff.diff.after
+
+# Test 6: Test diff with multiple objects
+- name: Clean and grant privileges on multiple objects
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: true
+    privileges:
+      - object: 'db1.*'
+        privs:
+          "SELECT": true
+      - object: 'db2.*'
+        privs:
+          "INSERT": false
+
+- name: Add more privileges in check mode
+  register: result_multi_diff
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: false
+    privileges:
+      - object: 'db1.*'
+        privs:
+          "SELECT": true
+          "DELETE": true
+      - object: 'db3.*'
+        privs:
+          "ALTER": false
+
+- name: Verify diff is present for multiple objects
+  ansible.builtin.assert:
+    that:
+    - result_multi_diff is changed
+    - result_multi_diff.diff is defined
+    - result_multi_diff.diff.before is defined
+    - result_multi_diff.diff.after is defined
+
+# Cleanup
+- name: Final cleanup - revoke all grants from alice
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+##############################################################################
+# Test granting privileges to ROLES (not just users)
+##############################################################################
+
+- name: Create a test role
+  community.clickhouse.clickhouse_client:
+    execute: "CREATE ROLE IF NOT EXISTS test_role"
+
+- name: Verify role exists in database
+  register: db_roles
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.roles WHERE name = 'test_role'"
+
+- name: Assert role was created
+  ansible.builtin.assert:
+    that:
+    - db_roles.result | length == 1
+    - db_roles.result[0][0] == 'test_role'
+
+# Test 1: Grant privileges to a role
+- name: Grant privileges to test_role
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_role
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+      - object: '*.*'
+        privs:
+          "CREATE TABLE": false
+
+- name: Check grant to role worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length > 0
+
+- name: Query database to verify role grants
+  register: db_role_grants
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_role"
+
+- name: Verify grants exist for role in database
+  ansible.builtin.assert:
+    that:
+    - db_role_grants.result | length > 0
+    - "'SELECT' in db_role_grants.result | string"
+    - "'INSERT' in db_role_grants.result | string"
+    - "'CREATE TABLE' in db_role_grants.result | string"
+
+# Test 2: Append privileges to role
+- name: Append more privileges to test_role
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_role
+    exclusive: false
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "DELETE": true
+
+- name: Check append to role worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - "'DELETE' in result.executed_statements | string"
+
+- name: Query database to verify appended role grants
+  register: db_role_grants_appended
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_role"
+
+- name: Verify DELETE was appended to role
+  ansible.builtin.assert:
+    that:
+    - db_role_grants_appended.result | length > 0
+    - "'DELETE' in db_role_grants_appended.result | string"
+    - "'SELECT' in db_role_grants_appended.result | string"
+
+# Test 3: Test exclusive mode with role
+- name: Replace all role privileges with exclusive=true
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_role
+    exclusive: true
+    privileges:
+      - object: 'bar.*'
+        privs:
+          "ALTER": false
+
+- name: Check exclusive grant to role worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+
+- name: Query database to verify exclusive grant replaced role privileges
+  register: db_role_grants_exclusive
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_role"
+
+- name: Verify only ALTER on bar.* exists for role
+  ansible.builtin.assert:
+    that:
+    - "'ALTER' in db_role_grants_exclusive.result | string"
+    - "'bar.*' in db_role_grants_exclusive.result | string"
+    - "'foo.*' not in db_role_grants_exclusive.result | string"
+
+# Test 4: Revoke all privileges from role
+- name: Revoke all privileges from test_role
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: test_role
+
+- name: Check revoke from role worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+
+- name: Query database to verify role has no grants
+  register: db_role_grants_after_revoke
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_role"
+
+- name: Verify role has no grants
+  ansible.builtin.assert:
+    that:
+    - db_role_grants_after_revoke.result | length == 0
+
+# Test 5: Test role with check_mode
+- name: Grant privileges to role in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_role
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": false
+
+- name: Verify check mode reported change for role
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.diff is defined
+    - result.diff.before == {}
+    - result.diff.after["foo.*"]["SELECT"] == false
+
+- name: Query database to verify check mode didn't grant to role
+  register: db_role_grants_check
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_role"
+
+- name: Verify role still has no grants after check mode
+  ansible.builtin.assert:
+    that:
+    - db_role_grants_check.result | length == 0
+
+# Test 6: Grant role to user and verify privilege inheritance
+- name: Actually grant privileges to role (not check mode)
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_role
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": true
+
+- name: Grant test_role to alice
+  community.clickhouse.clickhouse_client:
+    execute: "GRANT test_role TO alice"
+
+- name: Query alice's grants (should show role assignment)
+  register: db_alice_with_role
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR alice"
+
+- name: Verify alice has the role granted
+  ansible.builtin.assert:
+    that:
+    - "'test_role' in db_alice_with_role.result | string"
+
+- name: Query role's grants
+  register: db_role_final_grants
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_role"
+
+- name: Verify role has its privileges
+  ansible.builtin.assert:
+    that:
+    - db_role_final_grants.result | length > 0
+    - "'SELECT' in db_role_final_grants.result | string"
+    - "'INSERT' in db_role_final_grants.result | string"
+
+# Cleanup roles
+- name: Revoke role from alice
+  community.clickhouse.clickhouse_client:
+    execute: "REVOKE test_role FROM alice"
+
+- name: Drop test role
+  community.clickhouse.clickhouse_client:
+    execute: "DROP ROLE IF EXISTS test_role"
