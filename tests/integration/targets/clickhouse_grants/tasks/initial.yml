@@ -99,6 +99,19 @@
     - result is changed
     - result.executed_statements | length == 3
 
+- name: Query database directly to verify grants
+  register: db_grants
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR alice"
+
+- name: Verify grants exist in database
+  ansible.builtin.assert:
+    that:
+    - db_grants.result | length > 0
+    - "'SELECT' in db_grants.result | string"
+    - "'INSERT' in db_grants.result | string"
+    - "'CREATE USER' in db_grants.result | string"
+
 - name: Run the same grant again to check for idempotency
   register: result
   community.clickhouse.clickhouse_grants:
@@ -146,6 +159,20 @@
         'GRANT DELETE ON foo.* TO alice WITH GRANT OPTION'
       ] | sort
 
+- name: Query database to verify appended grants
+  register: db_grants_appended
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR alice"
+
+- name: Verify DELETE and ALTER USER were appended in database
+  ansible.builtin.assert:
+    that:
+    - db_grants_appended.result | length > 0
+    - "'DELETE' in db_grants_appended.result | string"
+    - "'ALTER USER' in db_grants_appended.result | string"
+    - "'SELECT' in db_grants_appended.result | string"
+    - "'INSERT' in db_grants_appended.result | string"
+
 - name: Grant privileges with exclusive=true
   register: result
   community.clickhouse.clickhouse_grants:
@@ -163,6 +190,22 @@
     - result is changed
     # 2 revokes and 1 grant
     - result.executed_statements | length == 3
+
+- name: Query database to verify exclusive grant replaced everything
+  register: db_grants_exclusive
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR alice"
+
+- name: Verify only SELECT(x) on foo.test_table1 exists in database
+  ansible.builtin.assert:
+    that:
+    - db_grants_exclusive.result | length == 1
+    - db_grants_exclusive.result[0] is sequence
+    - db_grants_exclusive.result[0][0] is string
+    - "'SELECT' in db_grants_exclusive.result[0][0]"
+    - "'foo.test_table1' in db_grants_exclusive.result[0][0]"
+    - "'DELETE' not in db_grants_exclusive.result | string"
+    - "'ALTER USER' not in db_grants_exclusive.result | string"
 
 - name: Run exclusive grant again for idempotency
   register: result
@@ -429,6 +472,16 @@
     that:
     - result_info["users"]["alice"]["grants"] == []
 
+- name: Query database to confirm no grants exist
+  register: db_grants_after_revoke
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR alice"
+
+- name: Verify database shows no grants for alice
+  ansible.builtin.assert:
+    that:
+    - db_grants_after_revoke.result | length == 0
+
 - name: Run revoke again for idempotency test
   register: result
   community.clickhouse.clickhouse_grants:
@@ -541,6 +594,19 @@
     that:
     - result_info["users"]["alice"]["grants"] | length > 0
     - "'WITH GRANT OPTION' in result_info['users']['alice']['grants'] | join(' ')"
+
+- name: Query database to verify WITH GRANT OPTION
+  register: db_grants_with_option
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR alice"
+
+- name: Verify WITH GRANT OPTION is in database
+  ansible.builtin.assert:
+    that:
+    - db_grants_with_option.result | length > 0
+    - "'WITH GRANT OPTION' in db_grants_with_option.result | string"
+    - "'SELECT' in db_grants_with_option.result | string"
+    - "'INSERT' in db_grants_with_option.result | string"
 
 - name: Run same grant again for idempotency
   register: result
