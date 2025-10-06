@@ -79,6 +79,9 @@ options:
     description:
       - Settings with their constraints applied by default at user login.
       - You can also specify the profile from which the settings will be inherited.
+      - When specified for an existing user, the settings will always be updated.
+        This option is not idempotent. If in future ClickHouse will allow
+        to retrieve user settings in a reliable format, this behavior may be changed.
     type: list
     elements: str
     version_added: '0.5.0'
@@ -180,6 +183,17 @@ EXAMPLES = r'''
     name: test_user
     password: qwerty123
     update_password: always
+
+- name: Update user settings (always updates, not idempotent)
+  community.clickhouse.clickhouse_user:
+    login_host: localhost
+    login_user: alice
+    login_db: foo
+    login_password: my_password
+    name: test_user
+    settings:
+      - max_memory_usage = 20000 READONLY
+      - max_threads = 8
 
 - name: Create user with specific settings
   community.clickhouse.clickhouse_user:
@@ -301,7 +315,7 @@ class ClickHouseUser():
         return True
 
     def update(self, update_password, type_password, password, cluster,
-               roles, roles_mode, default_roles, default_roles_mode):
+               roles, roles_mode, default_roles, default_roles_mode, settings):
 
         if roles is not None:
             self.__update_roles(roles, roles_mode, cluster)
@@ -311,7 +325,8 @@ class ClickHouseUser():
 
         self.__update_passwd(update_password, type_password, password, cluster)
 
-        # TODO Add a possibility to update settings idempotently
+        if settings is not None:
+            self.__update_settings(settings, cluster)
 
         return self.changed
 
@@ -443,6 +458,26 @@ class ClickHouseUser():
 
         self.changed = True
 
+    def __update_settings(self, settings, cluster):
+        # Since ClickHouse doesn't provide a way to retrieve current user settings
+        # in a reliable format, we always apply the settings when provided.
+        # This is similar to the password update with 'always' mode.
+        query = "ALTER USER %s SETTINGS" % self.name
+        for index, value in enumerate(settings):
+            query += " %s" % value
+            if index < len(settings) - 1:
+                query += ","
+
+        if cluster:
+            query += " ON CLUSTER %s" % cluster
+
+        executed_statements.append(query)
+
+        if not self.module.check_mode:
+            execute_query(self.module, self.client, query)
+
+        self.changed = True
+
 
 def main():
     argument_spec = client_common_argument_spec()
@@ -507,7 +542,7 @@ def main():
         else:
             # If user exists
             changed = user.update(update_password, type_password, password, cluster,
-                                  roles, roles_mode, default_roles, default_roles_mode)
+                                  roles, roles_mode, default_roles, default_roles_mode, settings)
     else:
         # If state is absent
         if user.user_exists:

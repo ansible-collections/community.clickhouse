@@ -130,6 +130,77 @@
     - result is changed
     - result.executed_statements != []
 
+- name: Update user settings in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    settings:
+      - max_memory_usage = 20000 READONLY
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements[0] == "ALTER USER test_user SETTINGS max_memory_usage = 20000 READONLY"
+
+- name: Update user settings in real mode
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    settings:
+      - max_memory_usage = 20000 READONLY
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements[0] == "ALTER USER test_user SETTINGS max_memory_usage = 20000 READONLY"
+
+- name: Update user settings again with same values
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    settings:
+      - max_memory_usage = 20000 READONLY
+
+- name: Check that settings update is not idempotent (always updates)
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements[0] == "ALTER USER test_user SETTINGS max_memory_usage = 20000 READONLY"
+
+- name: Update user without specifying settings
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+
+- name: Check that not specifying settings does not update them
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Update user settings with multiple settings
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    settings:
+      - max_memory_usage = 25000 READONLY
+      - max_threads = 8
+      - PROFILE 'readonly'
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements[0] == "ALTER USER test_user SETTINGS max_memory_usage = 25000 READONLY, max_threads = 8, PROFILE 'readonly'"
+
 # Test roles and default_roles argument
 - name: Create test roles
   loop:
