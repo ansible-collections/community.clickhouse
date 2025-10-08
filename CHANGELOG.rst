@@ -4,6 +4,26 @@ Ansible community.clickhouse collection changelog Release Notes
 
 .. contents:: Topics
 
+v0.10.0
+=======
+
+Release Summary
+---------------
+
+This is a minor release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Minor Changes
+-------------
+
+- clickhouse_user - the settings argument can now update user settings idempotently at any use, not only upon user creation as before (https://github.com/ansible-collections/community.clickhouse/issues/73).
+
+Bugfixes
+--------
+
+- clickhouse_user - quote names in queries to prevent errors (https://github.com/ansible-collections/community.clickhouse/pull/110).
+
 v0.9.0
 ======
 

@@ -1,2 +1,0 @@
-minor_changes:
-- clickhouse_user - the settings argument can now update user settings idempotently at any use, not only upon user creation as before (https://github.com/ansible-collections/community.clickhouse/issues/73).
