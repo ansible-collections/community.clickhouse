@@ -327,7 +327,7 @@ class ClickHouseUser():
     def create(self, type_password, password, cluster, settings,
                roles, roles_mode, default_roles, default_roles_mode):
 
-        query = "CREATE USER %s" % self.name
+        query = "CREATE USER '%s'" % self.name
 
         if password is not None:
             query += (" IDENTIFIED WITH %s BY '%s'") % (type_password, password)
@@ -372,7 +372,7 @@ class ClickHouseUser():
         return self.changed
 
     def drop(self, cluster):
-        query = "DROP USER %s" % self.name
+        query = "DROP USER '%s'" % self.name
         if cluster:
             query += " ON CLUSTER %s" % cluster
 
@@ -438,7 +438,7 @@ class ClickHouseUser():
         # If update_password is always
         # TODO: When ClickHouse will allow to retrieve password hashes,
         # make this idempotent, i.e. execute this only if the passwords don't match
-        query = ("ALTER USER %s IDENTIFIED WITH %s "
+        query = ("ALTER USER '%s' IDENTIFIED WITH %s "
                  "BY '%s'") % (self.name, type_pwd, pwd)
         if cluster:
             query += " ON CLUSTER %s" % cluster
@@ -451,7 +451,7 @@ class ClickHouseUser():
         self.changed = True
 
     def __grant_roles(self, roles_to_set, cluster):
-        query = "GRANT %s TO %s" % (', '.join(roles_to_set), self.name)
+        query = "GRANT %s TO '%s'" % (', '.join(roles_to_set), self.name)
         executed_statements.append(query)
 
         if cluster:
@@ -463,7 +463,7 @@ class ClickHouseUser():
         self.changed = True
 
     def __revoke_roles(self, roles_to_revoke, cluster):
-        query = "REVOKE %s FROM %s" % (', '.join(roles_to_revoke), self.name)
+        query = "REVOKE %s FROM '%s'" % (', '.join(roles_to_revoke), self.name)
         executed_statements.append(query)
 
         if cluster:
@@ -480,7 +480,7 @@ class ClickHouseUser():
             if role not in self.current_roles and role not in self.module.params["roles"]:
                 self.module.fail_json("User %s is not in %s role. Grant it explicitly first." % (self.name, role))
 
-        query = "ALTER USER %s DEFAULT ROLE %s" % (self.name, ', '.join(roles_to_set))
+        query = "ALTER USER '%s' DEFAULT ROLE %s" % (self.name, ', '.join(roles_to_set))
         if cluster:
             query += " ON CLUSTER %s" % cluster
         executed_statements.append(query)
@@ -491,7 +491,7 @@ class ClickHouseUser():
         self.changed = True
 
     def __unset_default_roles(self):
-        query = "SET DEFAULT ROLE NONE TO %s" % self.name
+        query = "SET DEFAULT ROLE NONE TO '%s'" % self.name
         executed_statements.append(query)
 
         if not self.module.check_mode:
@@ -547,7 +547,7 @@ class ClickHouseUser():
             return
 
         # Build the ALTER USER query
-        query = "ALTER USER %s SETTINGS" % self.name
+        query = "ALTER USER '%s' SETTINGS" % self.name
         for index, value in enumerate(settings):
             query += " %s" % value
             if index < len(settings) - 1:
