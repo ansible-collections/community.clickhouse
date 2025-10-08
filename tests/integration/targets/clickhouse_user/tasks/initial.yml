@@ -15,7 +15,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["CREATE USER test_user IDENTIFIED WITH sha256_password BY '********'"]
+    - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH sha256_password BY '********'"]
 
 - name: Check the actual state
   register: result
@@ -107,7 +107,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["ALTER USER test_user IDENTIFIED WITH sha256_password BY '********'"]
+    - result.executed_statements == ["ALTER USER 'test_user' IDENTIFIED WITH sha256_password BY '********'"]
 
 - name: Drop test_user
   community.clickhouse.clickhouse_user:
@@ -143,7 +143,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "ALTER USER test_user SETTINGS max_memory_usage = 20000 READONLY"
+    - result.executed_statements[0] == "ALTER USER 'test_user' SETTINGS max_memory_usage = 20000 READONLY"
 
 - name: Update user settings in real mode
   register: result
@@ -157,7 +157,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "ALTER USER test_user SETTINGS max_memory_usage = 20000 READONLY"
+    - result.executed_statements[0] == "ALTER USER 'test_user' SETTINGS max_memory_usage = 20000 READONLY"
 
 - name: Verify settings in database using clickhouse_client
   register: result
@@ -215,7 +215,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "ALTER USER test_user SETTINGS max_memory_usage = 25000 READONLY, max_threads = 8, PROFILE 'readonly'"
+    - result.executed_statements[0] == "ALTER USER 'test_user' SETTINGS max_memory_usage = 25000 READONLY, max_threads = 8, PROFILE 'readonly'"
 
 - name: Verify multiple settings in database using clickhouse_client
   register: result
@@ -259,8 +259,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "GRANT accountant, manager TO test_user" or result.executed_statements[0] == "GRANT manager, accountant TO test_user"
-    - result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE accountant, manager" or result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE manager, accountant"
+    - result.executed_statements[0] == "GRANT accountant, manager TO 'test_user'" or result.executed_statements[0] == "GRANT manager, accountant TO 'test_user'"
+    - result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE accountant, manager" or result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE manager, accountant"
 
 - name: Check the actual state
   register: result
@@ -290,8 +290,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "GRANT accountant, manager TO test_user" or result.executed_statements[0] == "GRANT manager, accountant TO test_user"
-    - result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE accountant, manager" or result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE manager, accountant"
+    - result.executed_statements[0] == "GRANT accountant, manager TO 'test_user'" or result.executed_statements[0] == "GRANT manager, accountant TO 'test_user'"
+    - result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE accountant, manager" or result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE manager, accountant"
 
 - name: Check the actual state
   register: result
@@ -320,9 +320,9 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "GRANT sales TO test_user"
-    - result.executed_statements[1] == "REVOKE accountant, manager FROM test_user" or result.executed_statements[1] == "REVOKE manager, accountant FROM test_user"
-    - result.executed_statements[2] == "ALTER USER test_user DEFAULT ROLE sales"
+    - result.executed_statements[0] == "GRANT sales TO 'test_user'"
+    - result.executed_statements[1] == "REVOKE accountant, manager FROM 'test_user'" or result.executed_statements[1] == "REVOKE manager, accountant FROM 'test_user'"
+    - result.executed_statements[2] == "ALTER USER 'test_user' DEFAULT ROLE sales"
 
 - name: Check the actual state
   register: result
@@ -348,9 +348,9 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "GRANT sales TO test_user"
-    - result.executed_statements[1] == "REVOKE accountant, manager FROM test_user" or result.executed_statements[1] == "REVOKE manager, accountant FROM test_user"
-    - result.executed_statements[2] == "ALTER USER test_user DEFAULT ROLE sales"
+    - result.executed_statements[0] == "GRANT sales TO 'test_user'"
+    - result.executed_statements[1] == "REVOKE accountant, manager FROM 'test_user'" or result.executed_statements[1] == "REVOKE manager, accountant FROM 'test_user'"
+    - result.executed_statements[2] == "ALTER USER 'test_user' DEFAULT ROLE sales"
 
 - name: Check the actual state
   register: result
@@ -413,8 +413,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "GRANT accountant TO test_user"
-    - result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE sales, accountant" or result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE accountant, sales"
+    - result.executed_statements[0] == "GRANT accountant TO 'test_user'"
+    - result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE sales, accountant" or result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE accountant, sales"
 
 - name: Check the actual state
   register: result
@@ -440,7 +440,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "SET DEFAULT ROLE NONE TO test_user"
+    - result.executed_statements[0] == "SET DEFAULT ROLE NONE TO 'test_user'"
 
 - name: Check the actual state
   register: result
@@ -465,7 +465,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "SET DEFAULT ROLE NONE TO test_user"
+    - result.executed_statements[0] == "SET DEFAULT ROLE NONE TO 'test_user'"
 
 - name: Check the actual state
   register: result
@@ -491,7 +491,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "REVOKE accountant, sales FROM test_user" or result.executed_statements[0] == "REVOKE sales, accountant FROM test_user"
+    - result.executed_statements[0] == "REVOKE accountant, sales FROM 'test_user'" or result.executed_statements[0] == "REVOKE sales, accountant FROM 'test_user'"
 
 - name: Check the actual state
   register: result
@@ -516,7 +516,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "REVOKE accountant, sales FROM test_user" or result.executed_statements[0] == "REVOKE sales, accountant FROM test_user"
+    - result.executed_statements[0] == "REVOKE accountant, sales FROM 'test_user'" or result.executed_statements[0] == "REVOKE sales, accountant FROM 'test_user'"
 
 - name: Check the actual state
   register: result
@@ -612,8 +612,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "REVOKE manager FROM test_user"
-    - result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE accountant"
+    - result.executed_statements[0] == "REVOKE manager FROM 'test_user'"
+    - result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE accountant"
 
 - name: Check the actual state
   register: result
@@ -643,8 +643,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "REVOKE manager FROM test_user"
-    - result.executed_statements[1] == "ALTER USER test_user DEFAULT ROLE accountant"
+    - result.executed_statements[0] == "REVOKE manager FROM 'test_user'"
+    - result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE accountant"
 
 - name: Check the actual state
   register: result
@@ -705,9 +705,9 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "CREATE USER test_user_1"
-    - result.executed_statements[1] == "GRANT test_listed_only TO test_user_1"
-    - result.executed_statements[2] == "ALTER USER test_user_1 DEFAULT ROLE test_listed_only"
+    - result.executed_statements[0] == "CREATE USER 'test_user_1'"
+    - result.executed_statements[1] == "GRANT test_listed_only TO 'test_user_1'"
+    - result.executed_statements[2] == "ALTER USER 'test_user_1' DEFAULT ROLE test_listed_only"
 
 - name: Check the actual state
   register: result
@@ -720,3 +720,105 @@
     - result is not changed
     - result["users"]["test_user_1"]["roles"] == ["test_listed_only"]
     - result["users"]["test_user_1"]["default_roles_list"] == ["test_listed_only"]
+
+# Test for bug: usernames with dots should be properly quoted
+# https://github.com/ansible-collections/community.clickhouse/issues/110
+- name: Create user with dots in username
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: user.with.dots
+    password: testpass
+
+- name: Check that user with dots was created
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length > 0
+
+- name: Verify user with dots exists in the database
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check that user with dots is present
+  ansible.builtin.assert:
+    that:
+    - result["users"]["user.with.dots"] is defined
+
+- name: Update user with dots - set password
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: user.with.dots
+    password: newpass
+    update_password: always
+
+- name: Check that update worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+
+- name: Create role for testing
+  community.clickhouse.clickhouse_role:
+    name: test_role_for_dotted_user
+
+- name: Grant role to user with dots
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: user.with.dots
+    roles:
+    - test_role_for_dotted_user
+    default_roles:
+    - test_role_for_dotted_user
+
+- name: Check that role was granted
+  ansible.builtin.assert:
+    that:
+    - result is changed
+
+- name: Verify role grant in the database
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check that user with dots has the role
+  ansible.builtin.assert:
+    that:
+    - result["users"]["user.with.dots"]["roles"] == ["test_role_for_dotted_user"]
+    - result["users"]["user.with.dots"]["default_roles_list"] == ["test_role_for_dotted_user"]
+
+- name: Update settings for user with dots
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: user.with.dots
+    settings:
+      - max_memory_usage = 10000 READONLY
+
+- name: Check that settings update worked
+  ansible.builtin.assert:
+    that:
+    - result is changed
+
+- name: Drop user with dots
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: absent
+    name: user.with.dots
+
+- name: Check that user with dots was dropped
+  ansible.builtin.assert:
+    that:
+    - result is changed
+
+- name: Verify user with dots no longer exists
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+
+- name: Check that user with dots is gone
+  ansible.builtin.assert:
+    that:
+    - result["users"]["user.with.dots"] is not defined
