@@ -1,0 +1,429 @@
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# Role grant management tests for clickhouse_role module
+
+# Setup: Create base roles for testing
+- name: Setup - Create base roles for role grant tests
+  loop:
+    - accountant
+    - analyst
+    - developer
+    - manager_base
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: "{{ item }}"
+
+# Test 1 - Create role with granted roles in check mode
+- name: Test 1 - Create role with granted roles in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: manager_role
+    roles:
+      - accountant
+      - analyst
+
+- name: Test 1 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE ROLE manager_role', 'GRANT accountant, analyst TO manager_role']
+
+- name: Test 1 - Verify role was not created in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.roles WHERE name = 'manager_role'"
+
+- name: Test 1 - Check role is not present
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+# Test 2 - Create role with granted roles in real mode
+- name: Test 2 - Create role with granted roles in real mode
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: manager_role
+    roles:
+      - accountant
+      - analyst
+
+- name: Test 2 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE ROLE manager_role', 'GRANT accountant, analyst TO manager_role']
+
+- name: Test 2 - Verify role was created
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.roles WHERE name = 'manager_role'"
+
+- name: Test 2 - Check role is present
+  ansible.builtin.assert:
+    that:
+    - result.result == [["manager_role"]]
+
+- name: Test 2 - Verify granted roles
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT granted_role_name FROM system.role_grants WHERE role_name = 'manager_role' ORDER BY granted_role_name"
+
+- name: Test 2 - Check granted roles
+  ansible.builtin.assert:
+    that:
+    - result.result == [["accountant"], ["analyst"]]
+
+# Test 3 - Idempotency test - create same role with same roles
+- name: Test 3 - Create same role with same roles (idempotency check mode)
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: manager_role
+    roles:
+      - accountant
+      - analyst
+
+- name: Test 3 - Check idempotency in check mode
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Test 3 - Create same role with same roles (idempotency real mode)
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: manager_role
+    roles:
+      - accountant
+      - analyst
+
+- name: Test 3 - Check idempotency in real mode
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+# Test 4 - Append additional roles in check mode
+- name: Test 4 - Append additional roles in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: manager_role
+    roles:
+      - developer
+    roles_mode: append
+
+- name: Test 4 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['GRANT developer TO manager_role']
+
+- name: Test 4 - Verify roles unchanged in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT granted_role_name FROM system.role_grants WHERE role_name = 'manager_role' ORDER BY granted_role_name"
+
+- name: Test 4 - Check roles are still the same
+  ansible.builtin.assert:
+    that:
+    - result.result == [["accountant"], ["analyst"]]
+
+# Test 5 - Append additional roles in real mode
+- name: Test 5 - Append additional roles in real mode
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: manager_role
+    roles:
+      - developer
+    roles_mode: append
+
+- name: Test 5 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['GRANT developer TO manager_role']
+
+- name: Test 5 - Verify roles were appended
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT granted_role_name FROM system.role_grants WHERE role_name = 'manager_role' ORDER BY granted_role_name"
+
+- name: Test 5 - Check all roles are present
+  ansible.builtin.assert:
+    that:
+    - result.result == [["accountant"], ["analyst"], ["developer"]]
+
+# Test 6 - Remove specific roles in check mode
+- name: Test 6 - Remove specific roles in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: manager_role
+    roles:
+      - analyst
+    roles_mode: remove
+
+- name: Test 6 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['REVOKE analyst FROM manager_role']
+
+- name: Test 6 - Verify roles unchanged in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT granted_role_name FROM system.role_grants WHERE role_name = 'manager_role' ORDER BY granted_role_name"
+
+- name: Test 6 - Check roles are still the same
+  ansible.builtin.assert:
+    that:
+    - result.result == [["accountant"], ["analyst"], ["developer"]]
+
+# Test 7 - Remove specific roles in real mode
+- name: Test 7 - Remove specific roles in real mode
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: manager_role
+    roles:
+      - analyst
+    roles_mode: remove
+
+- name: Test 7 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['REVOKE analyst FROM manager_role']
+
+- name: Test 7 - Verify role was removed
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT granted_role_name FROM system.role_grants WHERE role_name = 'manager_role' ORDER BY granted_role_name"
+
+- name: Test 7 - Check analyst role was removed
+  ansible.builtin.assert:
+    that:
+    - result.result == [["accountant"], ["developer"]]
+
+# Test 8 - Replace all roles with listed_only mode in check mode
+- name: Test 8 - Replace all roles with listed_only mode in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: manager_role
+    roles:
+      - manager_base
+      - analyst
+    roles_mode: listed_only
+
+- name: Test 8 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['GRANT manager_base, analyst TO manager_role', 'REVOKE accountant, developer FROM manager_role']
+
+- name: Test 8 - Verify roles unchanged in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT granted_role_name FROM system.role_grants WHERE role_name = 'manager_role' ORDER BY granted_role_name"
+
+- name: Test 8 - Check roles are still the same
+  ansible.builtin.assert:
+    that:
+    - result.result == [["accountant"], ["developer"]]
+
+# Test 9 - Replace all roles with listed_only mode in real mode
+- name: Test 9 - Replace all roles with listed_only mode in real mode
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: manager_role
+    roles:
+      - manager_base
+      - analyst
+    roles_mode: listed_only
+
+- name: Test 9 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['GRANT manager_base, analyst TO manager_role', 'REVOKE accountant, developer FROM manager_role']
+
+- name: Test 9 - Verify roles were replaced
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT granted_role_name FROM system.role_grants WHERE role_name = 'manager_role' ORDER BY granted_role_name"
+
+- name: Test 9 - Check only specified roles are present
+  ansible.builtin.assert:
+    that:
+    - result.result == [["analyst"], ["manager_base"]]
+
+# Test 10 - Revoke all roles with empty list in check mode
+- name: Test 10 - Revoke all roles with empty list in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: manager_role
+    roles: []
+    roles_mode: listed_only
+
+- name: Test 10 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['REVOKE analyst, manager_base FROM manager_role']
+
+- name: Test 10 - Verify roles unchanged in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT granted_role_name FROM system.role_grants WHERE role_name = 'manager_role' ORDER BY granted_role_name"
+
+- name: Test 10 - Check roles are still present
+  ansible.builtin.assert:
+    that:
+    - result.result == [["analyst"], ["manager_base"]]
+
+# Test 11 - Revoke all roles with empty list in real mode
+- name: Test 11 - Revoke all roles with empty list in real mode
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: manager_role
+    roles: []
+    roles_mode: listed_only
+
+- name: Test 11 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['REVOKE analyst, manager_base FROM manager_role']
+
+- name: Test 11 - Verify all roles were revoked
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT granted_role_name FROM system.role_grants WHERE role_name = 'manager_role'"
+
+- name: Test 11 - Check no roles are granted
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+# Test 12 - Test role creation with settings and roles together
+- name: Test 12 - Create role with both settings and roles in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: combined_role
+    settings:
+      - max_memory_usage = 10000 READONLY
+    roles:
+      - accountant
+      - developer
+
+- name: Test 12 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE ROLE combined_role SETTINGS max_memory_usage = 10000 READONLY', 'GRANT accountant, developer TO combined_role']
+
+- name: Test 12 - Create role with both settings and roles in real mode
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: combined_role
+    settings:
+      - max_memory_usage = 10000 READONLY
+    roles:
+      - accountant
+      - developer
+
+- name: Test 12 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE ROLE combined_role SETTINGS max_memory_usage = 10000 READONLY', 'GRANT accountant, developer TO combined_role']
+
+- name: Test 12 - Verify role and settings
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE ROLE combined_role"
+
+- name: Test 12 - Check settings are present
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0] is search("max_memory_usage = 10000")
+
+- name: Test 12 - Verify granted roles
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT granted_role_name FROM system.role_grants WHERE role_name = 'combined_role' ORDER BY granted_role_name"
+
+- name: Test 12 - Check granted roles
+  ansible.builtin.assert:
+    that:
+    - result.result == [["accountant"], ["developer"]]
+
+# Test 13 - Role order independence (idempotency)
+- name: Test 13 - Apply same roles in different order (check mode)
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: combined_role
+    settings:
+      - max_memory_usage = 10000 READONLY
+    roles:
+      - developer
+      - accountant
+
+- name: Test 13 - Check idempotency with different role order
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Test 13 - Apply same roles in different order (real mode)
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: combined_role
+    settings:
+      - max_memory_usage = 10000 READONLY
+    roles:
+      - developer
+      - accountant
+
+- name: Test 13 - Check idempotency with different role order
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+# Cleanup
+- name: Cleanup - Remove test roles
+  loop:
+    - manager_role
+    - combined_role
+    - accountant
+    - analyst
+    - developer
+    - manager_base
+  community.clickhouse.clickhouse_role:
+    state: absent
+    name: "{{ item }}"
