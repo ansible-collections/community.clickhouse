@@ -113,6 +113,88 @@ class ClickHouseRole:
         result = execute_query(self.module, self.client, query)
         return bool(result)
 
+    def get_current_role_definition(self):
+        """Get current role definition using SHOW CREATE ROLE"""
+        if not self.exists:
+            return None
+        
+        query = "SHOW CREATE ROLE %s" % self.name
+        result = execute_query(self.module, self.client, query)
+        if result:
+            return result[0][0]  # SHOW CREATE ROLE returns single row with CREATE statement
+        return None
+
+    def parse_settings_from_create_statement(self, create_statement):
+        """Parse settings from CREATE ROLE statement"""
+        if not create_statement or 'SETTINGS' not in create_statement:
+            return []
+        
+        # Extract settings part after SETTINGS keyword
+        settings_part = create_statement.split('SETTINGS', 1)[1].strip()
+        if not settings_part:
+            return []
+        
+        # Parse individual settings (this is a simplified parser)
+        # In real implementation, we might need more sophisticated parsing
+        settings = []
+        current_setting = ""
+        paren_depth = 0
+        quote_char = None
+        
+        i = 0
+        while i < len(settings_part):
+            char = settings_part[i]
+            
+            if quote_char:
+                current_setting += char
+                if char == quote_char and (i == 0 or settings_part[i-1] != '\\'):
+                    quote_char = None
+            elif char in ("'", '"'):
+                current_setting += char
+                quote_char = char
+            elif char == '(':
+                current_setting += char
+                paren_depth += 1
+            elif char == ')':
+                current_setting += char
+                paren_depth -= 1
+            elif char == ',' and paren_depth == 0:
+                settings.append(current_setting.strip())
+                current_setting = ""
+            else:
+                current_setting += char
+            i += 1
+        
+        if current_setting.strip():
+            settings.append(current_setting.strip())
+        
+        return settings
+
+    def normalize_settings(self, settings_list):
+        """Normalize settings for comparison"""
+        if not settings_list:
+            return []
+        
+        normalized = []
+        for setting in settings_list:
+            # Remove extra whitespace and standardize format
+            normalized_setting = ' '.join(setting.split())
+            
+            # ClickHouse normalizes some constraint types
+            # READONLY -> CONST, so we need to normalize for comparison
+            normalized_setting = normalized_setting.replace(' READONLY', ' CONST')
+            
+            normalized.append(normalized_setting)
+        
+        return sorted(normalized)
+
+    def settings_changed(self, current_settings, desired_settings):
+        """Check if settings have changed"""
+        current_normalized = self.normalize_settings(current_settings)
+        desired_normalized = self.normalize_settings(desired_settings)
+        
+        return current_normalized != desired_normalized
+
     def create(self):
         if not self.exists:
             query = "CREATE ROLE %s" % self.name
@@ -137,6 +219,32 @@ class ClickHouseRole:
             return True
         else:
             return False
+
+    def alter(self, settings):
+        """Update role settings using ALTER ROLE"""
+        if not self.exists:
+            return False
+        
+        query = "ALTER ROLE %s" % self.name
+        
+        if self.module.params['cluster']:
+            query += " ON CLUSTER %s" % self.module.params['cluster']
+        
+        # Handle settings updates  
+        if settings is not None and len(settings) > 0:
+            # Set these settings
+            query += " SETTINGS"
+            for index, value in enumerate(settings):
+                query += " %s" % value
+                if index < len(settings) - 1:
+                    query += ","
+        
+        executed_statements.append(query)
+        
+        if not self.module.check_mode:
+            execute_query(self.module, self.client, query)
+        
+        return True
 
     def drop(self):
         if self.exists:
@@ -190,10 +298,20 @@ def main():
     # Do the job
     changed = False
     role = ClickHouseRole(module, client, name)
+    desired_settings = module.params.get("settings", [])
 
     if state == "present":
         if not role.exists:
+            # Role doesn't exist, create it
             changed = role.create()
+        else:
+            # Role exists, check if settings need to be updated
+            if desired_settings is not None and len(desired_settings) > 0:  # Only check settings if they are specified and not empty
+                current_definition = role.get_current_role_definition()
+                current_settings = role.parse_settings_from_create_statement(current_definition) if current_definition else []
+                
+                if role.settings_changed(current_settings, desired_settings):
+                    changed = role.alter(desired_settings)
     else:
         # If state is absent
         if role.exists:
