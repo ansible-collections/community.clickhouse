@@ -185,7 +185,7 @@ class ClickHouseRole:
             # ClickHouse normalizes some constraint types
             # READONLY -> CONST, so we need to normalize for comparison
             normalized_setting = normalized_setting.replace(' READONLY', ' CONST')
-            
+
             # ClickHouse removes quotes from profile names
             # PROFILE 'default' -> PROFILE default
             normalized_setting = re.sub(r"PROFILE\s+'([^']+)'", r"PROFILE \1", normalized_setting)
