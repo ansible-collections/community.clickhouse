@@ -88,6 +88,8 @@ executed_statements:
   sample: ['CREATE ROLE test_role']
 """
 
+import re
+
 from ansible.module_utils.basic import AnsibleModule
 
 from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse import (
@@ -183,6 +185,11 @@ class ClickHouseRole:
             # ClickHouse normalizes some constraint types
             # READONLY -> CONST, so we need to normalize for comparison
             normalized_setting = normalized_setting.replace(' READONLY', ' CONST')
+            
+            # ClickHouse removes quotes from profile names
+            # PROFILE 'default' -> PROFILE default
+            normalized_setting = re.sub(r"PROFILE\s+'([^']+)'", r"PROFILE \1", normalized_setting)
+            normalized_setting = re.sub(r'PROFILE\s+"([^"]+)"', r"PROFILE \1", normalized_setting)
 
             normalized.append(normalized_setting)
 

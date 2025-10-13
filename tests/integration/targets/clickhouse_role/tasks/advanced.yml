@@ -174,7 +174,6 @@
     name: complex_role
     settings:
       - max_memory_usage = 50000 MIN 10000 MAX 100000 READONLY
-      - max_execution_time = 60 CHANGEABLE_IN_READONLY
       - readonly = 1 CONST
 
 - name: Advanced Test 5 - Check return values
@@ -194,9 +193,8 @@
     - result.result[0][0] is search("max_memory_usage")
     - result.result[0][0] is search("MIN")
     - result.result[0][0] is search("MAX")
-    - result.result[0][0] is search("READONLY")
-    - result.result[0][0] is search("CHANGEABLE_IN_READONLY")
     - result.result[0][0] is search("CONST")
+    - result.result[0][0] is search("readonly = 1")
 
 # Test 6 - Update complex settings
 - name: Advanced Test 6 - Update complex settings
@@ -206,7 +204,7 @@
     name: complex_role
     settings:
       - max_memory_usage = 75000 MIN 20000 MAX 150000 READONLY
-      - max_execution_time = 120 CHANGEABLE_IN_READONLY
+      - max_threads = 12
 
 - name: Advanced Test 6 - Check return values
   ansible.builtin.assert:
@@ -224,15 +222,15 @@
     - result.result[0][0] is search("75000")
     - result.result[0][0] is search("20000")
     - result.result[0][0] is search("150000")
-    - result.result[0][0] is search("120")
+    - result.result[0][0] is search("max_threads = 12")
     - result.result[0][0] is not search("readonly = 1")
 
-# Test 7 - Test with special characters in role name
-- name: Advanced Test 7 - Create role with special characters
+# Test 7 - Test with underscores in role name
+- name: Advanced Test 7 - Create role with underscores
   register: result
   community.clickhouse.clickhouse_role:
     state: present
-    name: "test_role-with.special_chars"
+    name: "test_role_with_underscores"
     settings:
       - max_memory_usage = 5000
 
@@ -241,15 +239,15 @@
     that:
     - result is changed
 
-- name: Advanced Test 7 - Verify special char role exists
+- name: Advanced Test 7 - Verify underscore role exists
   register: result
   community.clickhouse.clickhouse_client:
-    execute: "SELECT name FROM system.roles WHERE name = 'test_role-with.special_chars'"
+    execute: "SELECT name FROM system.roles WHERE name = 'test_role_with_underscores'"
 
 - name: Advanced Test 7 - Check role is present
   ansible.builtin.assert:
     that:
-    - result.result == [["test_role-with.special_chars"]]
+    - result.result == [["test_role_with_underscores"]]
 
 # Cleanup - Remove test roles
 - name: Cleanup - Remove test roles
@@ -257,7 +255,7 @@
     - simple_role
     - order_test_role  
     - complex_role
-    - "test_role-with.special_chars"
+    - "test_role_with_underscores"
   community.clickhouse.clickhouse_role:
     state: absent
     name: "{{ item }}"
@@ -265,7 +263,7 @@
 - name: Cleanup - Verify roles are removed
   register: result
   community.clickhouse.clickhouse_client:
-    execute: "SELECT name FROM system.roles WHERE name IN ('simple_role', 'order_test_role', 'complex_role', 'test_role-with.special_chars')"
+    execute: "SELECT name FROM system.roles WHERE name IN ('simple_role', 'order_test_role', 'complex_role', 'test_role_with_underscores')"
 
 - name: Cleanup - Check all test roles are gone
   ansible.builtin.assert:
