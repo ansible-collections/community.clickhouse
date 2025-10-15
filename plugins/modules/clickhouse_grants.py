@@ -194,11 +194,11 @@ PRIV_ERR_CODE = 497
 executed_statements = []
 
 # Compile regex pattern once for performance
-GRANT_REGEX = re.compile(r'GRANT (.+?) ON (.+?) TO .+?( WITH GRANT OPTION)?$')
+GRANT_REGEX = re.compile(r'GRANT (.+?) ON (.+?) TO .+?( WITH GRANT OPTION)?(?: ON CLUSTER .+)?$')
 
 
 class ClickHouseGrants():
-    def __init__(self, module, client, grantee, cluster):
+    def __init__(self, module, client, grantee, cluster=None):
         self.changed = False
         self.module = module
         self.client = client
