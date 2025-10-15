@@ -85,6 +85,7 @@ options:
       - Run the grant/revoke commands on all cluster hosts.
       - If the cluster is not configured, the command will fail with an error.
     type: str
+    version_added: '0.11.0'
 '''
 
 EXAMPLES = r'''
