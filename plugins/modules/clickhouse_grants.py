@@ -80,6 +80,11 @@ options:
           - A boolean that applies to all privileges in this set.
           - If specified, it overrides any individual grant option settings within C(privs).
         type: bool
+  cluster:
+    description:
+      - Run the grant/revoke commands on all cluster hosts.
+      - If the cluster is not configured, the command will fail with an error.
+    type: str
 '''
 
 EXAMPLES = r'''
@@ -96,6 +101,16 @@ EXAMPLES = r'''
 - name: Grant privileges on a specific database
   community.clickhouse.clickhouse_grants:
     grantee: bob
+    privileges:
+      - object: 'infra.*'
+        privs:
+          "SELECT": true  # With grant option
+          "INSERT": false # Without grant option
+
+- name: Grant privileges on a cluster
+  community.clickhouse.clickhouse_grants:
+    grantee: bob
+    cluster: test_cluster
     privileges:
       - object: 'infra.*'
         privs:
@@ -183,11 +198,12 @@ GRANT_REGEX = re.compile(r'GRANT (.+?) ON (.+?) TO .+?( WITH GRANT OPTION)?$')
 
 
 class ClickHouseGrants():
-    def __init__(self, module, client, grantee):
+    def __init__(self, module, client, grantee, cluster):
         self.changed = False
         self.module = module
         self.client = client
         self.grantee = grantee
+        self.cluster = cluster
         self.__check_grantee_exists()
 
     def __check_grantee_exists(self):
@@ -287,6 +303,8 @@ class ClickHouseGrants():
         for obj, privs in revokes_by_obj.items():
             privs_str = ', '.join(sorted(privs))
             query = "REVOKE {0} ON {1} FROM {2}".format(privs_str, obj, self.grantee)
+            if self.cluster:
+                query += " ON CLUSTER {0}".format(self.cluster)
             queries.append(query)
 
         grants_go_by_obj = defaultdict(list)
@@ -301,11 +319,15 @@ class ClickHouseGrants():
         for obj, privs in grants_go_by_obj.items():
             privs_str = ', '.join(sorted(privs))
             query = "GRANT {0} ON {1} TO {2} WITH GRANT OPTION".format(privs_str, obj, self.grantee)
+            if self.cluster:
+                query += " ON CLUSTER {0}".format(self.cluster)
             queries.append(query)
 
         for obj, privs in grants_no_go_by_obj.items():
             privs_str = ', '.join(sorted(privs))
             query = "GRANT {0} ON {1} TO {2}".format(privs_str, obj, self.grantee)
+            if self.cluster:
+                query += " ON CLUSTER {0}".format(self.cluster)
             queries.append(query)
 
         executed_statements.extend(queries)
@@ -332,6 +354,8 @@ class ClickHouseGrants():
         for obj, privs in current.items():
             privs_str = ', '.join(sorted(privs))
             query = "REVOKE {0} ON {1} FROM {2}".format(privs_str, obj, self.grantee)
+            if self.cluster:
+                query += " ON CLUSTER {0}".format(self.cluster)
             queries.append(query)
 
         executed_statements.extend(queries)
@@ -352,6 +376,7 @@ def main():
         grantee=dict(type='str', required=True),
         exclusive=dict(type='bool', default=False),
         privileges=dict(type='list', elements='dict'),
+        cluster=dict(type='str', default=None),
     )
 
     # Instantiate an object of module class
@@ -372,6 +397,7 @@ def main():
     main_conn_kwargs = get_main_conn_kwargs(module)
     state = module.params['state']
     grantee = module.params['grantee']
+    cluster = module.params['cluster']
 
     # Will fail if no driver informing the user
     check_clickhouse_driver(module)
@@ -381,7 +407,7 @@ def main():
 
     # Do the job
     changed = False
-    grants = ClickHouseGrants(module, client, grantee)
+    grants = ClickHouseGrants(module, client, grantee, cluster)
     # Get current grants
     start_grants = grants.get()
 
