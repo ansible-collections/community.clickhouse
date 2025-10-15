@@ -210,10 +210,11 @@ class TestClickHouseGrantsGet:
 
         assert result == {
             'foo.*': {
-                'SELECT': True,  # WITH GRANT OPTION
-                'INSERT': False, # Without GRANT OPTION
+                'SELECT': True,   # WITH GRANT OPTION
+                'INSERT': False,  # Without GRANT OPTION
             }
         }
+
 
 class TestClickHouseGrantsGetDesiredGrants:
     """Test the _get_desired_grants() method"""

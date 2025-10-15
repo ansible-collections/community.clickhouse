@@ -1,0 +1,2 @@
+minor_changes:
+  - clickhouse_grants - add cluster parameter / option to grants module (https://github.com/ansible-collections/community.clickhouse/issues/130).
