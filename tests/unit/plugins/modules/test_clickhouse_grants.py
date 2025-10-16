@@ -29,6 +29,10 @@ class TestGrantRegex:
              ('ALTER DELETE', 'db.table', ' WITH GRANT OPTION')),
             ('GRANT SELECT(x, y) ON foo.test_table TO carol',
              ('SELECT(x, y)', 'foo.test_table', None)),
+            ('GRANT SELECT ON foo.* TO alice WITH GRANT OPTION ON CLUSTER test_cluster',
+             ('SELECT', 'foo.*', ' WITH GRANT OPTION')),
+            ('GRANT SELECT ON foo.* TO alice ON CLUSTER test_cluster',
+             ('SELECT', 'foo.*', None)),
         ]
     )
     def test_grant_regex_match(self, grant_statement, expected):
@@ -190,6 +194,26 @@ class TestClickHouseGrantsGet:
         result = grants_obj.get()
 
         assert result == {}
+
+    @patch('ansible_collections.community.clickhouse.plugins.modules.clickhouse_grants.execute_query')
+    def test_get_grants_with_cluster_setting(self, mock_execute):
+        """Test parsing grants with ON CLUSTER"""
+        mock_execute.return_value = [
+            ('GRANT SELECT ON foo.* TO alice WITH GRANT OPTION ON CLUSTER test_cluster',),
+            ('GRANT INSERT ON foo.* TO alice ON CLUSTER test_cluster',),
+        ]
+
+        grants_obj = ClickHouseGrants(self.mock_module, self.mock_client, 'alice', 'test_cluster')
+        grants_obj.grantee_exists = True
+
+        result = grants_obj.get()
+
+        assert result == {
+            'foo.*': {
+                'SELECT': True,   # WITH GRANT OPTION
+                'INSERT': False,  # Without GRANT OPTION
+            }
+        }
 
 
 class TestClickHouseGrantsGetDesiredGrants:
