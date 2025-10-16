@@ -4,13 +4,13 @@ Ansible community.clickhouse collection changelog Release Notes
 
 .. contents:: Topics
 
-v0.10.1
+v0.11.0
 =======
 
 Release Summary
 ---------------
 
-This is a patch release of the ``community.clickhouse`` collection.
+This is a minor release of the ``community.clickhouse`` collection.
 This changelog contains all changes to the modules and plugins in this collection
 that have been made after the previous release.
 
