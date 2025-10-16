@@ -48,17 +48,17 @@ releases:
     - 0.10.0.yml
     - 1-user_quote_names.yml
     release_date: '2025-10-08'
-  0.10.1:
+  0.11.0:
     changes:
       minor_changes:
       - clickhouse_grants - add ``cluster`` argument (https://github.com/ansible-collections/community.clickhouse/issues/130).
-      release_summary: 'This is a patch release of the ``community.clickhouse`` collection.
+      release_summary: 'This is a minor release of the ``community.clickhouse`` collection.
 
         This changelog contains all changes to the modules and plugins in this collection
 
         that have been made after the previous release.'
     fragments:
-    - 0.10.1.yml
+    - 0.11.0.yml
     - 131-add-cluster-param-for-grants.yaml
     release_date: '2025-10-16'
   0.2.0:
