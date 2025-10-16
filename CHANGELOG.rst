@@ -4,6 +4,21 @@ Ansible community.clickhouse collection changelog Release Notes
 
 .. contents:: Topics
 
+v0.10.1
+=======
+
+Release Summary
+---------------
+
+This is a patch release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Minor Changes
+-------------
+
+- clickhouse_grants - add ``cluster`` argument (https://github.com/ansible-collections/community.clickhouse/issues/130).
+
 v0.10.0
 =======
 
