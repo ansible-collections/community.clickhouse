@@ -1,2 +1,0 @@
-minor_changes:
-  - clickhouse_grants - add ``cluster`` argument (https://github.com/ansible-collections/community.clickhouse/issues/130).
