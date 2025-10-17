@@ -56,6 +56,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check user's grants, they are empty
   ansible.builtin.assert:
@@ -250,6 +252,8 @@
   register: result_info
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Assert no grants for alice after check mode run
   ansible.builtin.assert:
@@ -292,6 +296,8 @@
   register: result_info
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Assert alice still has only the initial grants (ALTER DELETE not added)
   ansible.builtin.assert:
@@ -343,6 +349,8 @@
   register: result_info
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Assert alice still has the original grants (not replaced)
   ansible.builtin.assert:
@@ -444,6 +452,8 @@
   register: result_info
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Assert alice has grants before revoke
   ansible.builtin.assert:
@@ -466,6 +476,8 @@
   register: result_info
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Assert alice has no grants after revoke
   ansible.builtin.assert:
@@ -522,6 +534,8 @@
   register: result_info
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Assert alice still has grants (check mode didn't actually revoke)
   ansible.builtin.assert:
@@ -558,6 +572,8 @@
   register: result_info
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Assert alice has no grants
   ansible.builtin.assert:
@@ -588,6 +604,8 @@
   register: result_info
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Assert alice has grants with grant option
   ansible.builtin.assert:
@@ -646,6 +664,8 @@
   register: before_check
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Update grants using grant_option in check mode
   register: result
@@ -671,6 +691,8 @@
   register: after_check
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Assert grants are UNCHANGED after check mode (no WITH GRANT OPTION added)
   ansible.builtin.assert:
@@ -705,6 +727,8 @@
   register: result_info
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Assert alice has grants without grant option
   ansible.builtin.assert:
@@ -722,6 +746,8 @@
   register: empty_state
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Assert alice has no grants initially
   ansible.builtin.assert:
@@ -748,6 +774,8 @@
   register: after_check_grant
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Assert NOTHING was actually granted in check mode
   ansible.builtin.assert:

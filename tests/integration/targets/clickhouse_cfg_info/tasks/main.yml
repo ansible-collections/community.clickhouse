@@ -10,5 +10,5 @@
     - xmltodict
     state: present
 
-# Initial CI tests of clickhouse_info module
+# Initial CI tests of clickhouse_cfg_info module
 - import_tasks: initial.yml
