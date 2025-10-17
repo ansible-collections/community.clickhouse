@@ -23,6 +23,8 @@
     login_host: localhost
     client_kwargs:
       connect_timeout: 20
+    limit:
+    - users
 
 - name: Check result
   ansible.builtin.assert:
@@ -41,6 +43,8 @@
     login_host: localhost
     client_kwargs:
       connect_timeout: 20
+    limit:
+    - users
 
 - name: Test 2 - Check result
   ansible.builtin.assert:
@@ -70,6 +74,8 @@
     login_host: localhost
     client_kwargs:
       connect_timeout: 20
+    limit:
+    - users
 
 - name: Check result
   ansible.builtin.assert:
@@ -266,6 +272,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check result
   ansible.builtin.assert:
@@ -297,6 +305,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check result
   ansible.builtin.assert:
@@ -328,6 +338,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check the state has not been changed
   ansible.builtin.assert:
@@ -356,6 +368,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check result
   ansible.builtin.assert:
@@ -420,6 +434,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check result
   ansible.builtin.assert:
@@ -446,6 +462,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check result
   ansible.builtin.assert:
@@ -471,6 +489,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check result
   ansible.builtin.assert:
@@ -497,6 +517,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check result
   ansible.builtin.assert:
@@ -522,6 +544,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check result
   ansible.builtin.assert:
@@ -549,6 +573,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check result
   ansible.builtin.assert:
@@ -575,6 +601,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check result
   ansible.builtin.assert:
@@ -619,6 +647,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check result
   ansible.builtin.assert:
@@ -650,6 +680,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check result
   ansible.builtin.assert:
@@ -680,6 +712,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check result
   ansible.builtin.assert:
@@ -713,6 +747,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check result
   ansible.builtin.assert:
@@ -740,6 +776,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check that user with dots is present
   ansible.builtin.assert:
@@ -782,6 +820,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check that user with dots has the role
   ansible.builtin.assert:
@@ -817,6 +857,8 @@
   register: result
   community.clickhouse.clickhouse_info:
     login_host: localhost
+    limit:
+    - users
 
 - name: Check that user with dots is gone
   ansible.builtin.assert:
