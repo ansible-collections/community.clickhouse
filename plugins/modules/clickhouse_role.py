@@ -183,13 +183,18 @@ class ClickHouseRole:
             normalized_setting = ' '.join(setting.split())
 
             # ClickHouse normalizes some constraint types
-            # READONLY -> CONST, so we need to normalize for comparison
-            normalized_setting = normalized_setting.replace(' READONLY', ' CONST')
+            # Different versions may use CONST or READONLY interchangeably
+            # Since READONLY is an alias for CONST in ClickHouse, normalize both to CONST
+            normalized_setting = re.sub(r'\bREADONLY\b', 'CONST', normalized_setting)
 
-            # ClickHouse removes quotes from profile names
-            # PROFILE 'default' -> PROFILE default
+            # ClickHouse may handle profile names differently across versions
+            # Normalize quoted and unquoted profile names
+            # PROFILE 'default' -> PROFILE default, PROFILE "default" -> PROFILE default
             normalized_setting = re.sub(r"PROFILE\s+'([^']+)'", r"PROFILE \1", normalized_setting)
             normalized_setting = re.sub(r'PROFILE\s+"([^"]+)"', r"PROFILE \1", normalized_setting)
+
+            # Also handle case where profile name might be output with backticks
+            normalized_setting = re.sub(r"PROFILE\s+`([^`]+)`", r"PROFILE \1", normalized_setting)
 
             normalized.append(normalized_setting)
 
@@ -199,6 +204,11 @@ class ClickHouseRole:
         """Check if settings have changed"""
         current_normalized = self.normalize_settings(current_settings)
         desired_normalized = self.normalize_settings(desired_settings)
+
+        # For debugging version compatibility issues
+        if self.module._verbosity >= 3:  # Only show at high verbosity
+            self.module.log(f"Current settings (normalized): {current_normalized}")
+            self.module.log(f"Desired settings (normalized): {desired_normalized}")
 
         return current_normalized != desired_normalized
 
