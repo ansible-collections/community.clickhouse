@@ -4,6 +4,21 @@ Ansible community.clickhouse collection changelog Release Notes
 
 .. contents:: Topics
 
+v0.12.0
+=======
+
+Release Summary
+---------------
+
+This is a minor release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Minor Changes
+-------------
+
+- clickhouse_role - add support for updating existing role settings using ALTER ROLE, making the module fully idempotent for role management operations (https://github.com/ansible-collections/community.clickhouse/issues/62).
+
 v0.11.0
 =======
 

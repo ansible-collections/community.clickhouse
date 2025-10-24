@@ -1,2 +1,0 @@
-minor_changes:
-  - clickhouse_role - add support for updating existing role settings using ALTER ROLE, making the module fully idempotent for role management operations (https://github.com/ansible-collections/community.clickhouse/issues/62).
