@@ -27,6 +27,7 @@ version_added: '0.5.0'
 author:
   - Don Naro (@oranod)
   - Aleksandr Vagachev (@aleksvagachev)
+  - Andrew Klychkov (@Andersson007)
 
 extends_documentation_fragment:
   - community.clickhouse.client_inst_opts
