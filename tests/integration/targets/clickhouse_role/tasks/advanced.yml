@@ -1,0 +1,271 @@
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# Advanced tests for clickhouse_role module
+
+# Test 1 - Role without settings
+- name: Advanced Test 1 - Create role without settings in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: simple_role
+
+- name: Advanced Test 1 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE ROLE simple_role']
+
+- name: Advanced Test 1 - Create role without settings in real mode
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: simple_role
+
+- name: Advanced Test 1 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE ROLE simple_role']
+
+- name: Advanced Test 1 - Verify role exists
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.roles WHERE name = 'simple_role'"
+
+- name: Advanced Test 1 - Check role is present
+  ansible.builtin.assert:
+    that:
+    - result.result == [["simple_role"]]
+
+- name: Advanced Test 1 - Verify role has no settings
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE ROLE simple_role"
+
+- name: Advanced Test 1 - Check no settings in CREATE statement
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0] is not search("SETTINGS")
+
+# Test 2 - Add settings to existing role without settings
+- name: Advanced Test 2 - Add settings to role without settings in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: simple_role
+    settings:
+      - max_memory_usage = 10000 READONLY
+
+- name: Advanced Test 2 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['ALTER ROLE simple_role SETTINGS max_memory_usage = 10000 READONLY']
+
+- name: Advanced Test 2 - Verify settings not applied in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE ROLE simple_role"
+
+- name: Advanced Test 2 - Check no settings yet
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0] is not search("SETTINGS")
+
+- name: Advanced Test 2 - Add settings to role without settings in real mode
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: simple_role
+    settings:
+      - max_memory_usage = 10000 READONLY
+
+- name: Advanced Test 2 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['ALTER ROLE simple_role SETTINGS max_memory_usage = 10000 READONLY']
+
+- name: Advanced Test 2 - Verify settings were applied
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE ROLE simple_role"
+
+- name: Advanced Test 2 - Check settings are present
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0] is search("SETTINGS")
+    - result.result[0][0] is search("max_memory_usage = 10000")
+
+# Test 3 - Test with empty settings list (should be no-op for this ClickHouse version)
+- name: Advanced Test 3 - Attempt to provide empty settings list in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: simple_role
+    settings: []
+
+- name: Advanced Test 3 - Check return values (should be no-op)
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Advanced Test 3 - Attempt to provide empty settings list in real mode
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: simple_role
+    settings: []
+
+- name: Advanced Test 3 - Check return values (should be no-op)
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Advanced Test 3 - Verify settings are still present
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE ROLE simple_role"
+
+- name: Advanced Test 3 - Check settings still present
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0] is search("max_memory_usage = 10000")
+
+# Test 4 - Settings order independence (idempotency)
+- name: Advanced Test 4 - Create role with multiple settings
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: order_test_role
+    settings:
+      - max_memory_usage = 15000 READONLY
+      - max_threads = 8
+      - PROFILE 'default'
+
+- name: Advanced Test 4 - Update with same settings in different order
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: order_test_role
+    settings:
+      - max_threads = 8
+      - PROFILE 'default'
+      - max_memory_usage = 15000 READONLY
+
+- name: Advanced Test 4 - Check idempotency (should be unchanged)
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+# Test 5 - Complex settings with constraints
+- name: Advanced Test 5 - Create role with complex settings
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: complex_role
+    settings:
+      - max_memory_usage = 50000 MIN 10000 MAX 100000 READONLY
+      - readonly = 1 CONST
+
+- name: Advanced Test 5 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+
+- name: Advanced Test 5 - Verify complex settings in database
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE ROLE complex_role"
+
+- name: Advanced Test 5 - Check complex settings are present
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0] is search("SETTINGS")
+    - result.result[0][0] is search("max_memory_usage")
+    - result.result[0][0] is search("MIN")
+    - result.result[0][0] is search("MAX")
+    - result.result[0][0] is search("CONST")
+    - result.result[0][0] is search("readonly = 1")
+
+# Test 6 - Update complex settings
+- name: Advanced Test 6 - Update complex settings
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: complex_role
+    settings:
+      - max_memory_usage = 75000 MIN 20000 MAX 150000 READONLY
+      - max_threads = 12
+
+- name: Advanced Test 6 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+
+- name: Advanced Test 6 - Verify updated complex settings
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE ROLE complex_role"
+
+- name: Advanced Test 6 - Check updated settings are present
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0] is search("75000")
+    - result.result[0][0] is search("20000")
+    - result.result[0][0] is search("150000")
+    - result.result[0][0] is search("max_threads = 12")
+    - result.result[0][0] is not search("readonly = 1")
+
+# Test 7 - Test with underscores in role name
+- name: Advanced Test 7 - Create role with underscores
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: "test_role_with_underscores"
+    settings:
+      - max_memory_usage = 5000
+
+- name: Advanced Test 7 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+
+- name: Advanced Test 7 - Verify underscore role exists
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.roles WHERE name = 'test_role_with_underscores'"
+
+- name: Advanced Test 7 - Check role is present
+  ansible.builtin.assert:
+    that:
+    - result.result == [["test_role_with_underscores"]]
+
+# Cleanup - Remove test roles
+- name: Cleanup - Remove test roles
+  loop:
+    - simple_role
+    - order_test_role  
+    - complex_role
+    - "test_role_with_underscores"
+  community.clickhouse.clickhouse_role:
+    state: absent
+    name: "{{ item }}"
+
+- name: Cleanup - Verify roles are removed
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.roles WHERE name IN ('simple_role', 'order_test_role', 'complex_role', 'test_role_with_underscores')"
+
+- name: Cleanup - Check all test roles are gone
+  ansible.builtin.assert:
+    that:
+    - result.result == []

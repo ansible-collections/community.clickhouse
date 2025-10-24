@@ -3,7 +3,7 @@
 # and should not be used as examples of how to write Ansible roles #
 ####################################################################
 
-# Test 1
+# Test 1 - Basic creation in check mode
 - name: Test 1 - Create a test role in check mode
   register: result
   check_mode: true
@@ -17,7 +17,7 @@
     - result is changed
     - result.executed_statements == ['CREATE ROLE test_role']
 
-- name: Test 1 - Check the role was created
+- name: Test 1 - Check the role was not created in check mode
   register: result
   community.clickhouse.clickhouse_client:
     execute: "SELECT name FROM system.roles WHERE name = 'test_role'"
@@ -27,7 +27,7 @@
     that:
     - result.result == []
 
-# Test 2
+# Test 2 - Basic creation in real mode
 - name: Test 2 - Create a test role in real mode
   register: result
   community.clickhouse.clickhouse_role:
@@ -53,74 +53,216 @@
     that:
     - result.result == [["test_role"]]
 
-# Test 3
-- name: Test 3 - Check idempotency by creating the test role again
+- name: Test 2 - Verify role settings using SHOW CREATE ROLE
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE ROLE test_role"
+
+- name: Test 2 - Check that settings are present in CREATE ROLE statement
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0] is search("SETTINGS")
+    - result.result[0][0] is search("max_memory_usage")
+    - result.result[0][0] is search("15000")
+    - result.result[0][0] is search("max_memory_usage_for_all_queries")
+
+# Test 3 - Idempotency with same settings 
+- name: Test 3 - Check idempotency by creating the test role again with same settings
   register: result
   community.clickhouse.clickhouse_role:
     state: present
     name: test_role
+    settings:
+      - max_memory_usage = 15000 READONLY
+      - max_memory_usage_for_all_queries = 15000 MIN 15000 MAX 16000 WRITABLE
 
-- name: Test 3 - Check the return values
+- name: Test 3 - Check the return values (should be unchanged)
   ansible.builtin.assert:
     that:
     - result is not changed
     - result.executed_statements == []
 
-# Test 4
-- name: Test 4 - Remove the test role in check mode
+# Test 4 - Update role settings in check mode
+- name: Test 4 - Update role settings in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: test_role
+    settings:
+      - max_memory_usage = 20000 READONLY
+      - max_threads = 8
+
+- name: Test 4 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['ALTER ROLE test_role SETTINGS max_memory_usage = 20000 READONLY, max_threads = 8']
+
+- name: Test 4 - Verify settings were not changed in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE ROLE test_role"
+
+- name: Test 4 - Check that old settings are still present
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0] is search("max_memory_usage = 15000")
+    - result.result[0][0] is not search("max_threads")
+
+# Test 5 - Update role settings in real mode
+- name: Test 5 - Update role settings in real mode
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: test_role
+    settings:
+      - max_memory_usage = 20000 READONLY
+      - max_threads = 8
+
+- name: Test 5 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['ALTER ROLE test_role SETTINGS max_memory_usage = 20000 READONLY, max_threads = 8']
+
+- name: Test 5 - Verify settings were updated in database
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE ROLE test_role"
+
+- name: Test 5 - Check that new settings are present
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0] is search("SETTINGS")
+    - result.result[0][0] is search("max_memory_usage = 20000")
+    - result.result[0][0] is search("max_threads = 8")
+
+# Test 6 - Idempotency after update
+- name: Test 6 - Update role again with same settings to test idempotency
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: test_role
+    settings:
+      - max_memory_usage = 20000 READONLY
+      - max_threads = 8
+
+- name: Test 6 - Check that settings update is idempotent
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+# Test 7 - Update role without specifying settings (should not change)
+- name: Test 7 - Update role without specifying settings
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: test_role
+
+- name: Test 7 - Check that not specifying settings does not update them
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Test 7 - Verify settings are still present
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE ROLE test_role"
+
+- name: Test 7 - Check that settings remained unchanged
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0] is search("max_memory_usage = 20000")
+    - result.result[0][0] is search("max_threads = 8")
+
+# Test 8 - Update role with multiple new settings
+- name: Test 8 - Update role settings with multiple new settings
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: test_role
+    settings:
+      - max_memory_usage = 25000 READONLY
+      - max_threads = 16
+      - PROFILE 'default'
+
+- name: Test 8 - Check return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['ALTER ROLE test_role SETTINGS max_memory_usage = 25000 READONLY, max_threads = 16, PROFILE \'default\'']
+
+- name: Test 8 - Verify multiple settings in database
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE ROLE test_role"
+
+- name: Test 8 - Check that all settings are present
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0] is search("SETTINGS")
+    - result.result[0][0] is search("max_memory_usage = 25000")
+    - result.result[0][0] is search("max_threads = 16")
+    - result.result[0][0] is search("default")
+
+# Test 9 - Remove role in check mode
+- name: Test 9 - Remove the test role in check mode
   register: result
   check_mode: true
   community.clickhouse.clickhouse_role:
     state: absent
     name: test_role
 
-- name: Test 4 - Check the return values
+- name: Test 9 - Check the return values
   ansible.builtin.assert:
     that:
     - result is changed
     - result.executed_statements == ['DROP ROLE test_role']
 
-- name: Test 4 - Check the role was removed in check mode
+- name: Test 9 - Check the role was not removed in check mode
   register: result
   community.clickhouse.clickhouse_client:
     execute: "SELECT name FROM system.roles WHERE name = 'test_role'"
 
-- name: Test 4 - Verify that the role is still present
+- name: Test 9 - Verify that the role is still present
   ansible.builtin.assert:
     that:
     - result.result == [["test_role"]]
 
-# Test 5
-- name: Test 5 - Remove the test role in real mode
+# Test 10 - Remove role in real mode
+- name: Test 10 - Remove the test role in real mode
   register: result
   community.clickhouse.clickhouse_role:
     state: absent
     name: test_role
 
-- name: Test 5 - Check the return values
+- name: Test 10 - Check the return values
   ansible.builtin.assert:
     that:
     - result is changed
     - result.executed_statements == ['DROP ROLE test_role']
 
-- name: Test 5 - Check the role was removed in real mode
+- name: Test 10 - Check the role was removed in real mode
   register: result
   community.clickhouse.clickhouse_client:
     execute: "SELECT name FROM system.roles WHERE name = 'test_role'"
 
-- name: Test 5 - Verify that the role is absent
+- name: Test 10 - Verify that the role is absent
   ansible.builtin.assert:
     that:
     - result.result == []
 
-# Test 6
-- name: Test 6 - Try to remove role in real mode again to check idempotency
+# Test 11 - Idempotency for deletion
+- name: Test 11 - Try to remove role in real mode again to check idempotency
   register: result
   community.clickhouse.clickhouse_role:
     state: absent
     name: test_role
 
-- name: Test 6 - Check return values
+- name: Test 11 - Check return values
   ansible.builtin.assert:
     that:
     - result is not changed
