@@ -8,7 +8,7 @@
           <table>table_test</table>
           <port>9000</port>
           <user>default</user>
-          <host>localhost</host>
+          <host>127.0.0.1</host>
         </clickhouse>
       </source>
     <lifetime>

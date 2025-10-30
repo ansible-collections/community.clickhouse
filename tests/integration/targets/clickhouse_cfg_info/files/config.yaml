@@ -552,7 +552,7 @@ remote_servers:
             # Optional. Shard weight when writing data. Default: 1.
             # weight: 1
             replica:
-                host: localhost
+                host: 127.0.0.1
                 port: 9000
                 # Optional. Priority of the replica for load_balancing. Default: 1 (less value has more priority).
                 # priority: 1

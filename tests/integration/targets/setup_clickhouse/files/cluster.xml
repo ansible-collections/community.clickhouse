@@ -3,7 +3,7 @@
         <test_cluster>
             <shard>
                 <replica>
-                    <host>localhost</host>
+                    <host>127.0.0.1</host>
                     <port>9000</port>
                 </replica>
             </shard>
@@ -11,7 +11,7 @@
     </remote_servers>
     <zookeeper>
         <node>
-            <host>localhost</host>
+            <host>127.0.0.1</host>
             <port>9181</port>
         </node>
     </zookeeper>
