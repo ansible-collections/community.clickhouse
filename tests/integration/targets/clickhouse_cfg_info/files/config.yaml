@@ -128,7 +128,7 @@ interserver_http_port: 9009
 
 # Default values - try listen localhost on IPv4 and IPv6.
 # listen_host: '::1'
-# listen_host: 127.0.0.1
+listen_host: 127.0.0.1
 
 # Don't exit if IPv6 or IPv4 networks are unavailable while trying to listen.
 # listen_try: 0
@@ -585,7 +585,7 @@ remote_servers:
 
 zookeeper:
     - node:
-            host: zookeeper
+            host: 127.0.0.1
             port: 9181
 
 # Substitutions for parameters of replicated tables.
