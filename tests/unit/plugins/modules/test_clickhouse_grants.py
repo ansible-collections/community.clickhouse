@@ -33,6 +33,8 @@ class TestGrantRegex:
              ('SELECT', 'foo.*', ' WITH GRANT OPTION')),
             ('GRANT SELECT ON foo.* TO alice ON CLUSTER test_cluster',
              ('SELECT', 'foo.*', None)),
+            ('GRANT SELECT ON foo.* TO alice-with-dash',
+             ('SELECT', 'foo.*', None)),
         ]
     )
     def test_grant_regex_match(self, grant_statement, expected):
@@ -213,6 +215,26 @@ class TestClickHouseGrantsGet:
                 'SELECT': True,   # WITH GRANT OPTION
                 'INSERT': False,  # Without GRANT OPTION
             }
+        }
+
+    @patch('ansible_collections.community.clickhouse.plugins.modules.clickhouse_grants.execute_query')
+    def test_get_multiple_objects(self, mock_execute):
+        """Test parsing grants with dashes in grantee name"""
+        mock_execute.return_value = [
+            ('GRANT SELECT ON foo.* TO alice-with-dash',),
+            ('GRANT INSERT ON bar.* TO alice-with-dash',),
+            ('GRANT CREATE USER ON *.* TO alice-with-dash',),
+        ]
+
+        grants_obj = ClickHouseGrants(self.mock_module, self.mock_client, 'alice-with-dash')
+        grants_obj.grantee_exists = True
+
+        result = grants_obj.get()
+
+        assert result == {
+            'foo.*': {'SELECT': False},
+            'bar.*': {'INSERT': False},
+            '*.*': {'CREATE USER': False},
         }
 
 

@@ -225,7 +225,7 @@ class ClickHouseGrants():
             self.module.fail_json(msg="Grantee %s does not exist" % self.grantee)
 
     def get(self):
-        query = "SHOW GRANTS FOR %s" % self.grantee
+        query = "SHOW GRANTS FOR '%s'" % self.grantee
         result = execute_query(self.module, self.client, query)
 
         if result == PRIV_ERR_CODE:
@@ -303,7 +303,7 @@ class ClickHouseGrants():
 
         for obj, privs in revokes_by_obj.items():
             privs_str = ', '.join(sorted(privs))
-            query = "REVOKE {0} ON {1} FROM {2}".format(privs_str, obj, self.grantee)
+            query = "REVOKE {0} ON {1} FROM '{2}'".format(privs_str, obj, self.grantee)
             if self.cluster:
                 query += " ON CLUSTER {0}".format(self.cluster)
             queries.append(query)
@@ -319,14 +319,14 @@ class ClickHouseGrants():
 
         for obj, privs in grants_go_by_obj.items():
             privs_str = ', '.join(sorted(privs))
-            query = "GRANT {0} ON {1} TO {2} WITH GRANT OPTION".format(privs_str, obj, self.grantee)
+            query = "GRANT {0} ON {1} TO '{2}' WITH GRANT OPTION".format(privs_str, obj, self.grantee)
             if self.cluster:
                 query += " ON CLUSTER {0}".format(self.cluster)
             queries.append(query)
 
         for obj, privs in grants_no_go_by_obj.items():
             privs_str = ', '.join(sorted(privs))
-            query = "GRANT {0} ON {1} TO {2}".format(privs_str, obj, self.grantee)
+            query = "GRANT {0} ON {1} TO '{2}'".format(privs_str, obj, self.grantee)
             if self.cluster:
                 query += " ON CLUSTER {0}".format(self.cluster)
             queries.append(query)
@@ -354,7 +354,7 @@ class ClickHouseGrants():
         queries = []
         for obj, privs in current.items():
             privs_str = ', '.join(sorted(privs))
-            query = "REVOKE {0} ON {1} FROM {2}".format(privs_str, obj, self.grantee)
+            query = "REVOKE {0} ON {1} FROM '{2}'".format(privs_str, obj, self.grantee)
             if self.cluster:
                 query += " ON CLUSTER {0}".format(self.cluster)
             queries.append(query)
