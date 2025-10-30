@@ -583,16 +583,10 @@ remote_servers:
 # Optional. If you don't use replicated tables, you could omit that.
 # See https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replication/
 
-# zookeeper:
-#     - node:
-#         host: example1
-#         port: 2181
-#     - node:
-#         host: example2
-#         port: 2181
-#     - node:
-#         host: example3
-#         port: 2181
+zookeeper:
+    - node:
+            host: zookeeper
+            port: 9181
 
 # Substitutions for parameters of replicated tables.
 # Optional. If you don't use replicated tables, you could omit that.

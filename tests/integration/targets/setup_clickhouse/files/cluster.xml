@@ -9,4 +9,10 @@
             </shard>
         </test_cluster>
     </remote_servers>
+    <zookeeper>
+        <node>
+            <host>localhost</host>
+            <port>9181</port>
+        </node>
+    </zookeeper>
 </yandex>

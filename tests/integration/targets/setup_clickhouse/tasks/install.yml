@@ -53,9 +53,15 @@
     group: clickhouse
     mode: '0600'
 
-- name: Enable and start clickhouse
+- name: Enable and start clickhouse server
   ansible.builtin.systemd_service:
     name: clickhouse-server
+    state: started
+    enabled: true
+
+- name: Enable and start clickhouse keeper
+  ansible.builtin.systemd_service:
+    name: clickhouse-keeper
     state: started
     enabled: true
 
