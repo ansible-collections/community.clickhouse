@@ -1,2 +1,2 @@
-minor_changes:
+bugfixes:
   - clickhouse_grants - sanitize grantee by enclosing it in single qoutes to support special characters in grantee names (https://github.com/ansible-collections/community.clickhouse/issues/139).
