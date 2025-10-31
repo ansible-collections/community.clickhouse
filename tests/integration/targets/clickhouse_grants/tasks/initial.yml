@@ -157,14 +157,14 @@
     - >
       result.executed_statements | sort ==
       [
-        'GRANT ALTER USER ON *.* TO alice WITH GRANT OPTION',
-        'GRANT DELETE ON foo.* TO alice WITH GRANT OPTION'
+        "GRANT ALTER USER ON *.* TO 'alice' WITH GRANT OPTION",
+        "GRANT DELETE ON foo.* TO 'alice' WITH GRANT OPTION"
       ] | sort
 
 - name: Query database to verify appended grants
   register: db_grants_appended
   community.clickhouse.clickhouse_client:
-    execute: "SHOW GRANTS FOR alice"
+    execute: "SHOW GRANTS FOR 'alice'"
 
 - name: Verify DELETE and ALTER USER were appended in database
   ansible.builtin.assert:
@@ -246,7 +246,7 @@
     that:
     - result is changed
     - result.executed_statements | length == 1
-    - result.executed_statements[0] == 'GRANT SELECT ON foo.* TO alice'
+    - result.executed_statements[0] == "GRANT SELECT ON foo.* TO 'alice'"
 
 - name: Get user info to verify no changes were made
   register: result_info
@@ -290,7 +290,7 @@
     that:
     - result is changed
     - result.executed_statements | length == 1
-    - result.executed_statements[0] == 'GRANT ALTER DELETE ON foo.* TO alice WITH GRANT OPTION'
+    - result.executed_statements[0] == "GRANT ALTER DELETE ON foo.* TO 'alice' WITH GRANT OPTION"
 
 - name: Get user info to verify check mode didn't actually change grants
   register: result_info
@@ -377,7 +377,7 @@
     that:
     - result is changed
     - result.executed_statements | length == 1
-    - result.executed_statements[0] == 'GRANT ALTER DELETE ON foo.* TO alice WITH GRANT OPTION'
+    - result.executed_statements[0] == "GRANT ALTER DELETE ON foo.* TO 'alice' WITH GRANT OPTION"
 
 - name: Run append again for idempotency check
   register: result
@@ -735,6 +735,63 @@
     that:
     - result_info["users"]["alice"]["grants"] | length > 0
     - "'WITH GRANT OPTION' not in result_info['users']['alice']['grants'] | join(' ')"
+
+# Test granting privileges to user with dashes in name
+- name: Create a test user with dashes in name
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: alice-with-dash
+    password: querty
+
+- name: Check the user exists
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+    limit:
+    - users
+
+- name: Check user's grants, they are empty
+  ansible.builtin.assert:
+    that:
+    - result["users"]["alice-with-dash"]["grants"] == []
+
+- name: Grant initial privileges to alice-with-dash
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice-with-dash
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+          "INSERT": false
+      - object: '*.*'
+        privs:
+          "CREATE USER": false
+
+- name: Check initial grant for alice-with-dash
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements | length == 3
+
+- name: Query database directly to verify grants
+  register: db_grants
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR 'alice-with-dash'"
+
+- name: Verify grants exist in database
+  ansible.builtin.assert:
+    that:
+    - db_grants.result | length > 0
+    - "'SELECT' in db_grants.result | string"
+    - "'INSERT' in db_grants.result | string"
+    - "'CREATE USER' in db_grants.result | string"
+
+# Cleanup user with dashes
+- name: Drop alice-with-dash user
+  community.clickhouse.clickhouse_client:
+    execute: "DROP USER IF EXISTS 'alice-with-dash'"
 
 # Test that check mode NEVER modifies actual state
 - name: Revoke all for clean state
@@ -1138,12 +1195,12 @@
 
 - name: Grant test_role to alice
   community.clickhouse.clickhouse_client:
-    execute: "GRANT test_role TO alice"
+    execute: "GRANT test_role TO 'alice'"
 
 - name: Query alice's grants (should show role assignment)
   register: db_alice_with_role
   community.clickhouse.clickhouse_client:
-    execute: "SHOW GRANTS FOR alice"
+    execute: "SHOW GRANTS FOR 'alice'"
 
 - name: Verify alice has the role granted
   ansible.builtin.assert:
