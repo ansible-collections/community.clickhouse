@@ -8,3 +8,4 @@
 
 # CI tests for `cluster` parameter
 - import_tasks: cluster.yaml
+  when: clickhouse_version is not match('^24\\.') # TODO: Can be removed once 24.x is phased out
