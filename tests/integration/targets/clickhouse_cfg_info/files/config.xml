@@ -944,7 +944,7 @@
 
     <zookeeper>
         <node>
-            <host>zookeeper</host>
+            <host>127.0.0.1</host>
             <port>9181</port>
         </node>
     </zookeeper>
