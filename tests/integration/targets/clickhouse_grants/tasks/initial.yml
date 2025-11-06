@@ -1212,6 +1212,7 @@
       - object: 'cluster_db.*'
         privs:
           "SELECT": true
+  when: clickhouse_version is not match('^24\\.') # TODO: Can be removed once 24.x is phased out
 
 - name: Check that grant with cluster reported change and statements include ON CLUSTER
   ansible.builtin.assert:
@@ -1219,6 +1220,7 @@
     - result_cluster_apply is changed
     - result_cluster_apply.executed_statements | length > 0
     - "'ON CLUSTER test_cluster' in result_cluster_apply.executed_statements[0]"
+  when: clickhouse_version is not match('^24\\.') # TODO: Can be removed once 24.x is phased out
 
 # Test: idempotency with cluster
 - name: Run same grant with cluster again for idempotency
@@ -1231,12 +1233,14 @@
       - object: 'cluster_db.*'
         privs:
           "SELECT": true
+  when: clickhouse_version is not match('^24\\.') # TODO: Can be removed once 24.x is phased out
 
 - name: Check idempotency for cluster grant
   ansible.builtin.assert:
     that:
     - result_cluster_idempotent is not changed
     - result_cluster_idempotent.executed_statements | length == 0
+  when: clickhouse_version is not match('^24\\.') # TODO: Can be removed once 24.x is phased out
 
 # Test: revoke in check_mode with cluster should report statements
 - name: Revoke all privileges with cluster in check mode
@@ -1261,6 +1265,7 @@
     state: absent
     grantee: alice
     cluster: test_cluster
+  when: clickhouse_version is not match('^24\\.') # TODO: Can be removed once 24.x is phased out
 
 - name: Check actual revoke with cluster worked and statements include ON CLUSTER
   ansible.builtin.assert:
@@ -1268,3 +1273,4 @@
     - result_cluster_revoke is changed
     - result_cluster_revoke.executed_statements | length > 0
     - "'ON CLUSTER test_cluster' in result_cluster_revoke.executed_statements[0]"
+  when: clickhouse_version is not match('^24\\.') # TODO: Can be removed once 24.x is phased out

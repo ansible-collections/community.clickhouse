@@ -1,2 +1,0 @@
-minor_changes:
-  - clickhouse_grants - extend module with cluster specific integration tests (https://github.com/ansible-collections/community.clickhouse/issues/138).
