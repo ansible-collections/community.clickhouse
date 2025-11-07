@@ -942,22 +942,12 @@
          See https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replication/
       -->
 
-    <!--
     <zookeeper>
         <node>
-            <host>example1</host>
-            <port>2181</port>
-        </node>
-        <node>
-            <host>example2</host>
-            <port>2181</port>
-        </node>
-        <node>
-            <host>example3</host>
-            <port>2181</port>
+            <host>127.0.0.1</host>
+            <port>9181</port>
         </node>
     </zookeeper>
-    -->
 
     <!-- Substitutions for parameters of replicated tables.
           Optional. If you don't use replicated tables, you could omit that.

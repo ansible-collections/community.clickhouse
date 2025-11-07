@@ -128,7 +128,7 @@ interserver_http_port: 9009
 
 # Default values - try listen localhost on IPv4 and IPv6.
 # listen_host: '::1'
-# listen_host: 127.0.0.1
+listen_host: 127.0.0.1
 
 # Don't exit if IPv6 or IPv4 networks are unavailable while trying to listen.
 # listen_try: 0
@@ -552,7 +552,7 @@ remote_servers:
             # Optional. Shard weight when writing data. Default: 1.
             # weight: 1
             replica:
-                host: localhost
+                host: 127.0.0.1
                 port: 9000
                 # Optional. Priority of the replica for load_balancing. Default: 1 (less value has more priority).
                 # priority: 1
@@ -583,16 +583,10 @@ remote_servers:
 # Optional. If you don't use replicated tables, you could omit that.
 # See https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replication/
 
-# zookeeper:
-#     - node:
-#         host: example1
-#         port: 2181
-#     - node:
-#         host: example2
-#         port: 2181
-#     - node:
-#         host: example3
-#         port: 2181
+zookeeper:
+    - node:
+            host: 127.0.0.1
+            port: 9181
 
 # Substitutions for parameters of replicated tables.
 # Optional. If you don't use replicated tables, you could omit that.

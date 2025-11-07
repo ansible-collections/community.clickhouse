@@ -1,0 +1,97 @@
+##############################################################################
+# Tests for the `cluster` parameter
+##############################################################################
+
+- name: Ensure clean state before cluster tests
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+
+# Test: grant in check_mode with cluster should report ON CLUSTER in statements
+- name: Grant privileges in check mode with cluster (should return diff and statement)
+  register: result_cluster_check
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    cluster: test_cluster
+    privileges:
+      - object: 'cluster_db.*'
+        privs:
+          "SELECT": true
+
+- name: Verify cluster check_mode returned diff and ON CLUSTER statement
+  ansible.builtin.assert:
+    that:
+    - result_cluster_check is changed
+    - result_cluster_check.diff is defined
+    - result_cluster_check.executed_statements | length == 1
+    - "'ON CLUSTER test_cluster' in result_cluster_check.executed_statements[0]"
+
+# Test: actually grant with cluster - ensure the module includes ON CLUSTER in executed statements
+- name: Actually grant privileges with cluster
+  register: result_cluster_apply
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    cluster: test_cluster
+    privileges:
+      - object: 'cluster_db.*'
+        privs:
+          "SELECT": true
+
+- name: Check that grant with cluster reported change and statements include ON CLUSTER
+  ansible.builtin.assert:
+    that:
+    - result_cluster_apply is changed
+    - result_cluster_apply.executed_statements | length > 0
+    - "'ON CLUSTER test_cluster' in result_cluster_apply.executed_statements[0]"
+
+# Test: idempotency with cluster
+- name: Run same grant with cluster again for idempotency
+  register: result_cluster_idempotent
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    cluster: test_cluster
+    privileges:
+      - object: 'cluster_db.*'
+        privs:
+          "SELECT": true
+
+- name: Check idempotency for cluster grant
+  ansible.builtin.assert:
+    that:
+    - result_cluster_idempotent is not changed
+    - result_cluster_idempotent.executed_statements | length == 0
+
+# Test: revoke in check_mode with cluster should report statements
+- name: Revoke all privileges with cluster in check mode
+  register: result_cluster_revoke_check
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+    cluster: test_cluster
+
+- name: Verify revoke in check_mode reported ON CLUSTER statements
+  ansible.builtin.assert:
+    that:
+    - result_cluster_revoke_check is changed
+    - result_cluster_revoke_check.executed_statements | length > 0
+    - "'ON CLUSTER test_cluster' in result_cluster_revoke_check.executed_statements[0]"
+
+# Test: actually revoke with cluster
+- name: Actually revoke all privileges with cluster
+  register: result_cluster_revoke
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: alice
+    cluster: test_cluster
+
+- name: Check actual revoke with cluster worked and statements include ON CLUSTER
+  ansible.builtin.assert:
+    that:
+    - result_cluster_revoke is changed
+    - result_cluster_revoke.executed_statements | length > 0
+    - "'ON CLUSTER test_cluster' in result_cluster_revoke.executed_statements[0]"
