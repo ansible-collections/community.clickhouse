@@ -4,6 +4,21 @@ Ansible community.clickhouse collection changelog Release Notes
 
 .. contents:: Topics
 
+v0.12.1
+=======
+
+Release Summary
+---------------
+
+This is a patch release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Bugfixes
+--------
+
+- clickhouse_grants - sanitize grantee by enclosing it in single qoutes to support special characters in grantee names (https://github.com/ansible-collections/community.clickhouse/issues/139).
+
 v0.12.0
 =======
 

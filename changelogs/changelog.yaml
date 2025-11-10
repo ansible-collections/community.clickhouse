@@ -75,6 +75,20 @@ releases:
     - 0.12.0.yml
     - 62-clickhouse-role-update-settings.yml
     release_date: '2025-10-24'
+  0.12.1:
+    changes:
+      bugfixes:
+      - clickhouse_grants - sanitize grantee by enclosing it in single qoutes to support
+        special characters in grantee names (https://github.com/ansible-collections/community.clickhouse/issues/139).
+      release_summary: 'This is a patch release of the ``community.clickhouse`` collection.
+
+        This changelog contains all changes to the modules and plugins in this collection
+
+        that have been made after the previous release.'
+    fragments:
+    - 0.12.1.yml
+    - 139-grants-sanitize-grantee.yaml
+    release_date: '2025-11-10'
   0.2.0:
     changes:
       minor_changes:
