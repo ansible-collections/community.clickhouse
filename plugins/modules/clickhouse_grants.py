@@ -24,6 +24,7 @@ attributes:
 
 author:
   - Andrew Klychkov (@Andersson007)
+  - Fabian Kohn (@fako1024)
 
 extends_documentation_fragment:
   - community.clickhouse.client_inst_opts
