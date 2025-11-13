@@ -877,15 +877,17 @@
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
-    hosts:
-      - "192.168.0.0/16"
-    host_type: IP
+    user_hosts:
+      - type: NAME
+        hosts:
+          - "host1"
+          - "host2"
 
 - name: Check ret values in
   ansible.builtin.assert:
     that:
       - result is changed
-      - result.executed_statements == ["CREATE USER 'test_user' HOST IP '192.168.0.0/16'"]
+      - result.executed_statements == ["CREATE USER 'test_user' HOST NAME 'host1', 'host2'"]
 
 - name: Check the actual state
   register: result
@@ -904,9 +906,11 @@
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
-    hosts:
-      - "192.168.0.0/16"
-    host_type: IP
+    user_hosts:
+      - type: NAME
+        hosts:
+          - "host1"
+          - "host2"
 
 - name: Check the actual state
   register: result
@@ -918,7 +922,7 @@
 - name: Check result
   ansible.builtin.assert:
     that:
-      - result["users"]["test_user"]["host_ip"] == ["192.168.0.0/16"]
+      - result["users"]["test_user"]["host_names"] == ['host1', 'host2']
 
 - name: Update user host restrictions in check mode
   register: result
@@ -926,24 +930,26 @@
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
-    hosts:
-      - "2001:DB8::/32"
-    host_type: IP
+    user_hosts:
+      - type: NAME
+        hosts:
+          - "host3"
 
 - name: Check ret values
   ansible.builtin.assert:
     that:
       - result is changed
-      - result.executed_statements == ["ALTER USER 'test_user' HOST IP '2001:DB8::/32'"]
+      - result.executed_statements == ["ALTER USER 'test_user' HOST NAME 'host3'"]
 
 - name: Update user host restrictions in real mode
   register: result
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
-    hosts:
-      - "2001:DB8::/32"
-    host_type: IP
+    user_hosts:
+      - type: NAME
+        hosts:
+          - "host3"
 
 - name: Check the actual state
   register: result
@@ -956,7 +962,7 @@
   ansible.builtin.assert:
     that:
       - result is not changed
-      - result["users"]["test_user"]["host_ip"] == ["2001:db8::/32"]
+      - result["users"]["test_user"]["host_names"] == ['host3']
 
 - name: Update user host restrictions to another host_type in check mode
   register: result
@@ -964,24 +970,26 @@
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
-    hosts:
-      - "mysite.com"
-    host_type: NAME
+    user_hosts:
+      - type: LIKE
+        hosts:
+          - "%.mysite.com"
 
 - name: Check ret values
   ansible.builtin.assert:
     that:
       - result is changed
-      - result.executed_statements == ["ALTER USER 'test_user' HOST NAME 'mysite.com'"]
+      - result.executed_statements == ["ALTER USER 'test_user' HOST LIKE '%.mysite.com'"]
 
 - name: Update user host restrictions to another host_type in real mode
   register: result
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
-    hosts:
-      - "mysite.com"
-    host_type: NAME
+    user_hosts:
+      - type: LIKE
+        hosts:
+          - "%.mysite.com"
 
 - name: Check the actual state
   register: result
@@ -994,22 +1002,57 @@
   ansible.builtin.assert:
     that:
       - result is not changed
-      - result["users"]["test_user"]["host_names"] == ["mysite.com"]
-      - result["users"]["test_user"]["host_ip"] == []
+      - result["users"]["test_user"]["host_names_like"] == ["%.mysite.com"]
+      - result["users"]["test_user"]["host_names"] == []
 
 - name: Drop test_user
   community.clickhouse.clickhouse_user:
     state: absent
     name: test_user
 
-- name: Create test_user with multiple hosts
+- name: Create test_user with multiple host restriction types in check mode
+  register: result
+  check_mode: true
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
-    hosts:
-      - '.*\.mysite1\.com'
-      - '.*\.mysite2\.com'
-    host_type: REGEXP
+    user_hosts:
+      - type: LIKE
+        hosts:
+          - "%.mysite3.com"
+      - type: REGEXP
+        hosts:
+          - ".*\\.mysite1\\.com"
+      - type: NAME
+        hosts:
+          - "hostA"
+      - type: IP
+        hosts:
+          - "192.168.0.0/16"
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - result.executed_statements == ["CREATE USER 'test_user' HOST LIKE '%.mysite3.com' HOST REGEXP '.*\.mysite1\.com' HOST NAME 'hostA' HOST IP '192.168.0.0/16'"]
+
+- name: Create test_user with multiple host restriction types in real mode
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    user_hosts:
+      - type: LIKE
+        hosts:
+          - "%.mysite3.com"
+      - type: REGEXP
+        hosts:
+          - '.*\.mysite1\.com'
+      - type: NAME
+        hosts:
+          - "hostA"
+      - type: IP
+        hosts:
+          - "192.168.0.0/16"
 
 - name: Check the actual state
   register: result
@@ -1022,7 +1065,10 @@
   ansible.builtin.assert:
     that:
       - result is not changed
-      - (result.users.test_user.host_names_regexp | sort) == (['.*\.mysite1\.com', '.*\.mysite2\.com'] | sort)
+      - result["users"]["test_user"]["host_names_like"] == ["%.mysite3.com"]
+      - result["users"]["test_user"]["host_names_regexp"] == [".*\\.mysite1\\.com"]
+      - result["users"]["test_user"]["host_names"] == ["hostA"]
+      - result["users"]["test_user"]["host_ip"] == ["192.168.0.0/16"]
 
 - name: Drop test_user
   community.clickhouse.clickhouse_user:
@@ -1035,7 +1081,8 @@
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
-    host_type: LOCAL
+    user_hosts:
+      - type: LOCAL
 
 - name: Check ret values
   ansible.builtin.assert:
@@ -1048,7 +1095,8 @@
   community.clickhouse.clickhouse_user:
     state: present
     name: test_user
-    host_type: LOCAL
+    user_hosts:
+      - type: LOCAL
 
 - name: Check the actual state
   register: result
