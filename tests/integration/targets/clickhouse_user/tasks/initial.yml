@@ -864,3 +864,206 @@
   ansible.builtin.assert:
     that:
     - result["users"]["user.with.dots"] is not defined
+
+# Test creating users with host restrictions
+- name: Drop test_user
+  community.clickhouse.clickhouse_user:
+    state: absent
+    name: test_user
+
+- name: Create test_user in check mode with host restrictions
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    hosts:
+      - "192.168.0.0/16"
+    host_type: IP
+
+- name: Check ret values in
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - result.executed_statements == ["CREATE USER 'test_user' HOST IP '192.168.0.0/16'"]
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+    client_kwargs:
+      connect_timeout: 20
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - result["users"]["test_user"] is not defined
+
+- name: Create test_user
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    hosts:
+      - "192.168.0.0/16"
+    host_type: IP
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+    client_kwargs:
+      connect_timeout: 20
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+      - result["users"]["test_user"]["host_ip"] == ["192.168.0.0/16"]
+
+- name: Update user host restrictions in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    hosts:
+      - "2001:DB8::/32"
+    host_type: IP
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - result.executed_statements == ["ALTER USER 'test_user' HOST IP '2001:DB8::/32'"]
+
+- name: Update user host restrictions in real mode
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    hosts:
+      - "2001:DB8::/32"
+    host_type: IP
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+    client_kwargs:
+      connect_timeout: 20
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - result["users"]["test_user"]["host_ip"] == ["2001:db8::/32"]
+
+- name: Update user host restrictions to another host_type in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    hosts:
+      - "mysite.com"
+    host_type: NAME
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - result.executed_statements == ["ALTER USER 'test_user' HOST NAME 'mysite.com'"]
+
+- name: Update user host restrictions to another host_type in real mode
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    hosts:
+      - "mysite.com"
+    host_type: NAME
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+    client_kwargs:
+      connect_timeout: 20
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - result["users"]["test_user"]["host_names"] == ["mysite.com"]
+      - result["users"]["test_user"]["host_ip"] == []
+
+- name: Drop test_user
+  community.clickhouse.clickhouse_user:
+    state: absent
+    name: test_user
+
+- name: Create test_user with multiple hosts
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    hosts:
+      - '.*\.mysite1\.com'
+      - '.*\.mysite2\.com'
+    host_type: REGEXP
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+    client_kwargs:
+      connect_timeout: 20
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - (result.users.test_user.host_names_regexp | sort) == (['.*\.mysite1\.com', '.*\.mysite2\.com'] | sort)
+
+- name: Drop test_user
+  community.clickhouse.clickhouse_user:
+    state: absent
+    name: test_user
+
+- name: Create test_user with type hosts that don't require hosts in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    host_type: LOCAL
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - result.executed_statements == ["CREATE USER 'test_user' HOST LOCAL"]
+
+- name: Create test_user with type hosts that don't require hosts in real mode
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    host_type: LOCAL
+
+- name: Check the actual state
+  register: result
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+    client_kwargs:
+      connect_timeout: 20
+
+- name: Check result
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - result["users"]["test_user"]["host_names"] == ['localhost']
+
+- name: Drop test_user
+  community.clickhouse.clickhouse_user:
+    state: absent
+    name: test_user
