@@ -75,28 +75,6 @@ options:
     type: str
     choices: [always, on_create]
     default: on_create
-  user_hosts:
-    description:
-      - Host restrictions to apply to the user.
-      - It's a list of dictionaries, where each dictionary specifies the type of restriction to apply to which hosts or pattern.
-    type: list
-    elements: dict
-    suboptions:
-      type:
-        description:
-          - The method used to validate which hosts that users are allowed to connect from (V(ANY), V(LOCAL), V(IP), V(LIKE), V(NAME), V(REGEXP)).
-          - When specified for an existing user the previous host type and hosts will be updated.
-          - For more details, see U(https://clickhouse.com/docs/en/sql-reference/statements/create/user).
-        type: str
-        required: true
-      hosts:
-        description:
-          - A list of hosts or patterns from which the user will be allowed to connect.
-          - This is required if O(user_hosts.type) is not V(ANY) or V(LOCAL).
-        type: list
-        elements: str
-        required: false
-    version_added: '1.0.0'
   settings:
     description:
       - Settings with their constraints applied by default at user login.
@@ -148,6 +126,28 @@ options:
     choices: ['append', 'listed_only', 'remove']
     default: 'listed_only'
     version_added: '0.6.0'
+  user_hosts:
+    description:
+      - Host restrictions to apply to the user.
+      - It's a list of dictionaries, where each dictionary specifies the type of restriction to apply to which hosts or pattern.
+    type: list
+    elements: dict
+    suboptions:
+      type:
+        description:
+          - The method used to validate which hosts that users are allowed to connect from (V(ANY), V(LOCAL), V(IP), V(LIKE), V(NAME), V(REGEXP)).
+          - When specified for an existing user the previous host type and hosts will be updated.
+          - For more details, see U(https://clickhouse.com/docs/en/sql-reference/statements/create/user).
+        type: str
+        required: true
+      hosts:
+        description:
+          - A list of hosts or patterns from which the user will be allowed to connect.
+          - This is required if O(user_hosts.type) is not V(ANY) or V(LOCAL).
+        type: list
+        elements: str
+        required: false
+    version_added: '1.0.0'
 '''
 
 EXAMPLES = r'''
