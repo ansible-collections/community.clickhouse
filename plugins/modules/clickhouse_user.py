@@ -243,7 +243,7 @@ EXAMPLES = r'''
         hosts:
           - 'host1'
 
-- name: Update user host restrictions. Any previous host restrictions will be replaced.
+- name: Update user host restrictions. Any previous host restrictions will be replaced. (idempotent - only updates if different)
   community.clickhouse.clickhouse_user:
     login_host: localhost
     login_user: alice
@@ -299,6 +299,7 @@ class ClickHouseUser():
         self.current_default_roles = []
         self.current_roles = []
         self.current_settings = {}
+        self.current_user_hosts = {}
         # Fetch actual values from DB and
         # update the attributes with them
         self.__populate_info()
@@ -323,6 +324,7 @@ class ClickHouseUser():
         if self.user_exists:
             self.current_roles = self.__fetch_user_groups()
             self.current_settings = self.__fetch_user_settings()
+            self.current_user_hosts = self.__fetch_user_hosts()
 
     def __fetch_user_groups(self):
         query = ("SELECT granted_role_name FROM system.role_grants "
@@ -369,6 +371,21 @@ class ClickHouseUser():
             settings_dict[setting_name] = " ".join(setting_parts)
 
         return settings_dict
+    
+    def __fetch_user_hosts(self):
+        """Fetch current user host restrictions from system.users"""
+        query = ("SELECT host_ip, host_names, host_names_regexp, host_names_like FROM system.users "
+                 "WHERE name = '%s'" % self.name)
+        result = execute_query(self.module, self.client, query)
+
+        user_hosts_dict = {
+            'IP': result[0][0],       # HOST ANY is represented by ['::/0'] in host_ip
+            'NAME': result[0][1],     # HOST LOCAL is represented by ['localhost'] in host_names
+            'REGEXP': result[0][2],
+            'LIKE': result[0][3],
+        }
+        
+        return user_hosts_dict
 
     def create(self, type_password, password, cluster, user_hosts, settings,
                roles, roles_mode, default_roles, default_roles_mode):
@@ -503,6 +520,12 @@ class ClickHouseUser():
         self.changed = True
 
     def __update_host(self, user_hosts, cluster):
+        des = self.__get_desired_user_hosts(user_hosts)
+        cur = self.current_user_hosts
+
+        if des == cur:
+            return
+
         query = "ALTER USER '%s' %s" % (self.name, self.__build_user_host_clause(user_hosts))
 
         if cluster:
@@ -515,12 +538,41 @@ class ClickHouseUser():
 
         self.changed = True
 
+    def __get_desired_user_hosts(self, user_hosts):
+        desired_hosts = {
+            'IP': [],
+            'NAME': [],
+            'REGEXP': [],
+            'LIKE': [],
+        }
+        for host_restriction in user_hosts:
+            host_type = host_restriction['type'].upper()
+            if host_type == 'ANY':
+                # ANY overrides all other restrictions
+                return {
+                    'IP': ['::/0'],
+                    'NAME': [],
+                    'REGEXP': [],
+                    'LIKE': [],
+                }
+            elif host_type.upper() == 'LOCAL':
+                desired_hosts['NAME'].append('localhost')
+            else:
+                hosts = host_restriction.get('hosts', [])
+                desired_hosts[host_type].extend(hosts)
+
+        return desired_hosts
+
     def __build_user_host_clause(self, user_hosts):
+        # If ANY is specified among host restrictions, it overrides all others
+        if 'ANY' in [hr['type'].upper() for hr in user_hosts]:
+            return "HOST ANY"
+
         clauses = []
         for host_restriction in user_hosts:
             host_type = host_restriction['type']
 
-            if host_type.upper() in ('ANY', 'LOCAL'):
+            if host_type.upper() == 'LOCAL':
                 clauses.append("HOST %s" % host_type)
             else:
                 hosts = host_restriction.get('hosts')
