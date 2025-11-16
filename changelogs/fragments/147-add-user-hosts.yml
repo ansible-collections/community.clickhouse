@@ -1,0 +1,2 @@
+minor_changes:
+  - clickhouse_user - add new user_hosts parameter to clickhouse_user module to allow restricting hosts for users  (https://github.com/ansible-collections/community.clickhouse/issues/146).
