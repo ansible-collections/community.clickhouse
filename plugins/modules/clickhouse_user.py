@@ -84,7 +84,7 @@ options:
     suboptions:
       type:
         description:
-          - The method used to validate which hosts that users are allowed to connect from (IP, ANY, LOCAL, NAME, REGEXP...).
+          - The method used to validate which hosts that users are allowed to connect from (V(ANY), V(LOCAL), V(IP), V(LIKE), V(NAME), V(REGEXP)).
           - When specified for an existing user the previous host type and hosts will be updated.
           - For more details, see U(https://clickhouse.com/docs/en/sql-reference/statements/create/user).
         type: str
@@ -92,10 +92,11 @@ options:
       hosts:
         description:
           - A list of hosts or patterns from which the user will be allowed to connect.
-          - This is required if I(type) is not C(ANY) or C(LOCAL).
+          - This is required if O(user_hosts.type) is not V(ANY) or V(LOCAL).
         type: list
         elements: str
         required: false
+    version_added: '1.0.0'
   settings:
     description:
       - Settings with their constraints applied by default at user login.
@@ -229,6 +230,30 @@ EXAMPLES = r'''
       - max_memory_usage = 15000 MIN 15000 MAX 16000 READONLY
       - PROFILE 'restricted'
     state: present
+
+- name: Create a user that can only connect from a specified host
+  community.clickhouse.clickhouse_user:
+    login_host: localhost
+    login_user: alice
+    login_db: foo
+    login_password: my_password
+    name: test_user
+    user_hosts:
+      - type: NAME
+        hosts:
+          - 'host1'
+
+- name: Update user host restrictions. Any previous host restrictions will be replaced.
+  community.clickhouse.clickhouse_user:
+    login_host: localhost
+    login_user: alice
+    login_db: foo
+    login_password: my_password
+    name: test_user
+    user_hosts:
+      - type: LIKE
+        hosts:
+          - '%.example.com'
 
 - name: Drop user
   community.clickhouse.clickhouse_user:
