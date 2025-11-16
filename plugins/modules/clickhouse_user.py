@@ -371,7 +371,7 @@ class ClickHouseUser():
             settings_dict[setting_name] = " ".join(setting_parts)
 
         return settings_dict
-    
+
     def __fetch_user_hosts(self):
         """Fetch current user host restrictions from system.users"""
         query = ("SELECT host_ip, host_names, host_names_regexp, host_names_like FROM system.users "
@@ -384,7 +384,7 @@ class ClickHouseUser():
             'REGEXP': result[0][2],
             'LIKE': result[0][3],
         }
-        
+
         return user_hosts_dict
 
     def create(self, type_password, password, cluster, user_hosts, settings,
