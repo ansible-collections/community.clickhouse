@@ -126,6 +126,28 @@ options:
     choices: ['append', 'listed_only', 'remove']
     default: 'listed_only'
     version_added: '0.6.0'
+  user_hosts:
+    description:
+      - Host restrictions to apply to the user.
+      - It's a list of dictionaries, where each dictionary specifies the type of restriction to apply to which hosts or pattern.
+    type: list
+    elements: dict
+    suboptions:
+      type:
+        description:
+          - The method used to validate which hosts that users are allowed to connect from (V(ANY), V(LOCAL), V(IP), V(LIKE), V(NAME), V(REGEXP)).
+          - When specified for an existing user the previous host type and hosts will be updated.
+          - For more details, see U(https://clickhouse.com/docs/en/sql-reference/statements/create/user).
+        type: str
+        required: true
+      hosts:
+        description:
+          - A list of hosts or patterns from which the user will be allowed to connect.
+          - This is required if O(user_hosts.type) is not V(ANY) or V(LOCAL).
+        type: list
+        elements: str
+        required: false
+    version_added: '1.0.0'
 '''
 
 EXAMPLES = r'''
@@ -209,6 +231,30 @@ EXAMPLES = r'''
       - PROFILE 'restricted'
     state: present
 
+- name: Create a user that can only connect from a specified host
+  community.clickhouse.clickhouse_user:
+    login_host: localhost
+    login_user: alice
+    login_db: foo
+    login_password: my_password
+    name: test_user
+    user_hosts:
+      - type: NAME
+        hosts:
+          - 'host1'
+
+- name: Update user host restrictions. Any previous host restrictions will be replaced. (idempotent - only updates if different)
+  community.clickhouse.clickhouse_user:
+    login_host: localhost
+    login_user: alice
+    login_db: foo
+    login_password: my_password
+    name: test_user
+    user_hosts:
+      - type: LIKE
+        hosts:
+          - '%.example.com'
+
 - name: Drop user
   community.clickhouse.clickhouse_user:
     login_host: localhost
@@ -253,6 +299,7 @@ class ClickHouseUser():
         self.current_default_roles = []
         self.current_roles = []
         self.current_settings = {}
+        self.current_user_hosts = {}
         # Fetch actual values from DB and
         # update the attributes with them
         self.__populate_info()
@@ -277,6 +324,7 @@ class ClickHouseUser():
         if self.user_exists:
             self.current_roles = self.__fetch_user_groups()
             self.current_settings = self.__fetch_user_settings()
+            self.current_user_hosts = self.__fetch_user_hosts()
 
     def __fetch_user_groups(self):
         query = ("SELECT granted_role_name FROM system.role_grants "
@@ -324,13 +372,31 @@ class ClickHouseUser():
 
         return settings_dict
 
-    def create(self, type_password, password, cluster, settings,
+    def __fetch_user_hosts(self):
+        """Fetch current user host restrictions from system.users"""
+        query = ("SELECT host_ip, host_names, host_names_regexp, host_names_like FROM system.users "
+                 "WHERE name = '%s'" % self.name)
+        result = execute_query(self.module, self.client, query)
+
+        user_hosts_dict = {
+            'IP': result[0][0],       # HOST ANY is represented by ['::/0'] in host_ip
+            'NAME': result[0][1],     # HOST LOCAL is represented by ['localhost'] in host_names
+            'REGEXP': result[0][2],
+            'LIKE': result[0][3],
+        }
+
+        return user_hosts_dict
+
+    def create(self, type_password, password, cluster, user_hosts, settings,
                roles, roles_mode, default_roles, default_roles_mode):
 
         query = "CREATE USER '%s'" % self.name
 
         if password is not None:
             query += (" IDENTIFIED WITH %s BY '%s'") % (type_password, password)
+
+        if user_hosts is not None:
+            query += " %s" % self.__build_user_host_clause(user_hosts)
 
         if cluster:
             query += " ON CLUSTER %s" % cluster
@@ -355,7 +421,7 @@ class ClickHouseUser():
 
         return True
 
-    def update(self, update_password, type_password, password, cluster,
+    def update(self, update_password, type_password, password, cluster, user_hosts,
                roles, roles_mode, default_roles, default_roles_mode, settings):
 
         if roles is not None:
@@ -365,6 +431,9 @@ class ClickHouseUser():
             self.__update_default_roles(default_roles, default_roles_mode, cluster)
 
         self.__update_passwd(update_password, type_password, password, cluster)
+
+        if user_hosts is not None:
+            self.__update_host(user_hosts, cluster)
 
         if settings is not None:
             self.__update_settings(settings, cluster)
@@ -449,6 +518,67 @@ class ClickHouseUser():
             execute_query(self.module, self.client, query)
 
         self.changed = True
+
+    def __update_host(self, user_hosts, cluster):
+        des = self.__get_desired_user_hosts(user_hosts)
+        cur = self.current_user_hosts
+
+        if des == cur:
+            return
+
+        query = "ALTER USER '%s' %s" % (self.name, self.__build_user_host_clause(user_hosts))
+
+        if cluster:
+            query += " ON CLUSTER %s" % cluster
+
+        executed_statements.append(query)
+
+        if not self.module.check_mode:
+            execute_query(self.module, self.client, query)
+
+        self.changed = True
+
+    def __get_desired_user_hosts(self, user_hosts):
+        desired_hosts = {
+            'IP': [],
+            'NAME': [],
+            'REGEXP': [],
+            'LIKE': [],
+        }
+        for host_restriction in user_hosts:
+            host_type = host_restriction['type'].upper()
+            if host_type == 'ANY':
+                # ANY overrides all other restrictions
+                return {
+                    'IP': ['::/0'],
+                    'NAME': [],
+                    'REGEXP': [],
+                    'LIKE': [],
+                }
+            elif host_type.upper() == 'LOCAL':
+                desired_hosts['NAME'].append('localhost')
+            else:
+                hosts = host_restriction.get('hosts', [])
+                desired_hosts[host_type].extend(hosts)
+
+        return desired_hosts
+
+    def __build_user_host_clause(self, user_hosts):
+        # If ANY is specified among host restrictions, it overrides all others
+        if 'ANY' in [hr['type'].upper() for hr in user_hosts]:
+            return "HOST ANY"
+
+        clauses = []
+        for host_restriction in user_hosts:
+            host_type = host_restriction['type']
+
+            if host_type.upper() == 'LOCAL':
+                clauses.append("HOST %s" % host_type)
+            else:
+                hosts = host_restriction.get('hosts')
+                clauses.append("HOST %s %s" % (host_type, ', '.join("'{0}'".format(h) for h in hosts)))
+
+        return ' '.join(clauses)
 
     def __grant_roles(self, roles_to_set, cluster):
         query = "GRANT %s TO '%s'" % (', '.join(roles_to_set), self.name)
@@ -576,6 +706,7 @@ def main():
             type='str', choices=['always', 'on_create'],
             default='on_create', no_log=False
         ),
+        user_hosts=dict(type='list', elements='dict'),
         settings=dict(type='list', elements='str'),
         roles=dict(type='list', elements='str', default=None),
         default_roles=dict(type='list', elements='str', default=None),
@@ -604,6 +735,7 @@ def main():
     type_password = module.params["type_password"]
     cluster = module.params['cluster']
     update_password = module.params['update_password']
+    user_hosts = module.params['user_hosts']
     settings = module.params['settings']
     roles = module.params['roles']
     roles_mode = module.params['roles_mode']
@@ -622,11 +754,11 @@ def main():
 
     if state == 'present':
         if not user.user_exists:
-            changed = user.create(type_password, password, cluster, settings,
+            changed = user.create(type_password, password, cluster, user_hosts, settings,
                                   roles, roles_mode, default_roles, default_roles_mode)
         else:
             # If user exists
-            changed = user.update(update_password, type_password, password, cluster,
+            changed = user.update(update_password, type_password, password, cluster, user_hosts,
                                   roles, roles_mode, default_roles, default_roles_mode, settings)
     else:
         # If state is absent
