@@ -331,3 +331,17 @@ releases:
       name: clickhouse_grants
       namespace: ''
     release_date: '2025-10-06'
+  1.0.0:
+    changes:
+      minor_changes:
+      - clickhouse_user - add new user_hosts parameter to clickhouse_user module to
+        allow restricting hosts for users  (https://github.com/ansible-collections/community.clickhouse/issues/146).
+      release_summary: 'This is a major release of the ``community.clickhouse`` collection.
+
+        This changelog contains all changes to the modules and plugins in this collection
+
+        that have been made after the previous release.'
+    fragments:
+    - 1.0.0.yml
+    - 147-add-user-hosts.yml
+    release_date: '2025-11-19'
