@@ -4,6 +4,21 @@ Ansible community.clickhouse collection changelog Release Notes
 
 .. contents:: Topics
 
+v1.0.0
+======
+
+Release Summary
+---------------
+
+This is a major release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Minor Changes
+-------------
+
+- clickhouse_user - add new user_hosts parameter to clickhouse_user module to allow restricting hosts for users  (https://github.com/ansible-collections/community.clickhouse/issues/146).
+
 v0.12.1
 =======
 
