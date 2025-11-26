@@ -32,12 +32,12 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
         with:
           path: ansible_collections/community/clickhouse
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -65,12 +65,12 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
         with:
           path: ./ansible_collections/community/clickhouse
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -115,12 +115,12 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
         with:
           path: ansible_collections/community/clickhouse
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 

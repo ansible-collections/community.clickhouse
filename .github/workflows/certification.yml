@@ -1,0 +1,7 @@
+name: Run Automation Hub certification checks
+
+on: workflow_dispatch
+
+jobs:
+  call:
+    uses: ansible-collections/partner-certification-checker/.github/workflows/certification-versioned.yml
