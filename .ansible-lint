@@ -1,0 +1,27 @@
+---
+# Ansible-lint configuration
+# Exclude all paths except roles/ directory
+
+exclude_paths:
+  - .ansible/
+  - .github/
+  - changelogs/
+  - docs/
+  - meta/
+  - plugins/
+  - tests/
+  - "*.md"
+  - "*.rst"
+  - "*.txt"
+  - "*.yml"
+  - "*.yaml"
+  - "*.py"
+  - "*.log"
+  - codecov.yml
+  - galaxy.yml
+  - LICENSE
+  - MAINTAINERS
+  - requirements.txt
+
+# Only lint files under roles/ directory (when it exists)
+# All other paths are excluded above
