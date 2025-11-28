@@ -1,7 +1,12 @@
-name: Run Automation Hub certification checks
+name: Run versioned certification checks
 
-on: workflow_dispatch
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'
 
 jobs:
   call:
-    uses: ansible-collections/partner-certification-checker/.github/workflows/certification-versioned.yml
+    uses: ansible-collections/partner-certification-checker/.github/workflows/certification-versioned.yml@0.1.0
