@@ -948,6 +948,23 @@
       - result is not changed
       - result.executed_statements == []
 
+- name: Update user host restrictions to the same values but not in alphabetical order in check mode (should be idempotent)
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    user_hosts:
+      - type: NAME
+        hosts:
+          - host2
+          - host1
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - result.executed_statements == []
+
 - name: Update user host restrictions to the same values in real mode (should be idempotent)
   register: result
   community.clickhouse.clickhouse_user:
@@ -958,6 +975,23 @@
         hosts:
           - host1
           - host2
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - result.executed_statements == []
+
+- name: Update user host restrictions to the same values but not in alphabetical order in real mode (should be idempotent)
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    user_hosts:
+      - type: NAME
+        hosts:
+          - host2
+          - host1
 
 - name: Check ret values
   ansible.builtin.assert:
