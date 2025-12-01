@@ -379,10 +379,10 @@ class ClickHouseUser():
         result = execute_query(self.module, self.client, query)
 
         user_hosts_dict = {
-            'IP': result[0][0],       # HOST ANY is represented by ['::/0'] in host_ip
-            'NAME': result[0][1],     # HOST LOCAL is represented by ['localhost'] in host_names
-            'REGEXP': result[0][2],
-            'LIKE': result[0][3],
+            'IP': set(result[0][0]),       # HOST ANY is represented by ['::/0'] in host_ip
+            'NAME': set(result[0][1]),     # HOST LOCAL is represented by ['localhost'] in host_names
+            'REGEXP': set(result[0][2]),
+            'LIKE': set(result[0][3]),
         }
 
         return user_hosts_dict
@@ -540,26 +540,26 @@ class ClickHouseUser():
 
     def __get_desired_user_hosts(self, user_hosts):
         desired_hosts = {
-            'IP': [],
-            'NAME': [],
-            'REGEXP': [],
-            'LIKE': [],
+            'IP': set(),
+            'NAME': set(),
+            'REGEXP': set(),
+            'LIKE': set(),
         }
         for host_restriction in user_hosts:
             host_type = host_restriction['type'].upper()
             if host_type == 'ANY':
                 # ANY overrides all other restrictions
                 return {
-                    'IP': ['::/0'],
-                    'NAME': [],
-                    'REGEXP': [],
-                    'LIKE': [],
+                    'IP': set(['::/0']),
+                    'NAME': set(),
+                    'REGEXP': set(),
+                    'LIKE': set(),
                 }
             elif host_type.upper() == 'LOCAL':
-                desired_hosts['NAME'].append('localhost')
+                desired_hosts['NAME'].add('localhost')
             else:
                 hosts = host_restriction.get('hosts', [])
-                desired_hosts[host_type].extend(hosts)
+                desired_hosts[host_type].update(hosts)
 
         return desired_hosts
 
