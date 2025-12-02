@@ -9,4 +9,4 @@ on:
 
 jobs:
   call:
-    uses: ansible-collections/partner-certification-checker/.github/workflows/certification-versioned.yml@0.1.0
+    uses: ansible-collections/partner-certification-checker/.github/workflows/certification-reusable.yml@main
