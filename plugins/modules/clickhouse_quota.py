@@ -82,7 +82,7 @@ options:
         description:
           - Maximum values to apply to this interval in this quota.
           - At least one key must be specified.
-          - Mutually exclusive with O(no_limits) and O(tracking_only).
+          - Mutually exclusive with O(limits.no_limits) and O(limits.tracking_only).
         type: dict
         suboptions:
           queries:
@@ -132,12 +132,12 @@ options:
       no_limits:
         description:
           - Don't apply any limits.
-          - Mutually exclusive with O(max) and O(tracking_only).
+          - Mutually exclusive with O(limits.max) and O(limits.tracking_only).
         type: bool
       tracking_only:
         description:
           - Just track usage instead of enforcing.
-          - Mutually exclusive with O(max) and O(no_limits).
+          - Mutually exclusive with O(limits.max) and O(limits.no_limits).
         type: bool
   apply_to:
     description:
