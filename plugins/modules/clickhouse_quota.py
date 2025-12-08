@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: clickhouse_quota
 
-short_description: Creates or removes a ClickHouse quota.
+short_description: Creates or removes a ClickHouse quota
 
 description:
   - Creates or removes a ClickHouse quota.
@@ -22,7 +22,7 @@ attributes:
     description: Supports check_mode.
     support: full
 
-version_added: '1.0.0'
+version_added: '1.1.0'
 
 author:
   - John Garland (@johnnyg)
@@ -34,8 +34,8 @@ options:
   state:
     description:
       - Quota state.
-      - C(present) creates the quota if it does not exist.
-      - C(absent) deletes the quota if it exists.
+      - V(present) creates the quota if it does not exist.
+      - V(absent) deletes the quota if it exists.
     type: str
     choices: ['present', 'absent']
     default: 'present'
@@ -51,7 +51,7 @@ options:
     type: str
   keyed_by:
     description:
-      - Keys the quota by the specified key (default is to not key)
+      - Keys the quota by the specified key (default is to not key).
     type: str
     choices:
       - user_name
@@ -73,86 +73,86 @@ options:
         default: false
       interval:
         description:
-          - The interval to apply the following quotas on
-          - This is in the format <number> <unit>
-          - Where unit is one of second, minute, hour, day, week, month, quarter or year
+          - The interval to apply the following quotas on.
+          - This is in the format C(<number> <unit>).
+          - Where unit is one of second, minute, hour, day, week, month, quarter or year.
         type: str
         required: true
       max:
         description:
-          - Maximum values to apply to this interval in this quota
-          - At least one key must be specified
-          - Mutually exclusive with I(no_limits) and I(tracking_only)
+          - Maximum values to apply to this interval in this quota.
+          - At least one key must be specified.
+          - Mutually exclusive with O(no_limits) and O(tracking_only).
         type: dict
         suboptions:
           queries:
             description:
-              - Maximum number of queries to enforce in this interval
+              - Maximum number of queries to enforce in this interval.
             type: int
           query_selects:
             description:
-              - Maximum number of query selects to enforce in this interval
+              - Maximum number of query selects to enforce in this interval.
             type: int
           query_inserts:
             description:
-              - Maximum number of query inserts to enforce in this interval
+              - Maximum number of query inserts to enforce in this interval.
             type: int
           errors:
             description:
-              - Maximum number of errors to enforce in this interval
+              - Maximum number of errors to enforce in this interval.
             type: int
           result_rows:
             description:
-              - Maximum number of result rows to enforce in this interval
+              - Maximum number of result rows to enforce in this interval.
             type: int
           result_bytes:
             description:
-              - Maximum number of result bytes to enforce in this interval
+              - Maximum number of result bytes to enforce in this interval.
             type: int
           read_rows:
             description:
-              - Maximum number of rows read to enforce in this interval
+              - Maximum number of rows read to enforce in this interval.
             type: int
           read_bytes:
             description:
-              - Maximum number of bytes read to enforce in this interval
+              - Maximum number of bytes read to enforce in this interval.
             type: int
           written_bytes:
             description:
-              - Maximum number of bytes written to enforce in this interval
+              - Maximum number of bytes written to enforce in this interval.
             type: int
           execution_time:
             description:
-              - Maximum number of execution time to enforce in this interval
+              - Maximum number of execution time to enforce in this interval.
             type: float
           failed_sequential_authentications:
             description:
-              - Maximum number of failed sequential authentications to enforce in this interval
+              - Maximum number of failed sequential authentications to enforce in this interval.
             type: int
       no_limits:
         description:
-          - Don't apply any limits
-          - Mutually exclusive with I(max) and I(tracking_only)
+          - Don't apply any limits.
+          - Mutually exclusive with O(max) and O(tracking_only).
         type: bool
         choices: [true]
       tracking_only:
         description:
-          - Just track usage instead of enforcing
-          - Mutually exclusive with I(max) and I(no_limits)
+          - Just track usage instead of enforcing.
+          - Mutually exclusive with O(max) and O(no_limits).
         type: bool
         choices: [true]
   apply_to:
     description:
-      - Apply this quota to the following list of users/roles dependent on I(apply_to_mode)
-      - Can include special keywords of default and current_user or the name of an actual user or role
-      - Is an error to specify this if I(apply_to_mode="all")
+      - Apply this quota to the following list of users/roles dependent on O(apply_to_mode).
+      - Can include special keywords of default and current_user or the name of an actual user or role.
+      - Is an error to specify this if O(apply_to_mode="all").
     type: list
     elements: str
   apply_to_mode:
     description:
-      - When C(listed_only) (default), the quota will only apply to the users/roles specified in I(apply_to)
-      - When C(all), the quota will only apply to _all_ users/roles
-      - When C(all_except_listed), the quota will only apply to _all_ the users/roles except those specified in I(apply_to)
+      - When V(listed_only) (default), the quota will only apply to the users/roles specified in O(apply_to).
+      - When V(all), the quota will only apply to _all_ users/roles.
+      - When V(all_except_listed), the quota will only apply to _all_ the users/roles except those specified in O(apply_to).
     type: str
     choices: ['listed_only', 'all', 'all_except_listed']
     default: 'listed_only'
