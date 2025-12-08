@@ -134,13 +134,11 @@ options:
           - Don't apply any limits.
           - Mutually exclusive with O(max) and O(tracking_only).
         type: bool
-        choices: [true]
       tracking_only:
         description:
           - Just track usage instead of enforcing.
           - Mutually exclusive with O(max) and O(no_limits).
         type: bool
-        choices: [true]
   apply_to:
     description:
       - Apply this quota to the following list of users/roles dependent on O(apply_to_mode).
@@ -594,8 +592,8 @@ def main():
                         )
                     ],
                 ),
-                no_limits=dict(type="bool", choices=[True]),
-                tracking_only=dict(type="bool", choices=[True]),
+                no_limits=dict(type="bool"),
+                tracking_only=dict(type="bool"),
             ),
             mutually_exclusive=[("max", "no_limits", "tracking_only")],
             required_one_of=[("max", "no_limits", "tracking_only")],
