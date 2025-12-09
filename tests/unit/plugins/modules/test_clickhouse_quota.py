@@ -387,6 +387,8 @@ def test_parse_create_statement(create_statement, expected):
                 ]
             },
         ),
+        ({"limits": None}, {"limits": []}),
+        ({"apply_to": None}, {"apply_to": []}),
     ],
 )
 def test_normalize(params, expected):

@@ -452,11 +452,13 @@ class ClickHouseQuota:
     def _normalize(params):
         normalized = _DEFAULT_PARAMS.copy()
         for key in normalized.keys() & params.keys():
-            normalized[key] = (
-                [_DEFAULT_LIMIT_PARAMS | limit_params for limit_params in params[key]]
-                if key == "limits"
-                else copy.deepcopy(params[key])
-            )
+            value = params[key]
+            if value is not None:
+                normalized[key] = (
+                    [_DEFAULT_LIMIT_PARAMS | limit_params for limit_params in value]
+                    if key == "limits"
+                    else copy.deepcopy(value)
+                )
         keyed_by = normalized["keyed_by"]
         if keyed_by:
             normalized["keyed_by"] = ",".join(
