@@ -6,11 +6,36 @@ from ansible_collections.community.clickhouse.plugins.modules.clickhouse_quota i
     _APPLY_TO_REGEX,
     _CREATE_QUOTA_REGEX,
     _LIMITS_REGEX,
+    _VALID_NAME_REGEX,
     ClickHouseQuota,
 )
 from ansible_collections.community.clickhouse.plugins.modules.clickhouse_quota import (
     _DEFAULT_PARAMS as DEFAULT_NORMALIZE_PARAMS,
 )
+
+
+@pytest.mark.parametrize(
+    argnames="name,is_valid",
+    argvalues=[
+        ("", False),
+        ("test_quota", True),
+        ("test quota", True),
+        ("test-quota", True),
+        ("test.quota", True),
+        ("tést quota", True),
+        ("'test quota'", False),
+        ('"test quota"', False),
+        ("`test quota`", False),
+        ("test;quota", False),
+        ("test\0quota", False),
+    ],
+)
+def test_valid_name_regex(name, is_valid):
+    match = _VALID_NAME_REGEX.match(name)
+    if is_valid:
+        assert match is not None
+    else:
+        assert match is None
 
 
 @pytest.mark.parametrize(

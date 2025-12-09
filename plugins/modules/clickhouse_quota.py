@@ -204,6 +204,7 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
     get_main_conn_kwargs,
 )
 
+_VALID_NAME_REGEX = re.compile(r"^[^'\"`;\0]+$")
 _POSSIBLY_ESCAPED_NAME_REGEX = r"(?:`(?:[^`]+)`)|(?:\w+)"
 _KEYED_BY_VALUES = [
     "user_name",
@@ -294,6 +295,8 @@ class ClickHouseQuota:
     _type = "QUOTA"
 
     def __init__(self, module, client, name):
+        if not _VALID_NAME_REGEX.match(name):
+            raise ValueError(f"'{name}' is not a valid quota name")
         self.module = module
         self.client = client
         self.name = name
