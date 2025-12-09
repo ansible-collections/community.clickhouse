@@ -335,7 +335,7 @@ class ClickHouseQuota:
     def _do(self, action):
         if action not in ("CREATE", "ALTER"):
             raise ValueError(
-                f"Expected action to be create or alter but got '{action}'"
+                f"Expected action to be CREATE or ALTER but got '{action}'"
             )
 
         query = " ".join(self._create_sql_clauses(action))
@@ -385,7 +385,7 @@ class ClickHouseQuota:
     def ensure_state(self):
         state = self.module.params["state"]
         if state not in ("present", "absent"):
-            raise ValueError(f"Unexpeced state '{state}'")
+            raise ValueError(f"Unexpected state '{state}'")
 
         if state == "present":
             # create or alter role
