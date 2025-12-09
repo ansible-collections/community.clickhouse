@@ -261,6 +261,7 @@ _USER_OR_ROLE_REGEX = re.compile(rf"(?P<name>{_POSSIBLY_ESCAPED_NAME_REGEX})(?:,
 
 _DEFAULT_LIMIT_PARAMS = {
     "randomized_start": False,
+    "interval": None,
     "max": {},
     "no_limits": None,
     "tracking_only": None,
@@ -454,11 +455,18 @@ class ClickHouseQuota:
         for key in normalized.keys() & params.keys():
             value = params[key]
             if value is not None:
-                normalized[key] = (
-                    [_DEFAULT_LIMIT_PARAMS | limit_params for limit_params in value]
-                    if key == "limits"
-                    else copy.deepcopy(value)
-                )
+                if key == "limits":
+                    normalized_limits = []
+                    for limit_params in value:
+                        normalized_limit = _DEFAULT_LIMIT_PARAMS.copy()
+                        for limit_key in normalized_limit.keys() & limit_params.keys():
+                            limit_value = limit_params[limit_key]
+                            if limit_value is not None:
+                                normalized_limit[limit_key] = limit_value
+                        normalized_limits.append(normalized_limit)
+                    normalized[key] = normalized_limits
+                else:
+                    normalized[key] = copy.deepcopy(value)
         keyed_by = normalized["keyed_by"]
         if keyed_by:
             normalized["keyed_by"] = ",".join(
@@ -470,7 +478,9 @@ class ClickHouseQuota:
         ):
             normalized["apply_to_mode"] = "all"
         # no limits is the default so they automatically get removed
-        normalized["limits"] = [limit for limit in normalized["limits"] if not limit.get("no_limits")]
+        normalized["limits"] = [
+            limit for limit in normalized["limits"] if not limit.get("no_limits")
+        ]
         for limit in normalized["limits"]:
             max_limit = limit["max"]
             if max_limit:

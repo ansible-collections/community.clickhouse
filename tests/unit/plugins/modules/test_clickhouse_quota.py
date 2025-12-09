@@ -244,6 +244,21 @@ DEFAULT_PARSE_PARAMS = dict(
                 "apply_to_mode": "all_except_listed",
             },
         ),
+        (
+            "CREATE QUOTA tracking_only KEYED BY user_name FOR INTERVAL 15 minute TRACKING ONLY TO ALL",
+            {
+                "keyed_by": "user_name",
+                "limits": [
+                    {
+                        "randomized_start": False,
+                        "interval": "15 minute",
+                        "tracking_only": True,
+                    },
+                ],
+                "apply_to": [],
+                "apply_to_mode": "all",
+            },
+        ),
     ],
 )
 def test_parse_create_statement(create_statement, expected):
@@ -389,6 +404,30 @@ def test_parse_create_statement(create_statement, expected):
         ),
         ({"limits": None}, {"limits": []}),
         ({"apply_to": None}, {"apply_to": []}),
+        (
+            {
+                "limits": [
+                    {
+                        "interval": "15 minute",
+                        "max": None,
+                        "no_limits": None,
+                        "tracking_only": True,
+                        "random_extra_key": True,
+                    }
+                ]
+            },
+            {
+                "limits": [
+                    {
+                        "interval": "15 minute",
+                        "max": {},
+                        "no_limits": None,
+                        "tracking_only": True,
+                        "randomized_start": False,
+                    }
+                ]
+            },
+        ),
     ],
 )
 def test_normalize(params, expected):
@@ -543,6 +582,24 @@ DEFAULT_PARAMS = dict(
                 ],
             },
             "CREATE QUOTA test_quota KEYED BY user_name",
+            [],
+        ),
+        (
+            "tracking_only",
+            {
+                "keyed_by": "user_name",
+                "limits": [
+                    {
+                        "interval": "15 minute",
+                        "tracking_only": True,
+                        "no_limits": None,
+                        "max": None,
+                    },
+                ],
+                "apply_to": [],
+                "apply_to_mode": "all",
+            },
+            "CREATE QUOTA tracking_only KEYED BY user_name FOR INTERVAL 15 minute TRACKING ONLY TO ALL",
             [],
         ),
     ],
