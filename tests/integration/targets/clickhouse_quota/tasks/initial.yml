@@ -1,0 +1,721 @@
+#####################################################################
+# WARNING: These are designed specifically for Ansible tests        #
+# and should not be used as examples of how to write Ansible quotas #
+#####################################################################
+
+# Basic creation in check mode
+- name: Create a test quota in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_quota:
+    state: present
+    name: test_quota
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE QUOTA \'test_quota\'']
+
+- name: Check the quota was not created in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.quotas WHERE name = 'test_quota'"
+
+- name: Verify that the quota is not present
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+# Basic creation with limits in check mode
+- name: Create a test quota in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_quota:
+    state: present
+    name: test_quota
+    limits:
+      - interval: 5 minute
+        max:
+          queries: 10
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE QUOTA \'test_quota\' FOR INTERVAL 5 minute MAX queries = 10']
+
+- name: Check the quota was not created in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.quotas WHERE name = 'test_quota'"
+
+- name: Verify that the quota is not present
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+# Basic creation with limits and apply_to in check mode
+- name: Create a test quota with limits and apply_to in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_quota:
+    state: present
+    name: test_quota
+    limits:
+      - interval: 5 minute
+        max:
+          queries: 100
+          execution_time: 600
+    apply_to:
+      - default
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE QUOTA \'test_quota\' FOR INTERVAL 5 minute MAX queries = 100, execution_time = 600.0 TO default']
+
+- name: Check the quota was not created in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.quotas WHERE name = 'test_quota'"
+
+- name: Verify that the quota is not present
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+# Basic creation with limits and apply_to_mode = all in check mode
+- name: Create a test quota with limits and apply_to_mode = all in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_quota:
+    state: present
+    name: test_quota
+    limits:
+      - interval: 5 minute
+        tracking_only: true
+    apply_to_mode: all
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE QUOTA \'test_quota\' FOR INTERVAL 5 minute TRACKING ONLY TO ALL']
+
+- name: Check the quota was not created in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.quotas WHERE name = 'test_quota'"
+
+- name: Verify that the quota is not present
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+# Basic creation with limits and apply_to_mode = all_except_listed in check mode
+- name: Create a test quota with limits and apply_to_mode = all_except_listed in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_quota:
+    state: present
+    name: test_quota
+    limits:
+      - interval: 5 minute
+        no_limits: true
+    apply_to_mode: all_except_listed
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE QUOTA \'test_quota\' FOR INTERVAL 5 minute NO LIMITS TO ALL']
+
+- name: Check the quota was not created in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.quotas WHERE name = 'test_quota'"
+
+- name: Verify that the quota is not present
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+# Basic creation with limits and apply_to_mode = all_except_listed in check mode
+- name: Create a test quota with limits and apply_to_mode = all_except_listed in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_quota:
+    state: present
+    name: test_quota
+    limits:
+      - interval: 5 minute
+        max:
+          failed_sequential_authentications: 5
+    apply_to_mode: all_except_listed
+    apply_to:
+      - admin
+      - CURRENT_USER
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE QUOTA \'test_quota\' FOR INTERVAL 5 minute MAX failed_sequential_authentications = 5 TO ALL EXCEPT admin, CURRENT_USER']
+
+- name: Check the quota was not created in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.quotas WHERE name = 'test_quota'"
+
+- name: Verify that the quota is not present
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+# Basic creation with keyed_by, limits and apply_to_mode = all_except_listed in check mode
+- name: Create a test quota with keyed_by, limits and apply_to_mode = all_except_listed in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_quota:
+    state: present
+    name: test_quota
+    keyed_by: user_name
+    limits:
+      - interval: 5 minute
+        randomized_start: true
+        max:
+          queries: 100
+          execution_time: 300.5
+    apply_to_mode: all
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE QUOTA \'test_quota\' KEYED BY user_name FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100, execution_time = 300.5 TO ALL']
+
+- name: Check the quota was not created in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.quotas WHERE name = 'test_quota'"
+
+- name: Verify that the quota is not present
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+# Basic creation with cluster, keyed_by and limits in check mode
+- name: Create a test quota with cluster, keyed_by, limits in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_quota:
+    state: present
+    name: test_quota
+    cluster: test_cluster
+    keyed_by: user_name
+    limits:
+      - interval: 5 minute
+        randomized_start: true
+        max:
+          execution_time: 10.2
+      - interval: 1 day
+        max:
+          query_selects: 10
+          query_inserts: 10
+    apply_to: CURRENT_USER
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE QUOTA \'test_quota\' ON CLUSTER \'test_cluster\' KEYED BY user_name FOR RANDOMIZED INTERVAL 5 minute MAX execution_time = 10.2, FOR INTERVAL 1 day MAX query_selects = 10, query_inserts = 10 TO CURRENT_USER']
+
+- name: Check the quota was not created in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.quotas WHERE name = 'test_quota'"
+
+- name: Verify that the quota is not present
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+# Negative test that you can't specify apply_to_mode == all and a list of users
+- name: Negative test that you can't specify apply_to_mode == all and a list of users
+  register: result
+  check_mode: true
+  ignore_errors: true
+  community.clickhouse.clickhouse_quota:
+    state: present
+    name: test_quota
+    apply_to: CURRENT_USER
+    apply_to_mode: all
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is failed
+
+# Actual test with basic limits
+- name: Actual test with basic limits
+  register: result
+  community.clickhouse.clickhouse_quota:
+    name: test_quota
+    keyed_by: user_name
+    limits:
+      - interval: 5 minute
+        randomized_start: true
+        max:
+          queries: 100
+    apply_to: default
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE QUOTA \'test_quota\' KEYED BY user_name FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100 TO default']
+
+- name: Check the quota was actually created with the correct parameters
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE QUOTA test_quota"
+
+- name: Verify that the quota was actually created with the correct parameters
+  ansible.builtin.assert:
+    that:
+    - result.result == [['CREATE QUOTA test_quota KEYED BY user_name FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100 TO default']]
+
+- name: Delete the quota in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_quota:
+    name: test_quota
+    state: absent
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["DROP QUOTA 'test_quota'"]
+
+- name: Check the quota was not actually deleted
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE QUOTA test_quota"
+
+- name: Verify that the quota was not actually deleted (and still has the correct parameters)
+  ansible.builtin.assert:
+    that:
+    - result.result == [['CREATE QUOTA test_quota KEYED BY user_name FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100 TO default']]
+
+- name: Actually delete the quota
+  register: result
+  community.clickhouse.clickhouse_quota:
+    name: test_quota
+    state: absent
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['DROP QUOTA \'test_quota\'']
+
+- name: Check the quota was actually deleted
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.quotas WHERE name = 'test_quota'"
+
+- name: Verify that the quota is no longer present
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+# Alter quota
+- name: Create quota
+  register: result
+  community.clickhouse.clickhouse_quota:
+    name: tést quota
+    keyed_by: client_key,user_name
+    limits:
+      - interval: 5 minute
+        randomized_start: true
+        max:
+          queries: 100
+          execution_time: 1.1
+    apply_to: default
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['CREATE QUOTA \'tést quota\' KEYED BY client_key,user_name FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100, execution_time = 1.1 TO default']
+
+- name: Check the quota was actually created with the correct parameters
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE QUOTA 'tést quota'"
+
+- name: Verify that the quota was actually created with the correct parameters
+  ansible.builtin.assert:
+    that:
+    - result.result == [['CREATE QUOTA `tést quota` KEYED BY client_key, user_name FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100, execution_time = 1.1 TO default']]
+
+- name: Alter the quota in check mode
+  check_mode: true
+  register: result
+  community.clickhouse.clickhouse_quota:
+    name: tést quota
+    keyed_by: client_key,user_name
+    limits:
+      - interval: 5 minute
+        randomized_start: true
+        max:
+          queries: 100
+          execution_time: 1.1
+      - interval: 1 minute
+        max:
+          errors: 10
+    apply_to: default
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['ALTER QUOTA \'tést quota\' KEYED BY client_key,user_name FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100, execution_time = 1.1, FOR INTERVAL 1 minute MAX errors = 10 TO default']
+
+- name: Check the quota was not actually altered
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE QUOTA 'tést quota'"
+
+- name: Verify that the quota was not actually altered
+  ansible.builtin.assert:
+    that:
+    - result.result == [['CREATE QUOTA `tést quota` KEYED BY client_key, user_name FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100, execution_time = 1.1 TO default']]
+
+- name: Actually alter the quota
+  register: result
+  community.clickhouse.clickhouse_quota:
+    name: tést quota
+    keyed_by: client_key,user_name
+    limits:
+      - interval: 5 minute
+        randomized_start: true
+        max:
+          queries: 100
+          execution_time: 1.1
+      - interval: 1 minute
+        max:
+          errors: 10
+    apply_to: default
+
+- name: Check the quota was actually altered
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE QUOTA 'tést quota'"
+
+- name: Verify that the quota was actually altered
+  ansible.builtin.assert:
+    that:
+    - result.result == [['CREATE QUOTA `tést quota` KEYED BY client_key, user_name FOR INTERVAL 1 minute MAX errors = 10, FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100, execution_time = 1.1 TO default']]
+
+- name: Check idempotency
+  register: result
+  community.clickhouse.clickhouse_quota:
+    name: tést quota
+    keyed_by: client_key,user_name
+    limits:
+      - interval: 5 minute
+        randomized_start: true
+        max:
+          queries: 100
+          execution_time: 1.1
+      - interval: 1 minute
+        max:
+          errors: 10
+    apply_to: default
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Check the quota was not actually altered
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE QUOTA 'tést quota'"
+
+- name: Verify that the quota was not actually altered
+  ansible.builtin.assert:
+    that:
+    - result.result == [['CREATE QUOTA `tést quota` KEYED BY client_key, user_name FOR INTERVAL 1 minute MAX errors = 10, FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100, execution_time = 1.1 TO default']]
+
+- name: Actually delete the quota
+  register: result
+  community.clickhouse.clickhouse_quota:
+    name: tést quota
+    state: absent
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ['DROP QUOTA \'tést quota\'']
+
+- name: Check the quota was actually deleted
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.quotas WHERE name = 'tést quota'"
+
+- name: Verify that the quota is no longer present
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+- name: Create quota
+  register: result
+  community.clickhouse.clickhouse_quota:
+    name: test_quota
+    limits:
+      - interval: 1 day
+        max:
+          errors: 1000
+    apply_to_mode: all_except_listed
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE QUOTA 'test_quota' FOR INTERVAL 1 day MAX errors = 1000 TO ALL"]
+
+- name: Check the quota was actually created with the correct parameters
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE QUOTA 'test_quota'"
+
+- name: Verify that the quota was actually created with the correct parameters
+  ansible.builtin.assert:
+    that:
+    - result.result == [['CREATE QUOTA test_quota FOR INTERVAL 1 day MAX errors = 1000 TO ALL']]
+
+- name: Check for idempotency between apply_to_mode=all_except_listed and apply_to=[] and apply_to_mode=all (in check mode)
+  check_mode: true
+  register: result
+  community.clickhouse.clickhouse_quota:
+    name: test_quota
+    limits:
+      - interval: 1 day
+        max:
+          errors: 1000
+    apply_to_mode: all
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Check the quota was not actually altered
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE QUOTA 'test_quota'"
+
+- name: Verify that the quota was not actually altered
+  ansible.builtin.assert:
+    that:
+    - result.result == [['CREATE QUOTA test_quota FOR INTERVAL 1 day MAX errors = 1000 TO ALL']]
+
+- name: Check for idempotency between apply_to_mode=all_except_listed and apply_to=[] and apply_to_mode=all
+  register: result
+  community.clickhouse.clickhouse_quota:
+    name: test_quota
+    limits:
+      - interval: 1 day
+        max:
+          errors: 1000
+    apply_to_mode: all
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Check the quota was not actually altered
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE QUOTA 'test_quota'"
+
+- name: Verify that the quota was not actually altered
+  ansible.builtin.assert:
+    that:
+    - result.result == [['CREATE QUOTA test_quota FOR INTERVAL 1 day MAX errors = 1000 TO ALL']]
+
+- name: Delete the quota in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_quota:
+    name: test_quota
+    state: absent
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["DROP QUOTA 'test_quota'"]
+
+- name: Check the quota was not actually deleted
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.quotas WHERE name = 'test_quota'"
+
+- name: Verify that the quota is still present
+  ansible.builtin.assert:
+    that:
+    - result.result == [["test_quota"]]
+
+- name: Actually delete the quota
+  register: result
+  community.clickhouse.clickhouse_quota:
+    name: test_quota
+    state: absent
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["DROP QUOTA 'test_quota'"]
+
+- name: Check the quota was actually deleted
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.quotas WHERE name = 'test_quota'"
+
+- name: Verify that the quota is no longer present
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+- name: Create tracking only quota
+  register: result
+  community.clickhouse.clickhouse_quota:
+    name: test_quota
+    limits:
+      - interval: 15 minute
+        tracking_only: true
+    apply_to_mode: all
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE QUOTA 'test_quota' FOR INTERVAL 15 minute TRACKING ONLY TO ALL"]
+
+- name: Check the quota was actually created with the correct parameters
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE QUOTA 'test_quota'"
+
+- name: Verify that the quota was actually created with the correct parameters
+  ansible.builtin.assert:
+    that:
+    - result.result == [['CREATE QUOTA test_quota FOR INTERVAL 15 minute TRACKING ONLY TO ALL']]
+
+- name: Check for idempotency (in check mode)
+  check_mode: true
+  register: result
+  community.clickhouse.clickhouse_quota:
+    name: test_quota
+    limits:
+      - interval: 15 minute
+        tracking_only: true
+    apply_to_mode: all
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Check the quota was not actually altered
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE QUOTA 'test_quota'"
+
+- name: Verify that the quota was not actually altered
+  ansible.builtin.assert:
+    that:
+    - result.result == [['CREATE QUOTA test_quota FOR INTERVAL 15 minute TRACKING ONLY TO ALL']]
+
+- name: Check for idempotency
+  register: result
+  community.clickhouse.clickhouse_quota:
+    name: test_quota
+    limits:
+      - interval: 15 minute
+        tracking_only: true
+    apply_to_mode: all
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Check the quota was not actually altered
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW CREATE QUOTA 'test_quota'"
+
+- name: Verify that the quota was not actually altered
+  ansible.builtin.assert:
+    that:
+    - result.result == [['CREATE QUOTA test_quota FOR INTERVAL 15 minute TRACKING ONLY TO ALL']]
+
+- name: Delete the quota in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_quota:
+    name: test_quota
+    state: absent
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["DROP QUOTA 'test_quota'"]
+
+- name: Check the quota was not actually deleted
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.quotas WHERE name = 'test_quota'"
+
+- name: Verify that the quota is still present
+  ansible.builtin.assert:
+    that:
+    - result.result == [["test_quota"]]
+
+- name: Actually delete the quota
+  register: result
+  community.clickhouse.clickhouse_quota:
+    name: test_quota
+    state: absent
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["DROP QUOTA 'test_quota'"]
+
+- name: Check the quota was actually deleted
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.quotas WHERE name = 'test_quota'"
+
+- name: Verify that the quota is no longer present
+  ansible.builtin.assert:
+    that:
+    - result.result == []
