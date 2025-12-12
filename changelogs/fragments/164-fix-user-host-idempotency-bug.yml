@@ -1,2 +1,0 @@
-bugfixes:
-  - clickhouse_user - Fixed idempotency issue when user hosts were provided in different orders. Now compares pre/post user host settings using a set. (https://github.com/ansible-collections/community.clickhouse/issues/152)
