@@ -345,3 +345,21 @@ releases:
     - 1.0.0.yml
     - 147-add-user-hosts.yml
     release_date: '2025-11-19'
+  1.1.0:
+    changes:
+      bugfixes:
+      - clickhouse_user - Fixed idempotency issue when user hosts were provided in
+        different orders. Now compares pre/post user host settings using a set. (https://github.com/ansible-collections/community.clickhouse/issues/152)
+      release_summary: 'This is a minor release of the ``community.clickhouse`` collection.
+
+        This changelog contains all changes to the modules and plugins in this collection
+
+        that have been made after the previous release.'
+    fragments:
+    - 1.1.0.yml
+    - 164-fix-user-host-idempotency-bug.yml
+    modules:
+    - description: Creates or removes a ClickHouse quota
+      name: clickhouse_quota
+      namespace: ''
+    release_date: '2025-12-12'

@@ -4,6 +4,26 @@ Ansible community.clickhouse collection changelog Release Notes
 
 .. contents:: Topics
 
+v1.1.0
+======
+
+Release Summary
+---------------
+
+This is a minor release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Bugfixes
+--------
+
+- clickhouse_user - Fixed idempotency issue when user hosts were provided in different orders. Now compares pre/post user host settings using a set. (https://github.com/ansible-collections/community.clickhouse/issues/152)
+
+New Modules
+-----------
+
+- clickhouse_quota - Creates or removes a ClickHouse quota
+
 v1.0.0
 ======
 
