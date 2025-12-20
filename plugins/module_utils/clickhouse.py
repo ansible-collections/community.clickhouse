@@ -81,8 +81,8 @@ def connect_to_db_via_client(module, main_conn_kwargs, client_kwargs):
     Returns Client() object.
     """
     try:
-        # Merge the kwargs as Python 2 would through an error
-        # when unpaking them separately to Client()
+        # Merge the kwargs as Python 2 would throw an error
+        # when unpacking them separately to Client()
         client_kwargs.update(main_conn_kwargs)
         client = Client(**client_kwargs)
     except Exception as e:
