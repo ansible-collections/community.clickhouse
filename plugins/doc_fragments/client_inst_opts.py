@@ -12,25 +12,25 @@ class ModuleDocFragment(object):
 options:
   login_host:
     description:
-      - The same as the C(Client(host='...')) argument.
+      - The same as the V(Client(host='...'\)) argument.
     type: str
     default: 'localhost'
 
   login_port:
     description:
-      - The same as the C(Client(port='...')) argument.
+      - The same as the V(Client(port='...'\)) argument.
       - If not passed, relies on the driver's default argument value.
     type: int
 
   login_db:
     description:
-      - The same as the C(Client(database='...')) argument.
+      - The same as the V(Client(database='...'\)) argument.
       - If not passed, relies on the driver's default argument value.
     type: str
 
   login_user:
     description:
-      - The same as the C(Client(user='...')) argument.
+      - The same as the V(Client(user='...'\)) argument.
       - If not passed, relies on the driver's default argument value.
       - Be sure your the user has permissions to read the system tables
         listed in the RETURN section.
@@ -38,7 +38,7 @@ options:
 
   login_password:
     description:
-      - The same as the C(Client(password='...')) argument.
+      - The same as the V(Client(password='...'\)) argument.
       - If not passed, relies on the driver's default argument value.
     type: str
 

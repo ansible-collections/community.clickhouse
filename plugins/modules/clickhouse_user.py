@@ -87,8 +87,8 @@ options:
   roles:
     description:
       - Grants specified roles to the user.
-      - To append or remove roles, use the I(roles_mode) argument.
-      - To revoke all roles, pass an empty list (C([])) and I(default_roles_mode=listed_only).
+      - To append or remove roles, use the O(roles_mode) argument.
+      - To revoke all roles, pass an empty list (C([])) and O(default_roles_mode=listed_only).
     type: list
     elements: str
     version_added: '0.6.0'
@@ -96,32 +96,32 @@ options:
     description:
       - Sets specified roles as default for the user.
       - The roles must be explicitly granted to the user whether manually
-        before using this argument or by using the I(roles)
+        before using this argument or by using the O(roles)
         argument in the same task.
-      - To append or remove roles, use the I(default_roles_mode) argument.
-      - To unset all roles as default, pass an empty list (C([])) and I(default_roles_mode=listed_only).
+      - To append or remove roles, use the O(default_roles_mode) argument.
+      - To unset all roles as default, pass an empty list (C([])) and O(default_roles_mode=listed_only).
     type: list
     elements: str
     version_added: '0.6.0'
   roles_mode:
     description:
-     - When C(listed_only) (default), makes the user a member of only roles specified in I(roles).
+     - When C(listed_only) (default), makes the user a member of only roles specified in O(roles).
        It will remove the user from all other roles.
-     - When C(append), appends roles specified in I(roles) to existing user roles.
-     - When C(remove), removes roles specified in I(roles) from user roles.
-     - The argument is ignored without I(roles) set.
+     - When C(append), appends roles specified in O(roles) to existing user roles.
+     - When C(remove), removes roles specified in O(roles) from user roles.
+     - The argument is ignored without O(roles) set.
     type: str
     choices: ['append', 'listed_only', 'remove']
     default: 'listed_only'
     version_added: '0.6.0'
   default_roles_mode:
     description:
-     - When C(listed_only) (default), sets only roles specified in I(default_roles) as user default roles.
+     - When C(listed_only) (default), sets only roles specified in O(default_roles) as user default roles.
        It will unset all other roles as default roles.
-     - When C(append), appends roles specified in I(default_roles) to existing user default roles.
+     - When C(append), appends roles specified in O(default_roles) to existing user default roles.
        default roles instead of unsetting not specified ones.
-     - When C(remove), removes roles specified in I(default_roles) from user default roles.
-     - Ignored without I(default_roles) set.
+     - When C(remove), removes roles specified in O(default_roles) from user default roles.
+     - Ignored without O(default_roles) set.
     type: str
     choices: ['append', 'listed_only', 'remove']
     default: 'listed_only'

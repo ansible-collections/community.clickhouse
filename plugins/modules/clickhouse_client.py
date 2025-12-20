@@ -33,14 +33,14 @@ notes:
 options:
   execute:
     description:
-      - A query to the C(Client.execute()) method.
+      - A query to the V(Client.execute(\)) method.
     type: str
     required: true
 
   execute_kwargs:
     description:
       - All additional keyword arguments you want to pass to
-        the C(Client.execute()) method. For example, you can pass
+        the V(Client.execute(\)) method. For example, you can pass
         substitution parameters for the query you pass
         through the I(execute) argument.
     type: dict

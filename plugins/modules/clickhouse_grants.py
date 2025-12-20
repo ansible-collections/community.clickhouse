@@ -70,7 +70,7 @@ options:
       privs:
         description:
           - A dictionary of privileges.
-          - Keys are privilege names, like C(CREATE USER) or C(SELECT(column1, column2)).
+          - Keys are privilege names, like C(CREATE USER) or V(SELECT(column1, column2\)).
           - Values are booleans indicating whether to grant the privilege
             with the C(WITH GRANT OPTION).
           - Alternatively, you can use the C(grant_option) parameter to apply the same setting to all privileges in this set.
