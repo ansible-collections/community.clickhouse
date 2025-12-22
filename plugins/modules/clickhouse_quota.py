@@ -143,14 +143,14 @@ options:
     description:
       - Apply this quota to the following list of users/roles dependent on O(apply_to_mode).
       - Can include special keywords of default and current_user or the name of an actual user or role.
-      - Is an error to specify this if O(apply_to_mode="all").
+      - Is an error to specify this if O(apply_to_mode=all).
     type: list
     elements: str
   apply_to_mode:
     description:
       - When V(listed_only) (default), the quota will only apply to the users/roles specified in O(apply_to).
-      - When V(all), the quota will only apply to _all_ users/roles.
-      - When V(all_except_listed), the quota will only apply to _all_ the users/roles except those specified in O(apply_to).
+      - When V(all), the quota will only apply to B(all) users/roles.
+      - When V(all_except_listed), the quota will only apply to B(all) the users/roles except those specified in O(apply_to).
     type: str
     choices: ['listed_only', 'all', 'all_except_listed']
     default: 'listed_only'
