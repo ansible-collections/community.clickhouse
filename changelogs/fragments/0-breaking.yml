@@ -1,0 +1,2 @@
+breaking_changes:
+  - ansible-core support - the collection supports ansible-core >= 2.17 and no longer supports older versions. If you use an older version, please upgrade to at least 2.17 (https://github.com/ansible-collections/community.clickhouse/pull/169).
