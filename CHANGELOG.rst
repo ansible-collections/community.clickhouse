@@ -4,6 +4,21 @@ Ansible community.clickhouse collection changelog Release Notes
 
 .. contents:: Topics
 
+v2.0.0
+======
+
+Release Summary
+---------------
+
+This is a major release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Breaking Changes / Porting Guide
+--------------------------------
+
+- ansible-core support - the collection supports ansible-core >= 2.17 and no longer supports older versions. If you use an older version, please upgrade to at least 2.17 (https://github.com/ansible-collections/community.clickhouse/pull/169).
+
 v1.1.0
 ======
 
