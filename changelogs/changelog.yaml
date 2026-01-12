@@ -363,3 +363,18 @@ releases:
       name: clickhouse_quota
       namespace: ''
     release_date: '2025-12-12'
+  2.0.0:
+    changes:
+      breaking_changes:
+      - ansible-core support - the collection supports ansible-core >= 2.17 and no
+        longer supports older versions. If you use an older version, please upgrade
+        to at least 2.17 (https://github.com/ansible-collections/community.clickhouse/pull/169).
+      release_summary: 'This is a major release of the ``community.clickhouse`` collection.
+
+        This changelog contains all changes to the modules and plugins in this collection
+
+        that have been made after the previous release.'
+    fragments:
+    - 0-breaking.yml
+    - 2.0.0.yml
+    release_date: '2026-01-12'
