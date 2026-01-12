@@ -54,7 +54,7 @@ You can also install a specific version of the collection, for example, if you n
 ansible-galaxy collection install community.clickhouse:==0.6.0
 ```
 
-See [Ansible Using collections](https://docs.ansible.com/ansible/latest/user_guide/collections_using.html) for more details.
+See [Ansible Using collections](https://docs.ansible.com/projects/ansible/latest/user_guide/collections_using.html) for more details.
 
 ### Usage example
 
@@ -90,9 +90,9 @@ See [Ansible Using collections](https://docs.ansible.com/ansible/latest/user_gui
 
 ## Code of Conduct
 
-We follow the [Ansible Code of Conduct](https://docs.ansible.com/ansible/latest/community/code_of_conduct.html) in all our interactions within this project.
+We follow the [Ansible Code of Conduct](https://docs.ansible.com/projects/ansible/latest/community/code_of_conduct.html) in all our interactions within this project.
 
-If you encounter abusive behavior violating the [Ansible Code of Conduct](https://docs.ansible.com/ansible/latest/community/code_of_conduct.html), please refer to the [policy violations](https://docs.ansible.com/ansible/latest/community/code_of_conduct.html#policy-violations) section of the Code of Conduct for information on how to raise a complaint.
+If you encounter abusive behavior violating the [Ansible Code of Conduct](https://docs.ansible.com/projects/ansible/latest/community/code_of_conduct.html), please refer to the [policy violations](https://docs.ansible.com/projects/ansible/latest/community/code_of_conduct.html#policy-violations) section of the Code of Conduct for information on how to raise a complaint.
 
 ## Communication
 
@@ -105,7 +105,7 @@ If you encounter abusive behavior violating the [Ansible Code of Conduct](https:
 
 * The Ansible [Bullhorn newsletter](https://forum.ansible.com/t/about-the-newsletter-category/166): used to announce releases and important changes.
 
-For more information about communication see the [Ansible communication guide](https://docs.ansible.com/ansible/devel/community/communication.html).
+For more information about communication see the [Ansible communication guide](https://docs.ansible.com/projects/ansible/devel/community/communication.html).
 
 ## Contributing to this collection
 
@@ -118,9 +118,9 @@ You don't know how to start? Refer to our [contribution guide](https://github.co
 We use the following guidelines:
 
 * [CONTRIBUTING.md](https://github.com/ansible-collections/community.clickhouse/blob/main/CONTRIBUTING.md)
-* [Ansible Community Guide](https://docs.ansible.com/ansible/latest/community/index.html)
-* [Ansible Development Guide](https://docs.ansible.com/ansible/devel/dev_guide/index.html)
-* [Ansible Collection Development Guide](https://docs.ansible.com/ansible/devel/dev_guide/developing_collections.html#contributing-to-collections)
+* [Ansible Community Guide](https://docs.ansible.com/projects/ansible/latest/community/index.html)
+* [Ansible Development Guide](https://docs.ansible.com/projects/ansible/devel/dev_guide/index.html)
+* [Ansible Collection Development Guide](https://docs.ansible.com/projects/ansible/devel/dev_guide/developing_collections.html#contributing-to-collections)
 
 ## Collection maintenance
 
@@ -135,7 +135,7 @@ It is necessary for maintainers of this collection to be subscribed to:
 * The [news-for-maintainers tag](https://forum.ansible.com/tag/news-for-maintainers) on the forum.
 * The [clickhouse tag](https://forum.ansible.com/tag/clickhouse) on the forum (optional).
 
-They also should be subscribed to Ansible's [The Bullhorn newsletter](https://docs.ansible.com/ansible/devel/community/communication.html#the-bullhorn).
+They also should be subscribed to Ansible's [The Bullhorn newsletter](https://docs.ansible.com/projects/ansible/devel/community/communication.html#the-bullhorn).
 
 ## Governance
 
@@ -154,6 +154,6 @@ See our [CI matrix](https://github.com/ansible-collections/community.clickhouse/
 
 ## More information
 
-- [Ansible User guide](https://docs.ansible.com/ansible/latest/user_guide/index.html)
-- [Ansible Developer guide](https://docs.ansible.com/ansible/latest/dev_guide/index.html)
-- [Ansible Community code of conduct](https://docs.ansible.com/ansible/latest/community/code_of_conduct.html)
+- [Ansible User guide](https://docs.ansible.com/projects/ansible/latest/user_guide/index.html)
+- [Ansible Developer guide](https://docs.ansible.com/projects/ansible/latest/dev_guide/index.html)
+- [Ansible Community code of conduct](https://docs.ansible.com/projects/ansible/latest/community/code_of_conduct.html)
