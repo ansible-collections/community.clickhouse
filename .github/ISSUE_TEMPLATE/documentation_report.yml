@@ -60,7 +60,7 @@ body:
       label: Community.clickhouse Version
       description: >-
         Paste verbatim output from "ansible-galaxy collection list community.clickhouse"
-        between tripple backticks.
+        between triple backticks.
       value: |
         ```console (paste below)
         $ ansible-galaxy collection list community.clickhouse
