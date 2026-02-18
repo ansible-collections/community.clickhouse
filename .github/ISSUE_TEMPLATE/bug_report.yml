@@ -56,7 +56,7 @@ body:
       label: Ansible Version
       description: >-
         Paste verbatim output from `ansible --version` between
-        tripple backticks.
+        triple backticks.
       value: |
         ```console (paste below)
         $ ansible --version
