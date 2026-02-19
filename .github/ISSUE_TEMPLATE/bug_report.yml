@@ -112,7 +112,7 @@ body:
       description: >-
         If this issue has an example piece of YAML that can help to reproduce this problem, please provide it.
         This can be a piece of YAML from, e.g., an automation, script, scene or configuration.
-        Paste verbatim output from `ansible-config dump --only-changed` between quotes
+        Paste verbatim output from `ansible-config dump --only-changed` between quotes.
       value: |
         ```console (paste below)
         $ ansible-config dump --only-changed
