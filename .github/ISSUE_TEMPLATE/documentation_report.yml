@@ -50,7 +50,7 @@ body:
       description: >-
         Write the short name of the file, module, plugin, task or feature below,
         *use your best guess if unsure*. Do not include `community.clickhouse.`!
-      placeholder: mysql_user
+      placeholder: clickhouse_client, clickhouse_info, etc.
     validations:
       required: true
 
@@ -94,4 +94,3 @@ body:
       options:
         - label: I agree to follow the Ansible Code of Conduct
           required: true
-...
