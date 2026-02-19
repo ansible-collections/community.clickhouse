@@ -152,9 +152,7 @@ body:
       label: Expected Results
       description: >-
         Describe what you expected to happen when running the steps above.
-      placeholder: >-
-        I expected X to happen because I assumed Y.
-        that it did not.
+      placeholder: I expected X to happen because I assumed Y and it did not.
     validations:
       required: true
 
