@@ -33,7 +33,6 @@ body:
   - type: dropdown
     attributes:
       label: Issue Type
-      # FIXME: Once GitHub allows defining the default choice, update this
       options:
         - Feature Idea
     validations:
@@ -46,7 +45,7 @@ body:
       description: >-
         Write the short name of the module or plugin, or which other part(s) of the collection this feature affects.
         *use your best guess if unsure*. Do not include `community.general.`!
-      placeholder: dnf, apt, yum, pip, user etc.
+      placeholder: clickhouse_client, clickhouse_info, etc.
     validations:
       required: true
 
