@@ -1,12 +1,28 @@
 # AGENTS.md
 
-This file provides guidance to AI coding agents when working with code in this repository.
+This file is intended for AI coding agents. It is kept human-readable so contributors can also use it as a quick-reference guide.
 
 When planning or reviewing changes, always check with `REVIEW_CHECKLIST.md` file.
 
 ## What This Project Is
 
 An Ansible collection (`community.clickhouse`) providing modules for managing ClickHouse databases. No roles exist — only modules and shared utilities. See `SPEC.md` for full technical reference.
+
+## Development Environment
+
+The collection must reside at `ansible_collections/community/clickhouse/` (relative to a directory on `ANSIBLE_COLLECTIONS_PATHS`) for imports to resolve correctly.
+
+**Required Python package:**
+```bash
+pip install clickhouse-driver
+```
+
+**Optional packages** (needed only for `clickhouse_cfg_info`):
+```bash
+pip install pyyaml xmltodict
+```
+
+All three are listed in `requirements.txt`. The `meta/ee-requirements.txt` file tracks the same dependencies for Execution Environments.
 
 ## Test Commands
 
@@ -59,8 +75,19 @@ All modules support `check_mode` except `clickhouse_client` (which executes arbi
 
 Query results containing `uuid.UUID`, `decimal.Decimal`, or `ipaddress.IPv4/IPv6Address` are converted to `str` before returning to Ansible (these types are not JSON-serializable by Ansible's output layer).
 
+## Coding Guidelines
+
+- Use `snake_case` for all variable and parameter names.
+- Shared code used by multiple modules belongs in `plugins/module_utils/clickhouse.py` (DRY principle). Do not duplicate connection or utility logic in individual modules.
+- Do not add connection parameters to individual modules. Extend the `client_inst_opts` doc fragment in `plugins/doc_fragments/client_inst_opts.py` instead.
+- New modules and new parameters require `version_added: 'x.y.z'` in their DOCUMENTATION block, set to the next planned release version.
+- All modules must pass sanity, unit, and integration tests before merging.
+
 ## Development Conventions
 
 - Every new module parameter and new module requires `version_added: 'x.y.z'` in its DOCUMENTATION block, set to the next planned release version.
-- Every PR that changes module behavior needs a changelog fragment in `changelogs/fragments/<something>.yaml`. Docs/tests/refactoring PRs are exempt.
+- Every PR that changes module behavior needs a changelog fragment in `changelogs/fragments/<something>.yaml`. Docs/tests/refactoring PRs are exempt. Valid fragment sections: `major_changes`, `minor_changes`, `bugfixes`, `breaking_changes`, `deprecated_features`, `removed_features`, `security_fixes`, `known_issues`. Fragments are consumed (deleted) at release time (`keep_fragments: false` in `changelogs/config.yaml`). To generate the changelog at release time, run:
+  ```bash
+  antsibull-changelog release -v
+  ```
 - Integration tests are required for any non-refactoring and non-documentation code change. The test pattern is: call module → `register: result` → `ansible.builtin.assert` → check database state by running `community.clickhouse.clickhouse_client` → `register: result` → `ansible.builtin.assert`.
