@@ -17,6 +17,81 @@
     - result is changed
     - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH sha256_password BY '********'"]
 
+- name: Create test_user with authentication password field in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    authentication:
+      password: querty
+
+- name: Check ret values in
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH sha256_password BY '********'"]
+
+- name: Create test_user with authentication ldap field in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    authentication:
+      type: ldap
+      server: ad
+
+- name: Check ret values in
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH ldap SERVER 'ad'"]
+
+- name: Create test_user with authentication bcrypt_password in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    authentication:
+      type: bcrypt_password
+      password: querty
+
+- name: Check ret values in
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH bcrypt_password BY '********'"]
+
+- name: Create test_user with authentication not identified in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    authentication:
+      type: not_identified
+
+- name: Check ret values in
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE USER 'test_user' NOT IDENTIFIED"]
+
+- name: Create test_user without set password or authentication in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+
+- name: Check ret values in
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE USER 'test_user'"]
+
 - name: Check the actual state
   register: result
   community.clickhouse.clickhouse_info:
@@ -1368,3 +1443,8 @@
       - type: IP
         hosts:
           - 192.168.0.0/16
+
+- name: Drop user test_user in real mode
+  community.clickhouse.clickhouse_user:
+    state: absent
+    name: test_user
