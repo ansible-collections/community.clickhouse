@@ -51,22 +51,25 @@ options:
     description:
       - Set the user's password.
       - Password can be passed unhashed or hashed.
+      - Cannot be used together with O(authentication).
     type: str
   type_password:
     description:
       - The type of password being transmitted(plaintext_password, sha256_password, sha256_hash...).
       - For more details, see U(https://clickhouse.com/docs/en/sql-reference/statements/create/user).
+      - Cannot be used together with O(authentication).
     type: str
     default: sha256_password
   authentication:
+    version_added: '2.1.0'
     description:
-      - Set the user authentication
-      - Allows using LDAP, different hashing password
-      - Cannot be used together with legacy C(password) and C(type_password)
+      - Set the user authentication.
+      - Allows using LDAP, different hashing password.
+      - Cannot be used together with legacy O(password) and O(type_password).
     type: dict
     suboptions:
       type:
-        description: Authentication method to use
+        description: Authentication method to use.
         default: sha256_password
         type: str
         choices:
@@ -82,11 +85,11 @@ options:
           - ldap
       server:
         description:
-          - Name of the server (required when C(type=ldap))
+          - Name of the server (required when I(type=ldap)).
         type: str
       password:
         description:
-          - Password or hash
+          - Password or hash.
         type: str
   cluster:
     description:
@@ -188,8 +191,9 @@ EXAMPLES = r'''
     login_db: foo
     login_password: my_password
     name: test_user
-    password: qwerty
-    type_password: sha256_password
+    authentication:
+      password: qwerty
+      type: sha256_password
     roles:
     - accountant
     - manager
@@ -232,7 +236,8 @@ EXAMPLES = r'''
     login_db: foo
     login_password: my_password
     name: test_user
-    password: qwerty123
+    authentication:
+      password: qwerty123
     update_password: always
 
 - name: Update user settings (idempotent - only updates if different)
@@ -253,8 +258,9 @@ EXAMPLES = r'''
     login_db: foo
     login_password: my_password
     name: test_user
-    password: 9e69e7e29351ad837503c44a5971edebc9b7e6d8601c89c284b1b59bf37afa80
-    type_password: sha256_hash
+    authentication:
+      password: 9e69e7e29351ad837503c44a5971edebc9b7e6d8601c89c284b1b59bf37afa80
+      type: sha256_hash
     cluster: test_cluster
     settings:
       - max_memory_usage = 15000 MIN 15000 MAX 16000 READONLY
@@ -301,6 +307,21 @@ EXAMPLES = r'''
     authentication:
       type: ldap
       server: ad
+
+- name: Create user identified with password
+  community.clickhouse.clickhouse_user:
+    name: alice
+    state: present
+    authentication:
+      password: my_password
+
+- name: Create user identified with passed hash
+  community.clickhouse.clickhouse_user:
+    name: alice
+    state: present
+    authentication:
+      type: sha256_hash
+      password: my_hash
 '''
 
 RETURN = r'''
@@ -433,11 +454,11 @@ class ClickHouseUser():
         ident_clause = self._build_identified_clause(
             auth=authentication,
             legacy_type_password=type_password,
-            legacy_password=password
+            legacy_password=password,
         )
         query += "%s" % ident_clause
 
-        if user_hosts is not None:
+        if user_hosts:
             query += " %s" % self.__build_user_host_clause(user_hosts)
 
         if cluster:
@@ -558,7 +579,7 @@ class ClickHouseUser():
         ident_clause = self._build_identified_clause(
             auth=authentication,
             legacy_type_password=type_pwd,
-            legacy_password=pwd
+            legacy_password=pwd,
         )
 
         query += "%s" % ident_clause
@@ -754,7 +775,7 @@ class ClickHouseUser():
             if atype == 'no_password':
                 return " IDENTIFIED WITH NO_PASSWORD"
 
-            elif atype == 'ldap':
+            if atype == 'ldap':
                 server = auth.get('server')
                 if not server:
                     self.module.fail_json(msg="authentication.type=ldap requires 'server'")
@@ -768,7 +789,7 @@ class ClickHouseUser():
                 return f" IDENTIFIED WITH {atype} BY '{password}'"
 
             # Separate so maybe in future add salt here.
-            elif atype in ('sha256_hash', 'double_sha1_hash', 'bcrypt_hash'):
+            if atype in ('sha256_hash', 'double_sha1_hash', 'bcrypt_hash'):
                 return f" IDENTIFIED WITH {atype} BY '{password}'"
 
             self.module.fail_json(msg=f"type {atype} not implemented")
