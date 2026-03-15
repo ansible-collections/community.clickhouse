@@ -56,7 +56,11 @@
       ansible.builtin.assert:
         that:
         - result["users"]["test_user"] is defined
-        - result["users"]["test_user"]["auth_type"] == "sha256_password"
+        - >
+          result["users"]["test_user"]["auth_type"] == "sha256_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["sha256_password"]
+          
 
     - name: Create test_user with authentication password in real mode - idempotency
       register: result
@@ -129,7 +133,10 @@
       ansible.builtin.assert:
         that:
         - result["users"]["test_user"] is defined
-        - result["users"]["test_user"]["auth_type"] == "no_password"
+        - >
+          result["users"]["test_user"]["auth_type"] == "no_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["no_password"]
 
     - name: Create test_user with authentication not identified in real mode - idempotency
       register: result
@@ -202,7 +209,10 @@
       ansible.builtin.assert:
         that:
         - result["users"]["test_user"] is defined
-        - result["users"]["test_user"]["auth_type"] == "no_password"
+        - >
+          result["users"]["test_user"]["auth_type"] == "no_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["no_password"]
 
     - name: Create test_user with authentication no password in real mode - idempotency
       register: result
@@ -277,7 +287,10 @@
       ansible.builtin.assert:
         that:
         - result["users"]["test_user"] is defined
-        - result["users"]["test_user"]["auth_type"] == "sha256_password"
+        - >
+          result["users"]["test_user"]["auth_type"] == "sha256_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["sha256_password"]
 
     - name: Create test_user with authentication sha256 password in real mode - idempotency
       register: result
@@ -353,7 +366,10 @@
       ansible.builtin.assert:
         that:
         - result["users"]["test_user"] is defined
-        - result["users"]["test_user"]["auth_type"] == "sha256_password"
+        - >
+          result["users"]["test_user"]["auth_type"] == "sha256_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["sha256_password"]
 
     - name: Create test_user with authentication sha256 hash in real mode - idempotency
       register: result
@@ -429,7 +445,10 @@
       ansible.builtin.assert:
         that:
         - result["users"]["test_user"] is defined
-        - result["users"]["test_user"]["auth_type"] == "double_sha1_password"
+        - >
+          result["users"]["test_user"]["auth_type"] == "double_sha1_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["double_sha1_password"]
 
     - name: Create test_user with authentication double sha1 password in real mode - idempotency
       register: result
@@ -505,7 +524,10 @@
       ansible.builtin.assert:
         that:
         - result["users"]["test_user"] is defined
-        - result["users"]["test_user"]["auth_type"] == "double_sha1_password"
+        - >
+          result["users"]["test_user"]["auth_type"] == "double_sha1_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["double_sha1_password"]
 
     - name: Create test_user with authentication double sha1 hash in real mode - idempotency
       register: result
@@ -581,7 +603,10 @@
       ansible.builtin.assert:
         that:
         - result["users"]["test_user"] is defined
-        - result["users"]["test_user"]["auth_type"] == "bcrypt_password"
+        - >
+          result["users"]["test_user"]["auth_type"] == "bcrypt_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["bcrypt_password"]
 
     - name: Create test_user with authentication bcrypt password in real mode - idempotency
       register: result
@@ -657,7 +682,10 @@
       ansible.builtin.assert:
         that:
         - result["users"]["test_user"] is defined
-        - result["users"]["test_user"]["auth_type"] == "bcrypt_password"
+        - >
+          result["users"]["test_user"]["auth_type"] == "bcrypt_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["bcrypt_password"]
 
     - name: Create test_user with authentication bcrypt hash in real mode - idempotency
       register: result
@@ -732,7 +760,10 @@
       ansible.builtin.assert:
         that:
         - result["users"]["test_user"] is defined
-        - result["users"]["test_user"]["auth_type"] == "ldap"
+        - >
+          result["users"]["test_user"]["auth_type"] == "ldap"
+          or
+          result["users"]["test_user"]["auth_type"] == ["ldap"]
 
     - name: Create test_user with authentication ldap in real mode - idempotency
       register: result
