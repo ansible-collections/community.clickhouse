@@ -4,6 +4,8 @@ This file is intended for AI coding agents. It is kept human-readable so contrib
 
 When planning or reviewing changes, always check with `REVIEW_CHECKLIST.md` file.
 
+When official documentation is not explicitly provided, delegate to the `docs-explorer` subagent (see `agents/docs-explorer.md`) to look up current documentation for the relevant libraries and technologies.
+
 ## What This Project Is
 
 An Ansible collection (`community.clickhouse`) providing modules for managing ClickHouse databases. No roles exist — only modules and shared utilities. See `SPEC.md` for full technical reference.
@@ -77,6 +79,9 @@ Query results containing `uuid.UUID`, `decimal.Decimal`, or `ipaddress.IPv4/IPv6
 
 ## Coding Guidelines
 
+- Follow these software development principles: KISS (Keep It Simple, Stupid), DRY (Don't Repeat Yourself), YAGNI (You Aren't Gonna Need It), Separation of Concerns, Composition over Inheritance, and Convention Over Configuration.
+- Prioritize code simplicity and readability over flexibility.
+- Favor simple, short, and easily testable functions with no side effects over classes. Use classes only when they naturally fit the problem and help avoid boilerplate code while grouping tightly related functionality.
 - Use `snake_case` for all variable and parameter names.
 - Shared code used by multiple modules belongs in `plugins/module_utils/clickhouse.py` (DRY principle). Do not duplicate connection or utility logic in individual modules.
 - Do not add connection parameters to individual modules. Extend the `client_inst_opts` doc fragment in `plugins/doc_fragments/client_inst_opts.py` instead.
@@ -91,3 +96,13 @@ Query results containing `uuid.UUID`, `decimal.Decimal`, or `ipaddress.IPv4/IPv6
   antsibull-changelog release -v
   ```
 - Integration tests are required for any non-refactoring and non-documentation code change. The test pattern is: call module → `register: result` → `ansible.builtin.assert` → check database state by running `community.clickhouse.clickhouse_client` → `register: result` → `ansible.builtin.assert`.
+
+## Subagents
+
+Reusable subagent definitions live in the `agents/` directory. Each file describes a specialized agent: when to invoke it, how it should behave, and what format to return results in.
+
+When a task matches a subagent's trigger conditions, delegate that part of the work to the subagent rather than handling it inline.
+
+Available subagents:
+
+- `agents/docs-explorer.md` — looks up documentation for any external library, framework, or tool
