@@ -703,23 +703,23 @@ class ClickHouseUser():
 
     def __update_settings(self, settings, cluster):
         """Update user settings idempotently by comparing with current settings"""
-        # Parse desired settings into a comparable format
         desired_settings = {}
-        desired_profiles = []
 
         for setting in settings:
-            setting_upper = setting.upper()
-            # Handle PROFILE separately as it's not a regular setting
-            if 'PROFILE' in setting_upper:
-                # Extract profile name (handle both PROFILE 'name' and PROFILE name)
-                profile_part = setting.split(None, 1)[1].strip().strip("'\"")
-                desired_profiles.append(profile_part)
-            else:
-                # Extract setting name (first word before = or space)
-                setting_name = setting.split()[0].split('=')[0].strip()
-                # Normalize the setting string for comparison
-                normalized = ' '.join(setting.split())
-                desired_settings[setting_name] = normalized
+            normalized = ' '.join(setting.split())
+            if not normalized:
+                continue
+
+            first, *rest = normalized.split(None, 1)
+            if first.upper() == 'PROFILE':
+                if not rest:
+                    self.module.fail_json(msg="Invalid PROFILE setting: %s" % setting)
+                profile_name = rest[0].strip().strip("'\"")
+                desired_settings[profile_name] = "PROFILE %s" % profile_name
+                continue
+
+            setting_name = first.split('=')[0].strip()
+            desired_settings[setting_name] = normalized
 
         # Compare current with desired
         needs_update = False
