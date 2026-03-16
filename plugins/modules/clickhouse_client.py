@@ -90,7 +90,6 @@ EXAMPLES = r'''
   ansible.builtin.assert:
     that:
       - result.substituted_query == "INSERT INTO test_table_1 (x) VALUES ('one'), ('two'), ('three')"
-      - result.statistics["processed_rows"] == 3
 
 - name: Check rows were inserted into test table
   register: result

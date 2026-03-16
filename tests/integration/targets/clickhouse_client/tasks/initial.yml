@@ -60,7 +60,6 @@
   ansible.builtin.assert:
     that:
       - result.substituted_query == "INSERT INTO test_table_1 (x) VALUES ('one'), ('two'), ('three')"
-      - result.statistics["processed_rows"] == 3
 
 - name: Check rows were inserted into test table 
   register: result
@@ -70,6 +69,7 @@
 - name: Check the result
   ansible.builtin.assert:
     that:
+    - result.statistics["processed_rows"] == 3
     - result.result == [["one"], ["two"], ["three"]]
 
 # https://github.com/ansible-collections/community.clickhouse/pull/63/
