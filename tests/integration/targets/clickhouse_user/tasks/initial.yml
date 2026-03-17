@@ -1005,6 +1005,39 @@
     - result.result[0][0] is search("8")
     - result.result[0][0] is search("readonly")
 
+- name: Update user settings with equivalent values (including blank items and unquoted PROFILE)
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    settings:
+      - max_memory_usage = 25000 READONLY
+      - max_threads = 8
+      - ""
+      - "   "
+      - PROFILE readonly
+
+- name: Check that blank settings are ignored and PROFILE without quotes is idempotent
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Ensure invalid PROFILE setting fails fast (missing profile name)
+  register: result
+  ignore_errors: true
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    settings:
+      - PROFILE
+
+- name: Check invalid PROFILE ret values
+  ansible.builtin.assert:
+    that:
+    - result is failed
+    - result.msg is search("Invalid PROFILE setting")
+
 # Test roles and default_roles argument
 - name: Create test roles
   loop:
