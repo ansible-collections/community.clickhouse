@@ -38,7 +38,7 @@ Read every changed file completely before forming any judgment.
 
 ### Step 2 — Run all review checks in parallel
 
-Execute all checks in the checklist below concurrently. Collect findings per category.
+Execute all checks in the checklist below concurrently. Collect findings per category. For categories not listed below, apply the rules from the corresponding sections in `AGENTS.md`.
 
 ### Step 3 — Report
 
@@ -48,65 +48,44 @@ Produce the structured report described in the **Output Format** section.
 
 ## Review Checklist
 
-### A. Collection Metadata
+Architecture, check_mode, and Type Conversion categories are fully covered by `AGENTS.md` — apply those sections directly.
+
+### Collection Metadata
 
 - [ ] `galaxy.yml`: `version`, `description`, `tags`, `dependencies` are accurate and up to date.
 - [ ] `meta/runtime.yml`: `requires_ansible` minimum version reflects any new Ansible features used.
 - [ ] New Python dependencies added to both `requirements.txt` and `meta/ee-requirements.txt`.
 
-### B. Module Documentation
+### Module Documentation
 
 - [ ] Every public parameter has a `description`, `type`, and `required` or `default`.
-- [ ] Every new module and every new parameter carries `version_added: 'x.y.z'` set to the next planned release version.
 - [ ] The `EXAMPLES` block is present, valid YAML, and covers the primary use cases.
 - [ ] The `RETURN` block accurately describes every key returned by the module.
-- [ ] Connection parameters are **not** duplicated in individual modules — they are inherited via `extends_documentation_fragment: community.clickhouse.client_inst_opts`.
 - [ ] Module short description (`short_description`) is concise and accurate.
 - [ ] `author` field is present and correctly formatted.
 
-### C. Naming and Style
+### Naming and Style
 
-- [ ] All variable and parameter names use `snake_case`.
 - [ ] Module file names follow the `clickhouse_<noun>` pattern.
 - [ ] No abbreviations that reduce readability.
-- [ ] Code follows KISS, DRY, YAGNI, and Separation of Concerns.
-- [ ] Functions are short, pure (no side effects where possible), and independently testable.
-- [ ] Classes are used only when they naturally group tightly related state and behavior; simple functions are preferred.
 
-### D. Architecture and Shared Code
+### Idempotency
 
-- [ ] Connection logic uses `client_common_argument_spec()` from `plugins/module_utils/clickhouse.py` — never duplicated in a module.
-- [ ] Shared utilities used by multiple modules live in `plugins/module_utils/clickhouse.py`.
-- [ ] New connection parameters are added to `plugins/doc_fragments/client_inst_opts.py`, not to individual modules.
-- [ ] Bootstrap pattern is followed: `argument_spec → AnsibleModule → check_clickhouse_driver → connect_to_db_via_client`.
-
-### E. Idempotency
-
-- [ ] State-management modules query the relevant `system.*` table first, compare current vs desired state, and execute DDL only when a change is needed.
 - [ ] `result['changed']` is `False` when no real change is made.
 - [ ] Repeated runs with the same arguments produce the same outcome with no spurious changes.
 
-### F. check_mode Support
-
-- [ ] All modules except `clickhouse_client` declare `supports_check_mode=True`.
-- [ ] In check_mode, `executed_statements` is populated with what *would* run, but no DDL is actually executed.
-
-### G. Sensitive Data
+### Sensitive Data
 
 - [ ] All sensitive parameters (passwords, tokens, secrets) set `no_log=True`.
 - [ ] No sensitive data appears in `executed_statements` or module return values in plaintext.
 
-### H. Error Handling
+### Error Handling
 
 - [ ] All errors call `module.fail_json(msg=...)` with a descriptive, actionable message — no bare `raise` or `sys.exit()`.
 - [ ] `clickhouse_info` and similar read-only modules handle privilege errors gracefully (return partial results, not a failure).
 - [ ] `execute_query()` from `module_utils/clickhouse.py` is used for all query execution.
 
-### I. Type Conversion (`clickhouse_client`)
-
-- [ ] Query results containing `uuid.UUID`, `decimal.Decimal`, `ipaddress.IPv4Address`, or `ipaddress.IPv6Address` are converted to `str` before returning (these types are not JSON-serializable by Ansible).
-
-### J. Testing
+### Testing
 
 - [ ] Sanity checks pass: `ansible-test sanity <changed_file> --docker -v`
 - [ ] Unit tests are present for any new or modified logic in `module_utils` or non-trivial module functions. Located under `tests/unit/plugins/`.
@@ -119,21 +98,18 @@ Produce the structured report described in the **Output Format** section.
 - [ ] Tests cover both the happy path and idempotency (running the same task twice).
 - [ ] Tests cover the `state: absent` path where applicable.
 
-### K. Backwards Compatibility
+### Backwards Compatibility
 
 - [ ] No existing parameters are removed or renamed without a deprecation notice.
 - [ ] No existing return values are removed or their types changed.
 - [ ] Breaking changes are flagged explicitly and justified.
 - [ ] Deprecations use the Ansible deprecation mechanism (`module.deprecate()`).
 
-### L. Changelog Fragment
+### Changelog Fragment
 
-- [ ] A fragment file exists under `changelogs/fragments/<something>.yaml` for any PR that changes module behavior, adds a feature, or fixes a bug.
-- [ ] Documentation-only, test-only, and refactoring-only PRs are exempt.
-- [ ] The fragment uses one of the valid sections: `major_changes`, `minor_changes`, `bugfixes`, `breaking_changes`, `deprecated_features`, `removed_features`, `security_fixes`, `known_issues`.
 - [ ] Fragment content is concise, written in past tense, and references the module name.
 
-### M. General Code Quality
+### Code Quality
 
 - [ ] No dead code, commented-out blocks, or debug statements left in.
 - [ ] No feature flags or backwards-compatibility shims for hypothetical future use.
@@ -166,19 +142,19 @@ Structure the review as follows:
 ### Checklist Status
 | Category | Status | Notes |
 |---|---|---|
-| A. Collection Metadata | PASS / FAIL / N/A | ... |
-| B. Module Documentation | PASS / FAIL / N/A | ... |
-| C. Naming and Style | PASS / FAIL / N/A | ... |
-| D. Architecture | PASS / FAIL / N/A | ... |
-| E. Idempotency | PASS / FAIL / N/A | ... |
-| F. check_mode | PASS / FAIL / N/A | ... |
-| G. Sensitive Data | PASS / FAIL / N/A | ... |
-| H. Error Handling | PASS / FAIL / N/A | ... |
-| I. Type Conversion | PASS / FAIL / N/A | ... |
-| J. Testing | PASS / FAIL / N/A | ... |
-| K. Backwards Compatibility | PASS / FAIL / N/A | ... |
-| L. Changelog Fragment | PASS / FAIL / N/A | ... |
-| M. Code Quality | PASS / FAIL / N/A | ... |
+| Collection Metadata | PASS / FAIL / N/A | ... |
+| Module Documentation | PASS / FAIL / N/A | ... |
+| Naming and Style | PASS / FAIL / N/A | ... |
+| Architecture | PASS / FAIL / N/A | ... |
+| Idempotency | PASS / FAIL / N/A | ... |
+| check_mode | PASS / FAIL / N/A | ... |
+| Sensitive Data | PASS / FAIL / N/A | ... |
+| Error Handling | PASS / FAIL / N/A | ... |
+| Type Conversion | PASS / FAIL / N/A | ... |
+| Testing | PASS / FAIL / N/A | ... |
+| Backwards Compatibility | PASS / FAIL / N/A | ... |
+| Changelog Fragment | PASS / FAIL / N/A | ... |
+| Code Quality | PASS / FAIL / N/A | ... |
 
 ### Verdict
 APPROVE / REQUEST CHANGES / COMMENT
