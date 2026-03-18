@@ -52,69 +52,69 @@ Architecture, check_mode, and Type Conversion categories are fully covered by `A
 
 ### Collection Metadata
 
-- [ ] `galaxy.yml`: `version`, `description`, `tags`, `dependencies` are accurate and up to date.
-- [ ] `meta/runtime.yml`: `requires_ansible` minimum version reflects any new Ansible features used.
-- [ ] New Python dependencies added to both `requirements.txt` and `meta/ee-requirements.txt`.
+- `galaxy.yml`: `version`, `description`, `tags`, `dependencies` are accurate and up to date.
+- `meta/runtime.yml`: `requires_ansible` minimum version reflects any new Ansible features used.
+- New Python dependencies added to both `requirements.txt` and `meta/ee-requirements.txt`.
 
 ### Module Documentation
 
-- [ ] Every public parameter has a `description`, `type`, and `required` or `default`.
-- [ ] The `EXAMPLES` block is present, valid YAML, and covers the primary use cases.
-- [ ] The `RETURN` block accurately describes every key returned by the module.
-- [ ] Module short description (`short_description`) is concise and accurate.
-- [ ] `author` field is present and correctly formatted.
+- Every public parameter has a `description`, `type`, and `required` or `default`.
+- The `EXAMPLES` block is present, valid YAML, and covers the primary use cases.
+- The `RETURN` block accurately describes every key returned by the module.
+- Module short description (`short_description`) is concise and accurate.
+- `author` field is present and correctly formatted.
 
 ### Naming and Style
 
-- [ ] Module file names follow the `clickhouse_<noun>` pattern.
-- [ ] No abbreviations that reduce readability.
+- Module file names follow the `clickhouse_<noun>` pattern.
+- No abbreviations that reduce readability.
 
 ### Idempotency
 
-- [ ] `result['changed']` is `False` when no real change is made.
-- [ ] Repeated runs with the same arguments produce the same outcome with no spurious changes.
+- `result['changed']` is `False` when no real change is made.
+- Repeated runs with the same arguments produce the same outcome with no spurious changes.
 
 ### Sensitive Data
 
-- [ ] All sensitive parameters (passwords, tokens, secrets) set `no_log=True`.
-- [ ] No sensitive data appears in `executed_statements` or module return values in plaintext.
+- All sensitive parameters (passwords, tokens, secrets) set `no_log=True`.
+- No sensitive data appears in `executed_statements` or module return values in plaintext.
 
 ### Error Handling
 
-- [ ] All errors call `module.fail_json(msg=...)` with a descriptive, actionable message — no bare `raise` or `sys.exit()`.
-- [ ] `clickhouse_info` and similar read-only modules handle privilege errors gracefully (return partial results, not a failure).
-- [ ] `execute_query()` from `module_utils/clickhouse.py` is used for all query execution.
+- All errors call `module.fail_json(msg=...)` with a descriptive, actionable message — no bare `raise` or `sys.exit()`.
+- `clickhouse_info` and similar read-only modules handle privilege errors gracefully (return partial results, not a failure).
+- `execute_query()` from `module_utils/clickhouse.py` is used for all query execution.
 
 ### Testing
 
-- [ ] Sanity checks pass: `ansible-test sanity <changed_file> --docker -v`
-- [ ] Unit tests are present for any new or modified logic in `module_utils` or non-trivial module functions. Located under `tests/unit/plugins/`.
-- [ ] Integration tests are required for any non-refactoring, non-documentation code change. Located under `tests/integration/targets/<module_name>/`.
-- [ ] Integration test pattern is followed:
+- Sanity checks pass: `ansible-test sanity <changed_file> --docker -v`
+- Unit tests are present for any new or modified logic in `module_utils` or non-trivial module functions. Located under `tests/unit/plugins/`.
+- Integration tests are required for any non-refactoring, non-documentation code change. Located under `tests/integration/targets/<module_name>/`.
+- Integration test pattern is followed:
   1. Call module → `register: result`
   2. `ansible.builtin.assert` on `result`
   3. Verify DB state using `community.clickhouse.clickhouse_client` → `register: result` → `ansible.builtin.assert`
-- [ ] Each integration test target has `tests/integration/targets/<name>/meta/main.yml` declaring `setup_clickhouse` as a dependency.
-- [ ] Tests cover both the happy path and idempotency (running the same task twice).
-- [ ] Tests cover the `state: absent` path where applicable.
+- Each integration test target has `tests/integration/targets/<name>/meta/main.yml` declaring `setup_clickhouse` as a dependency.
+- Tests cover both the happy path and idempotency (running the same task twice).
+- Tests cover the `state: absent` path where applicable.
 
 ### Backwards Compatibility
 
-- [ ] No existing parameters are removed or renamed without a deprecation notice.
-- [ ] No existing return values are removed or their types changed.
-- [ ] Breaking changes are flagged explicitly and justified.
-- [ ] Deprecations use the Ansible deprecation mechanism (`module.deprecate()`).
+- No existing parameters are removed or renamed without a deprecation notice.
+- No existing return values are removed or their types changed.
+- Breaking changes are flagged explicitly and justified.
+- Deprecations use the Ansible deprecation mechanism (`module.deprecate()`).
 
 ### Changelog Fragment
 
-- [ ] Fragment content is concise, written in past tense, and references the module name.
+- Fragment content is concise, written in past tense, and references the module name.
 
 ### Code Quality
 
-- [ ] No dead code, commented-out blocks, or debug statements left in.
-- [ ] No feature flags or backwards-compatibility shims for hypothetical future use.
-- [ ] No premature abstractions (helpers/utilities created for a single use case).
-- [ ] No security vulnerabilities: no shell injection, no unvalidated external input passed to queries, no hardcoded credentials.
+- No dead code, commented-out blocks, or debug statements left in.
+- No feature flags or backwards-compatibility shims for hypothetical future use.
+- No premature abstractions (helpers/utilities created for a single use case).
+- No security vulnerabilities: no shell injection, no unvalidated external input passed to queries, no hardcoded credentials.
 
 ---
 
