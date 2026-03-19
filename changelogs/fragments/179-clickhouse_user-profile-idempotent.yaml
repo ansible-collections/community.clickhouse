@@ -1,0 +1,2 @@
+bugfixes:
+  - clickhouse_user - treat the PROFILE setting as idempotent (no changes when the desired profile is already applied).
