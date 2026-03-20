@@ -127,6 +127,14 @@ Each state-management module encapsulates logic in a class (e.g., `ClickHouseDB`
 - All other query errors call `module.fail_json()` with `to_native(e)`.
 - Driver availability checked at module start via `check_clickhouse_driver()`.
 
+### check_mode
+
+All modules support `check_mode` except `clickhouse_client` (which executes arbitrary SQL and cannot know whether it changes state). In check_mode, modules populate `executed_statements` with what *would* run.
+
+### clickhouse_client Type Conversion
+
+Query results containing `uuid.UUID`, `decimal.Decimal`, or `ipaddress.IPv4/IPv6Address` are converted to `str` before returning to Ansible (these types are not JSON-serializable by Ansible's output layer).
+
 ### Cluster Parameter
 
 When `cluster` is specified, DDL statements are appended with `ON CLUSTER <cluster_name>`. Consistent across all modules that accept the parameter.

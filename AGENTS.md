@@ -17,34 +17,6 @@ All required packages are listed in `requirements.txt`.
 
 For test commands, patterns, and requirements see `.agents/skills/run-tests/SKILL.md`.
 
-## Architecture
-
-### Shared Foundation
-
-Every module follows the same bootstrap pattern:
-
-```python
-argument_spec = client_common_argument_spec()   # from module_utils/clickhouse.py
-argument_spec.update({...})                     # module-specific params
-module = AnsibleModule(argument_spec=argument_spec, ...)
-check_clickhouse_driver(module)
-client = connect_to_db_via_client(module, ...)
-```
-
-Connection parameters (`login_host`, `login_port`, `login_user`, `login_password`, `login_db`, `client_kwargs`) are defined once in `plugins/doc_fragments/client_inst_opts.py` and shared via `extends_documentation_fragment`.
-
-### Idempotency Pattern
-
-State-management modules (db, user, role, quota, grants) all follow: query `system.*` table → compare current vs desired → execute DDL only if different → return `executed_statements`. The comparison logic lives in module-level classes (e.g., `ClickHouseDB`, `ClickHouseUser`).
-
-### check_mode
-
-All modules support `check_mode` except `clickhouse_client` (which executes arbitrary SQL and cannot know whether it changes state). In check_mode, modules populate `executed_statements` with what *would* run.
-
-### clickhouse_client Type Conversion
-
-Query results containing `uuid.UUID`, `decimal.Decimal`, or `ipaddress.IPv4/IPv6Address` are converted to `str` before returning to Ansible (these types are not JSON-serializable by Ansible's output layer).
-
 ## Coding Guidelines
 
 - Follow these software development principles: KISS (Keep It Simple, Stupid), DRY (Don't Repeat Yourself), YAGNI (You Aren't Gonna Need It), Separation of Concerns, Composition over Inheritance, and Convention Over Configuration.
@@ -66,8 +38,6 @@ Query results containing `uuid.UUID`, `decimal.Decimal`, or `ipaddress.IPv4/IPv6
 ## Subagents
 
 Subagent definitions live in `.agents/subagents/`. When a task matches a subagent's trigger conditions, delegate to it.
-
-- `.agents/subagents/docs-explorer.md` — documentation lookup for external libraries/tools
 
 ## Agent Skills
 
