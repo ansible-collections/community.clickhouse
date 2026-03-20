@@ -54,6 +54,8 @@ Query results containing `uuid.UUID`, `decimal.Decimal`, or `ipaddress.IPv4/IPv6
 - Shared code used by multiple modules belongs in `plugins/module_utils/clickhouse.py` (DRY principle). Do not duplicate connection or utility logic in individual modules.
 - Do not add connection parameters to individual modules. Extend the `client_inst_opts` doc fragment in `plugins/doc_fragments/client_inst_opts.py` instead.
 - All modules must pass sanity, unit, and integration tests before merging.
+- Keep each piece of work focused on solving a single, specific issue or task. Do not mix unrelated changes (e.g., a bugfix and an unrelated refactoring) in the same branch or PR.
+- Use conventional commit message prefixes: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`, `ci:`. Example: `fix: handle empty database list in clickhouse_info`.
 
 ## Development Conventions
 
