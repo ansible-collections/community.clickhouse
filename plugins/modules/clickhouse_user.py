@@ -405,7 +405,7 @@ class ClickHouseUser():
 
             # Handle PROFILE inheritance separately
             if inherit_profile is not None:
-                settings_dict[inherit_profile] = "PROFILE %s" % inherit_profile
+                settings_dict[inherit_profile.lower()] = "PROFILE %s" % inherit_profile
                 continue
 
             # Skip if it's not a regular setting (setting_name could be None for profiles)
@@ -465,11 +465,13 @@ class ClickHouseUser():
             query += " ON CLUSTER %s" % cluster
 
         if settings:
-            query += " SETTINGS"
-            for index, value in enumerate(settings):
-                query += " %s" % value
-                if index < len(settings) - 1:
-                    query += ","
+            normalized_settings = [' '.join(value.split()) for value in settings if value and value.strip()]
+            if normalized_settings:
+                query += " SETTINGS"
+                for index, value in enumerate(normalized_settings):
+                    query += " %s" % value
+                    if index < len(normalized_settings) - 1:
+                        query += ","
 
         executed_statements.append(query)
 
@@ -715,7 +717,7 @@ class ClickHouseUser():
                 if not rest:
                     self.module.fail_json(msg="Invalid PROFILE setting: %s" % setting)
                 profile_name = rest[0].strip().strip("'\"")
-                desired_settings[profile_name] = "PROFILE %s" % profile_name
+                desired_settings[profile_name.lower()] = "PROFILE %s" % profile_name
                 continue
 
             setting_name = first.split('=')[0].strip()
@@ -748,11 +750,15 @@ class ClickHouseUser():
         if not needs_update:
             return
 
-        # Build the ALTER USER query
+        # Build the ALTER USER query (skip empty/blank entries)
+        normalized_settings = [' '.join(value.split()) for value in settings if value and value.strip()]
+        if not normalized_settings:
+            return
+
         query = "ALTER USER '%s' SETTINGS" % self.name
-        for index, value in enumerate(settings):
+        for index, value in enumerate(normalized_settings):
             query += " %s" % value
-            if index < len(settings) - 1:
+            if index < len(normalized_settings) - 1:
                 query += ","
 
         if cluster:
