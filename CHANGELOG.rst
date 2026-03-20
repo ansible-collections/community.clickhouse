@@ -4,6 +4,21 @@ Ansible community.clickhouse collection changelog Release Notes
 
 .. contents:: Topics
 
+v2.1.0
+======
+
+Release Summary
+---------------
+
+This is a minor release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Minor Changes
+-------------
+
+- clickhouse_user - added new ``authentication`` dict parameter supporting LDAP, hashed, and plain-text password authentication for created users. Cannot be used together with the existing ``type_password`` and ``password`` parameters (https://github.com/ansible-collections/community.clickhouse/issues/142).
+
 v2.0.0
 ======
 
