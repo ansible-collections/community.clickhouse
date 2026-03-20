@@ -51,13 +51,46 @@ options:
     description:
       - Set the user's password.
       - Password can be passed unhashed or hashed.
+      - Cannot be used together with O(authentication).
     type: str
   type_password:
     description:
       - The type of password being transmitted(plaintext_password, sha256_password, sha256_hash...).
       - For more details, see U(https://clickhouse.com/docs/en/sql-reference/statements/create/user).
+      - Cannot be used together with O(authentication).
     type: str
     default: sha256_password
+  authentication:
+    version_added: '2.1.0'
+    description:
+      - Set the user authentication.
+      - Allows using LDAP, different hashing password.
+      - Cannot be used together with legacy O(password) and O(type_password).
+    type: dict
+    suboptions:
+      type:
+        description: Authentication method to use.
+        default: sha256_password
+        type: str
+        choices:
+          - not_identified
+          - no_password
+          - plaintext_password
+          - sha256_password
+          - sha256_hash
+          - double_sha1_password
+          - double_sha1_hash
+          - bcrypt_password
+          - bcrypt_hash
+          - ldap
+      server:
+        description:
+          - Name of the server (required when I(type=ldap)).
+        type: str
+      password:
+        description:
+          - Password or hash.
+        type: str
   cluster:
     description:
       - Run the command on all cluster hosts.
@@ -158,8 +191,9 @@ EXAMPLES = r'''
     login_db: foo
     login_password: my_password
     name: test_user
-    password: qwerty
-    type_password: sha256_password
+    authentication:
+      password: qwerty
+      type: sha256_password
     roles:
     - accountant
     - manager
@@ -202,7 +236,8 @@ EXAMPLES = r'''
     login_db: foo
     login_password: my_password
     name: test_user
-    password: qwerty123
+    authentication:
+      password: qwerty123
     update_password: always
 
 - name: Update user settings (idempotent - only updates if different)
@@ -223,8 +258,9 @@ EXAMPLES = r'''
     login_db: foo
     login_password: my_password
     name: test_user
-    password: 9e69e7e29351ad837503c44a5971edebc9b7e6d8601c89c284b1b59bf37afa80
-    type_password: sha256_hash
+    authentication:
+      password: 9e69e7e29351ad837503c44a5971edebc9b7e6d8601c89c284b1b59bf37afa80
+      type: sha256_hash
     cluster: test_cluster
     settings:
       - max_memory_usage = 15000 MIN 15000 MAX 16000 READONLY
@@ -263,6 +299,29 @@ EXAMPLES = r'''
     login_password: my_password
     name: test_user
     state: absent
+
+- name: Create user identified with ldap
+  community.clickhouse.clickhouse_user:
+    name: alice
+    state: present
+    authentication:
+      type: ldap
+      server: ad
+
+- name: Create user identified with password
+  community.clickhouse.clickhouse_user:
+    name: alice
+    state: present
+    authentication:
+      password: my_password
+
+- name: Create user identified with passed hash
+  community.clickhouse.clickhouse_user:
+    name: alice
+    state: present
+    authentication:
+      type: sha256_hash
+      password: my_hash
 '''
 
 RETURN = r'''
@@ -388,14 +447,18 @@ class ClickHouseUser():
         return user_hosts_dict
 
     def create(self, type_password, password, cluster, user_hosts, settings,
-               roles, roles_mode, default_roles, default_roles_mode):
+               roles, roles_mode, default_roles, default_roles_mode, authentication):
 
         query = "CREATE USER '%s'" % self.name
 
-        if password is not None:
-            query += (" IDENTIFIED WITH %s BY '%s'") % (type_password, password)
+        ident_clause = self._build_identified_clause(
+            auth=authentication,
+            legacy_type_password=type_password,
+            legacy_password=password,
+        )
+        query += "%s" % ident_clause
 
-        if user_hosts is not None:
+        if user_hosts:
             query += " %s" % self.__build_user_host_clause(user_hosts)
 
         if cluster:
@@ -422,7 +485,7 @@ class ClickHouseUser():
         return True
 
     def update(self, update_password, type_password, password, cluster, user_hosts,
-               roles, roles_mode, default_roles, default_roles_mode, settings):
+               roles, roles_mode, default_roles, default_roles_mode, settings, authentication):
 
         if roles is not None:
             self.__update_roles(roles, roles_mode, cluster)
@@ -430,7 +493,7 @@ class ClickHouseUser():
         if default_roles is not None:
             self.__update_default_roles(default_roles, default_roles_mode, cluster)
 
-        self.__update_passwd(update_password, type_password, password, cluster)
+        self.__update_passwd(update_password, type_password, password, cluster, authentication)
 
         if user_hosts is not None:
             self.__update_host(user_hosts, cluster)
@@ -500,17 +563,26 @@ class ClickHouseUser():
             elif desired_def_roles != [] and des != cur:
                 self.__set_default_roles(desired_def_roles, cluster)
 
-    def __update_passwd(self, update_password, type_pwd, pwd, cluster):
+    def __update_passwd(self, update_password, type_pwd, pwd, cluster, authentication):
         if update_password == 'on_create':
             return False or self.changed
 
         # If update_password is always
         # TODO: When ClickHouse will allow to retrieve password hashes,
         # make this idempotent, i.e. execute this only if the passwords don't match
-        query = ("ALTER USER '%s' IDENTIFIED WITH %s "
-                 "BY '%s'") % (self.name, type_pwd, pwd)
+
+        query = "ALTER USER '%s'" % self.name
+
         if cluster:
             query += " ON CLUSTER %s" % cluster
+
+        ident_clause = self._build_identified_clause(
+            auth=authentication,
+            legacy_type_password=type_pwd,
+            legacy_password=pwd,
+        )
+
+        query += "%s" % ident_clause
 
         executed_statements.append(query)
 
@@ -693,6 +765,40 @@ class ClickHouseUser():
 
         self.changed = True
 
+    def _build_identified_clause(self, auth=None, legacy_type_password=None, legacy_password=None):
+        if auth and isinstance(auth, dict):
+            atype = auth.get('type', '').lower().strip()
+
+            if atype == "not_identified":
+                return " NOT IDENTIFIED"
+
+            if atype == 'no_password':
+                return " IDENTIFIED WITH NO_PASSWORD"
+
+            if atype == 'ldap':
+                server = auth.get('server')
+                if not server:
+                    self.module.fail_json(msg="authentication.type=ldap requires 'server'")
+                return f" IDENTIFIED WITH ldap SERVER '{server}'"
+
+            password = auth.get('password') or legacy_password
+            if password is None:
+                self.module.fail_json(msg=f"type {atype} requires password")
+
+            if atype in ('plaintext_password', 'sha256_password', 'double_sha1_password', 'bcrypt_password'):
+                return f" IDENTIFIED WITH {atype} BY '{password}'"
+
+            # Separate so maybe in future add salt here.
+            if atype in ('sha256_hash', 'double_sha1_hash', 'bcrypt_hash'):
+                return f" IDENTIFIED WITH {atype} BY '{password}'"
+
+            self.module.fail_json(msg=f"type {atype} not implemented")
+
+        # Backward compatibility
+        if legacy_password is not None:
+            return f" IDENTIFIED WITH {legacy_type_password} BY '{legacy_password}'"
+        return ""
+
 
 def main():
     argument_spec = client_common_argument_spec()
@@ -701,6 +807,30 @@ def main():
         name=dict(type='str', required=True),
         password=dict(type='str', default=None, no_log=True),
         type_password=dict(type='str', default='sha256_password', no_log=False),
+        authentication=dict(
+            type='dict',
+            default=None,
+            options=dict(
+                type=dict(
+                    type='str',
+                    default='sha256_password',
+                    choices=[
+                        'not_identified',
+                        'no_password',
+                        'plaintext_password',
+                        'sha256_password',
+                        'sha256_hash',
+                        'double_sha1_password',
+                        'double_sha1_hash',
+                        'bcrypt_password',
+                        'bcrypt_hash',
+                        'ldap'
+                    ]
+                ),
+                server=dict(type='str'),
+                password=dict(type='str', no_log=True),
+            ),
+        ),
         cluster=dict(type='str', default=None),
         update_password=dict(
             type='str', choices=['always', 'on_create'],
@@ -720,6 +850,7 @@ def main():
     module = AnsibleModule(
         argument_spec=argument_spec,
         supports_check_mode=True,
+        mutually_exclusive=[['password', 'authentication']],
     )
 
     # Assign passed options to variables
@@ -741,6 +872,7 @@ def main():
     roles_mode = module.params['roles_mode']
     default_roles = module.params['default_roles']
     default_roles_mode = module.params['default_roles_mode']
+    authentication = module.params['authentication']
 
     # Will fail if no driver informing the user
     check_clickhouse_driver(module)
@@ -755,11 +887,11 @@ def main():
     if state == 'present':
         if not user.user_exists:
             changed = user.create(type_password, password, cluster, user_hosts, settings,
-                                  roles, roles_mode, default_roles, default_roles_mode)
+                                  roles, roles_mode, default_roles, default_roles_mode, authentication)
         else:
             # If user exists
             changed = user.update(update_password, type_password, password, cluster, user_hosts,
-                                  roles, roles_mode, default_roles, default_roles_mode, settings)
+                                  roles, roles_mode, default_roles, default_roles_mode, settings, authentication)
     else:
         # If state is absent
         if user.user_exists:

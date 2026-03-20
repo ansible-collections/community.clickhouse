@@ -1,0 +1,2 @@
+major_changes:
+  - clickhouse_user - added new ``authentication`` dict parameter supporting LDAP, hashed, and plain-text password authentication for created users. Cannot be used together with the existing ``type_password`` and ``password`` parameters (https://github.com/ansible-collections/community.clickhouse/issues/142).

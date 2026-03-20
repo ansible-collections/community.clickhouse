@@ -3,19 +3,786 @@
 # and should not be used as examples of how to write Ansible roles #
 ####################################################################
 
-- name: Create test_user in check mode
-  register: result
-  check_mode: true
-  community.clickhouse.clickhouse_user:
-    state: present
-    name: test_user
-    password: querty
+- name: Create test_user with authentication password default type
+  block:
+    - name: Create test_user with authentication password in check mode
+      register: result
+      check_mode: true
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          password: querty
 
-- name: Check ret values in 
-  ansible.builtin.assert:
-    that:
-    - result is changed
-    - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH sha256_password BY '********'"]
+    - name: Check ret values in
+      ansible.builtin.assert:
+        that:
+        - result is changed
+        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH sha256_password BY '********'"]
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+        - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+        - result["users"]["test_user"] is not defined
+
+    - name: Create test_user with authentication password in real mode
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          password: querty
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+          - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result["users"]["test_user"] is defined
+        - >
+          result["users"]["test_user"]["auth_type"] == "sha256_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["sha256_password"]
+          
+
+    - name: Create test_user with authentication password in real mode - idempotency
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          password: querty
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+
+    - name: Drop test_user
+      community.clickhouse.clickhouse_user:
+        state: absent
+        name: test_user
+
+- name: Create test_user with authentication not identified
+  block:
+    - name: Create test_user with authentication not identified in check mode
+      register: result
+      check_mode: true
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: not_identified
+
+    - name: Check ret values in
+      ansible.builtin.assert:
+        that:
+        - result is changed
+        - result.executed_statements == ["CREATE USER 'test_user' NOT IDENTIFIED"]
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+        - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+        - result["users"]["test_user"] is not defined
+
+    - name: Create test_user with authentication not identified in real mode
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: not_identified
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+          - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result["users"]["test_user"] is defined
+        - >
+          result["users"]["test_user"]["auth_type"] == "no_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["no_password"]
+
+    - name: Create test_user with authentication not identified in real mode - idempotency
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: not_identified
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+
+    - name: Drop test_user
+      community.clickhouse.clickhouse_user:
+        state: absent
+        name: test_user
+
+- name: Create test_user with authentication no password
+  block:
+    - name: Create test_user with authentication no password in check mode
+      register: result
+      check_mode: true
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: no_password
+
+    - name: Check ret values in
+      ansible.builtin.assert:
+        that:
+        - result is changed
+        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH NO_PASSWORD"]
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+        - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+        - result["users"]["test_user"] is not defined
+
+    - name: Create test_user with authentication no password in real mode
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: no_password
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+          - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result["users"]["test_user"] is defined
+        - >
+          result["users"]["test_user"]["auth_type"] == "no_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["no_password"]
+
+    - name: Create test_user with authentication no password in real mode - idempotency
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: no_password
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+
+    - name: Drop test_user
+      community.clickhouse.clickhouse_user:
+        state: absent
+        name: test_user
+
+- name: Create test_user with authentication sha256_password
+  block:
+    - name: Create test_user with authentication sha256 password in check mode
+      register: result
+      check_mode: true
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: sha256_password
+          password: querty
+
+    - name: Check ret values in
+      ansible.builtin.assert:
+        that:
+        - result is changed
+        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH sha256_password BY '********'"]
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+        - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+        - result["users"]["test_user"] is not defined
+
+    - name: Create test_user with authentication sha256 password in real mode
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: sha256_password
+          password: querty
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+          - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result["users"]["test_user"] is defined
+        - >
+          result["users"]["test_user"]["auth_type"] == "sha256_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["sha256_password"]
+
+    - name: Create test_user with authentication sha256 password in real mode - idempotency
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: sha256_password
+          password: querty
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+
+    - name: Drop test_user
+      community.clickhouse.clickhouse_user:
+        state: absent
+        name: test_user
+
+- name: Create test_user with authentication sha256_hash
+  block:
+    - name: Create test_user with authentication sha256 hash in check mode
+      register: result
+      check_mode: true
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: sha256_hash
+          password: 35029a33a4321a1577432430a8520a406d1de641bea7dd96ade6311a90050a81
+
+    - name: Check ret values in
+      ansible.builtin.assert:
+        that:
+        - result is changed
+        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH sha256_hash BY '********'"]
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+        - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+        - result["users"]["test_user"] is not defined
+
+    - name: Create test_user with authentication sha256 hash in real mode
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: sha256_hash
+          password: 35029a33a4321a1577432430a8520a406d1de641bea7dd96ade6311a90050a81
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+          - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result["users"]["test_user"] is defined
+        - >
+          result["users"]["test_user"]["auth_type"] == "sha256_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["sha256_password"]
+
+    - name: Create test_user with authentication sha256 hash in real mode - idempotency
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: sha256_hash
+          password: 35029a33a4321a1577432430a8520a406d1de641bea7dd96ade6311a90050a81
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+
+    - name: Drop test_user
+      community.clickhouse.clickhouse_user:
+        state: absent
+        name: test_user
+
+- name: Create test_user with authentication double_sha1_password
+  block:
+    - name: Create test_user with authentication double sha1 password in check mode
+      register: result
+      check_mode: true
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: double_sha1_password
+          password: querty
+
+    - name: Check ret values in
+      ansible.builtin.assert:
+        that:
+        - result is changed
+        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH double_sha1_password BY '********'"]
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+        - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+        - result["users"]["test_user"] is not defined
+
+    - name: Create test_user with authentication double sha1 password in real mode
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: double_sha1_password
+          password: querty
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+          - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result["users"]["test_user"] is defined
+        - >
+          result["users"]["test_user"]["auth_type"] == "double_sha1_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["double_sha1_password"]
+
+    - name: Create test_user with authentication double sha1 password in real mode - idempotency
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: double_sha1_password
+          password: querty
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+
+    - name: Drop test_user
+      community.clickhouse.clickhouse_user:
+        state: absent
+        name: test_user
+
+- name: Create test_user with authentication double_sha1_hash
+  block:
+    - name: Create test_user with authentication double sha1 hash in check mode
+      register: result
+      check_mode: true
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: double_sha1_hash
+          password: EEF92ED2FB0CA0C81F569C29CAA71F321B1E5200
+
+    - name: Check ret values in
+      ansible.builtin.assert:
+        that:
+        - result is changed
+        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH double_sha1_hash BY '********'"]
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+        - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+        - result["users"]["test_user"] is not defined
+
+    - name: Create test_user with authentication double sha1 hash in real mode
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: double_sha1_hash
+          password: EEF92ED2FB0CA0C81F569C29CAA71F321B1E5200
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+          - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result["users"]["test_user"] is defined
+        - >
+          result["users"]["test_user"]["auth_type"] == "double_sha1_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["double_sha1_password"]
+
+    - name: Create test_user with authentication double sha1 hash in real mode - idempotency
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: double_sha1_hash
+          password: EEF92ED2FB0CA0C81F569C29CAA71F321B1E5200
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+
+    - name: Drop test_user
+      community.clickhouse.clickhouse_user:
+        state: absent
+        name: test_user
+
+- name: Create test_user with authentication bcrypt_password
+  block:
+    - name: Create test_user with authentication bcrypt password in check mode
+      register: result
+      check_mode: true
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: bcrypt_password
+          password: querty
+
+    - name: Check ret values in
+      ansible.builtin.assert:
+        that:
+        - result is changed
+        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH bcrypt_password BY '********'"]
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+        - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+        - result["users"]["test_user"] is not defined
+
+    - name: Create test_user with authentication bcrypt password in real mode
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: bcrypt_password
+          password: querty
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+          - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result["users"]["test_user"] is defined
+        - >
+          result["users"]["test_user"]["auth_type"] == "bcrypt_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["bcrypt_password"]
+
+    - name: Create test_user with authentication bcrypt password in real mode - idempotency
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: bcrypt_password
+          password: querty
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+
+    - name: Drop test_user
+      community.clickhouse.clickhouse_user:
+        state: absent
+        name: test_user
+
+- name: Create test_user with authentication bcrypt_hash
+  block:
+    - name: Create test_user with authentication bcrypt hash in check mode
+      register: result
+      check_mode: true
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: bcrypt_hash
+          password: $2a$12$4fjXRdyPxLWNiZ2fAWTsIezG87Nzb0oyr7BZlNqm2p4HtfyvNsff2\0\0\0\0
+
+    - name: Check ret values in
+      ansible.builtin.assert:
+        that:
+        - result is changed
+        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH bcrypt_hash BY '********'"]
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+        - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+        - result["users"]["test_user"] is not defined
+
+    - name: Create test_user with authentication bcrypt password in real mode
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: bcrypt_hash
+          password: $2a$12$4fjXRdyPxLWNiZ2fAWTsIezG87Nzb0oyr7BZlNqm2p4HtfyvNsff2\0\0\0\0
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+          - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result["users"]["test_user"] is defined
+        - >
+          result["users"]["test_user"]["auth_type"] == "bcrypt_password"
+          or
+          result["users"]["test_user"]["auth_type"] == ["bcrypt_password"]
+
+    - name: Create test_user with authentication bcrypt hash in real mode - idempotency
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: bcrypt_hash
+          password: $2a$12$4fjXRdyPxLWNiZ2fAWTsIezG87Nzb0oyr7BZlNqm2p4HtfyvNsff2\0\0\0\0
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+
+    - name: Drop test_user
+      community.clickhouse.clickhouse_user:
+        state: absent
+        name: test_user
+
+- name: Create test_user with authentication ldap
+  block:
+    - name: Create test_user with authentication ldap in check mode
+      register: result
+      check_mode: true
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: ldap
+          server: ad
+
+    - name: Check ret values in
+      ansible.builtin.assert:
+        that:
+        - result is changed
+        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH ldap SERVER 'ad'"]
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+        - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+        - result["users"]["test_user"] is not defined
+
+    - name: Create test_user with authentication ldap in real mode
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: ldap
+          server: ad
+
+    - name: Check the actual state
+      register: result
+      community.clickhouse.clickhouse_info:
+        login_host: localhost
+        client_kwargs:
+          connect_timeout: 20
+        limit:
+          - users
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result["users"]["test_user"] is defined
+        - >
+          result["users"]["test_user"]["auth_type"] == "ldap"
+          or
+          result["users"]["test_user"]["auth_type"] == ["ldap"]
+
+    - name: Create test_user with authentication ldap in real mode - idempotency
+      register: result
+      community.clickhouse.clickhouse_user:
+        state: present
+        name: test_user
+        authentication:
+          type: ldap
+          server: ad
+
+    - name: Check result
+      ansible.builtin.assert:
+        that:
+        - result is not changed
+
+    - name: Drop test_user
+      community.clickhouse.clickhouse_user:
+        state: absent
+        name: test_user
 
 - name: Check the actual state
   register: result
@@ -1368,3 +2135,8 @@
       - type: IP
         hosts:
           - 192.168.0.0/16
+
+- name: Drop user test_user in real mode
+  community.clickhouse.clickhouse_user:
+    state: absent
+    name: test_user
