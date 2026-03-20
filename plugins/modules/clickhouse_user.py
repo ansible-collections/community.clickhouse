@@ -755,7 +755,7 @@ class ClickHouseUser():
             return
 
         # Build the ALTER USER query from pre-filtered/normalized desired settings
-        normalized_settings = list(desired_settings.values())
+        normalized_settings = [desired_settings[k] for k in sorted(desired_settings)]
         if not normalized_settings:
             return
 
