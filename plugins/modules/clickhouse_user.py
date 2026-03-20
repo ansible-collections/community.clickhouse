@@ -720,15 +720,19 @@ class ClickHouseUser():
                 desired_settings[profile_name.lower()] = "PROFILE %s" % profile_name
                 continue
 
-            setting_name = first.split('=')[0].strip()
+            setting_name = first.split('=')[0].strip().lower()
             desired_settings[setting_name] = normalized
+
+        current_settings_normalized = {
+            name.lower(): value for name, value in self.current_settings.items()
+        }
 
         # Compare current with desired
         needs_update = False
 
         # Check if any setting values differ
         for setting_name, desired_def in desired_settings.items():
-            current_def = self.current_settings.get(setting_name, '')
+            current_def = current_settings_normalized.get(setting_name, '')
             # Normalize both for comparison (case-insensitive, whitespace-normalized)
             current_normalized = ' '.join(current_def.upper().split())
             desired_normalized = ' '.join(desired_def.upper().split())
@@ -739,7 +743,7 @@ class ClickHouseUser():
 
         # Check if there are settings to remove (current has settings not in desired)
         if not needs_update:
-            for setting_name in self.current_settings:
+            for setting_name in current_settings_normalized:
                 if setting_name not in desired_settings:
                     # There's a setting currently applied that's not in desired
                     # We need to reapply to remove it
@@ -750,8 +754,8 @@ class ClickHouseUser():
         if not needs_update:
             return
 
-        # Build the ALTER USER query (skip empty/blank entries)
-        normalized_settings = [' '.join(value.split()) for value in settings if value and value.strip()]
+        # Build the ALTER USER query from pre-filtered/normalized desired settings
+        normalized_settings = list(desired_settings.values())
         if not normalized_settings:
             return
 
