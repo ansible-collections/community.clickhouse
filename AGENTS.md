@@ -7,7 +7,6 @@ When official documentation is not explicitly provided or it's insufficient, you
 ## What This Project Is
 
 An Ansible collection (`community.clickhouse`) providing modules for managing ClickHouse databases. No roles exist — only modules and shared utilities.
-To save your session context, see `SPEC.md` for full technical reference only if needed or asked explicitly.
 
 ## Development Environment
 
