@@ -717,7 +717,7 @@ class ClickHouseUser():
                 if not rest:
                     self.module.fail_json(msg="Invalid PROFILE setting: %s" % setting)
                 profile_name = rest[0].strip().strip("'\"")
-                desired_settings[profile_name.lower()] = "PROFILE %s" % profile_name
+                desired_settings[profile_name.lower()] = "PROFILE '%s'" % profile_name
                 continue
 
             setting_name = first.split('=')[0].strip().lower()
@@ -727,15 +727,21 @@ class ClickHouseUser():
             name.lower(): value for name, value in self.current_settings.items()
         }
 
+        def _normalize_setting_definition(value):
+            normalized = ' '.join(str(value).split())
+            if normalized.upper().startswith('PROFILE '):
+                profile_name = normalized.split(None, 1)[1].strip().strip("'\"")
+                return "PROFILE %s" % profile_name.upper()
+            return normalized.upper()
+
         # Compare current with desired
         needs_update = False
 
         # Check if any setting values differ
         for setting_name, desired_def in desired_settings.items():
             current_def = current_settings_normalized.get(setting_name, '')
-            # Normalize both for comparison (case-insensitive, whitespace-normalized)
-            current_normalized = ' '.join(current_def.upper().split())
-            desired_normalized = ' '.join(desired_def.upper().split())
+            current_normalized = _normalize_setting_definition(current_def)
+            desired_normalized = _normalize_setting_definition(desired_def)
 
             if current_normalized != desired_normalized:
                 needs_update = True
