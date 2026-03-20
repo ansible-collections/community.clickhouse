@@ -378,3 +378,19 @@ releases:
     - 0-breaking.yml
     - 2.0.0.yml
     release_date: '2026-01-12'
+  2.1.0:
+    changes:
+      minor_changes:
+      - clickhouse_user - added new ``authentication`` dict parameter supporting LDAP,
+        hashed, and plain-text password authentication for created users. Cannot be
+        used together with the existing ``type_password`` and ``password`` parameters
+        (https://github.com/ansible-collections/community.clickhouse/issues/142).
+      release_summary: 'This is a minor release of the ``community.clickhouse`` collection.
+
+        This changelog contains all changes to the modules and plugins in this collection
+
+        that have been made after the previous release.'
+    fragments:
+    - 175-clickhouse-user-authentication-parameter.yml
+    - 2.1.0.yml
+    release_date: '2026-03-20'
