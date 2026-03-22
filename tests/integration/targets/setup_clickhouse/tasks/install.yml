@@ -5,6 +5,7 @@
     - apt-transport-https
     - ca-certificates
     - dirmngr
+    - python3-debian
     state: present
 
 - name: GPG part
@@ -15,11 +16,20 @@
     chmod +r /usr/share/keyrings/clickhouse-keyring.gpg
 
 - name: Add repository
-  ansible.builtin.apt_repository:
-    repo: "deb [signed-by=/usr/share/keyrings/clickhouse-keyring.gpg] https://packages.clickhouse.com/deb stable main"
-    filename: clickhouse.list
+  ansible.builtin.deb822_repository:
+    name: clickhouse
+    types: deb
+    uris: https://packages.clickhouse.com/deb
+    suites: stable
+    components:
+      - main
+    signed_by: /usr/share/keyrings/clickhouse-keyring.gpg
     state: present
-    update_cache: true
+    enabled: true
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
 
 - name: Install clickhouse
   ansible.builtin.apt:
