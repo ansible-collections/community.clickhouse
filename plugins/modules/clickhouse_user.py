@@ -405,7 +405,7 @@ class ClickHouseUser():
 
             # Handle PROFILE inheritance separately
             if inherit_profile is not None:
-                settings_dict[inherit_profile] = "PROFILE %s" % inherit_profile
+                settings_dict[inherit_profile.lower()] = "PROFILE %s" % inherit_profile
                 continue
 
             # Skip if it's not a regular setting (setting_name could be None for profiles)
@@ -465,11 +465,13 @@ class ClickHouseUser():
             query += " ON CLUSTER %s" % cluster
 
         if settings:
-            query += " SETTINGS"
-            for index, value in enumerate(settings):
-                query += " %s" % value
-                if index < len(settings) - 1:
-                    query += ","
+            normalized_settings = [' '.join(value.split()) for value in settings if value and value.strip()]
+            if normalized_settings:
+                query += " SETTINGS"
+                for index, value in enumerate(normalized_settings):
+                    query += " %s" % value
+                    if index < len(normalized_settings) - 1:
+                        query += ","
 
         executed_statements.append(query)
 
@@ -703,33 +705,43 @@ class ClickHouseUser():
 
     def __update_settings(self, settings, cluster):
         """Update user settings idempotently by comparing with current settings"""
-        # Parse desired settings into a comparable format
         desired_settings = {}
-        desired_profiles = []
 
         for setting in settings:
-            setting_upper = setting.upper()
-            # Handle PROFILE separately as it's not a regular setting
-            if 'PROFILE' in setting_upper:
-                # Extract profile name (handle both PROFILE 'name' and PROFILE name)
-                profile_part = setting.split(None, 1)[1].strip().strip("'\"")
-                desired_profiles.append(profile_part)
-            else:
-                # Extract setting name (first word before = or space)
-                setting_name = setting.split()[0].split('=')[0].strip()
-                # Normalize the setting string for comparison
-                normalized = ' '.join(setting.split())
-                desired_settings[setting_name] = normalized
+            normalized = ' '.join(setting.split())
+            if not normalized:
+                continue
+
+            first, *rest = normalized.split(None, 1)
+            if first.upper() == 'PROFILE':
+                if not rest:
+                    self.module.fail_json(msg="Invalid PROFILE setting: %s" % setting)
+                profile_name = rest[0].strip().strip("'\"")
+                desired_settings[profile_name.lower()] = "PROFILE '%s'" % profile_name
+                continue
+
+            setting_name = first.split('=')[0].strip().lower()
+            desired_settings[setting_name] = normalized
+
+        current_settings_normalized = {
+            name.lower(): value for name, value in self.current_settings.items()
+        }
+
+        def _normalize_setting_definition(value):
+            normalized = ' '.join(str(value).split())
+            if normalized.upper().startswith('PROFILE '):
+                profile_name = normalized.split(None, 1)[1].strip().strip("'\"")
+                return "PROFILE %s" % profile_name.upper()
+            return normalized.upper()
 
         # Compare current with desired
         needs_update = False
 
         # Check if any setting values differ
         for setting_name, desired_def in desired_settings.items():
-            current_def = self.current_settings.get(setting_name, '')
-            # Normalize both for comparison (case-insensitive, whitespace-normalized)
-            current_normalized = ' '.join(current_def.upper().split())
-            desired_normalized = ' '.join(desired_def.upper().split())
+            current_def = current_settings_normalized.get(setting_name, '')
+            current_normalized = _normalize_setting_definition(current_def)
+            desired_normalized = _normalize_setting_definition(desired_def)
 
             if current_normalized != desired_normalized:
                 needs_update = True
@@ -737,7 +749,7 @@ class ClickHouseUser():
 
         # Check if there are settings to remove (current has settings not in desired)
         if not needs_update:
-            for setting_name in self.current_settings:
+            for setting_name in current_settings_normalized:
                 if setting_name not in desired_settings:
                     # There's a setting currently applied that's not in desired
                     # We need to reapply to remove it
@@ -748,11 +760,15 @@ class ClickHouseUser():
         if not needs_update:
             return
 
-        # Build the ALTER USER query
+        # Build the ALTER USER query from pre-filtered/normalized desired settings
+        normalized_settings = list(desired_settings.values())
+        if not normalized_settings:
+            return
+
         query = "ALTER USER '%s' SETTINGS" % self.name
-        for index, value in enumerate(settings):
+        for index, value in enumerate(normalized_settings):
             query += " %s" % value
-            if index < len(settings) - 1:
+            if index < len(normalized_settings) - 1:
                 query += ","
 
         if cluster:
