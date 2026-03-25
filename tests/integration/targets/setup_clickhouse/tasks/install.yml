@@ -63,6 +63,15 @@
     group: clickhouse
     mode: '0600'
 
+- name: Configure clickhouse thread pool for container environment
+  ansible.builtin.copy:
+    dest: /etc/clickhouse-server/config.d/container.xml
+    content: |
+      <clickhouse>
+          <max_thread_pool_size>1000</max_thread_pool_size>
+          <background_schedule_pool_size>16</background_schedule_pool_size>
+      </clickhouse>
+
 - name: Enable and start clickhouse server
   ansible.builtin.systemd_service:
     name: clickhouse-server
