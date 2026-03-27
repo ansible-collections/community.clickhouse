@@ -8,7 +8,7 @@ You are executing the `commit` skill. Follow these steps precisely.
 ## Step 1: Determine Assisted-by
 
 Identify the model you are currently running as from your system context.
-Format it as `Assisted-by: <Model> <Version>` — e.g. `Claude Sonnet 4.6`, `GPT 5.3 Codex`.
+Format it as `Assisted-by: <Model> <Version>` — e.g. `Assisted-by: Claude Sonnet 4.6`, `Assisted-by: GPT 5.3 Codex`.
 This trailer will be appended to every commit created in this session.
 
 ## Step 2: Infer commit type
