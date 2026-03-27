@@ -59,4 +59,4 @@ If the user provides an edited message, use their version exactly.
 
 ## Step 5: Commit
 
-Run git add <relevant files> and commit.
+Run `git add <relevant files>` and commit.
