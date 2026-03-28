@@ -19,7 +19,7 @@
     - result is changed
     - result.result != []
 
-- name: Create dabase
+- name: Create database
   community.clickhouse.clickhouse_client:
     execute: CREATE DATABASE foo
 

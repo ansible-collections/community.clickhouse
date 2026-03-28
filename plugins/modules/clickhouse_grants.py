@@ -192,7 +192,6 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
     get_main_conn_kwargs,
 )
 
-PRIV_ERR_CODE = 497
 executed_statements = []
 
 # Compile regex pattern once for performance
@@ -215,24 +214,11 @@ class ClickHouseGrants():
                  "SELECT 1 FROM system.roles WHERE name = '%s' "
                  "LIMIT 1" % (self.grantee, self.grantee))
 
-        result = execute_query(self.module, self.client, query)
-
-        if result == PRIV_ERR_CODE:
-            login_user = self.module.params['login_user']
-            msg = "Not enough privileges for user: %s" % login_user
-            self.module.fail_json(msg=msg)
-
-        if not result:
-            self.module.fail_json(msg="Grantee %s does not exist" % self.grantee)
+        execute_query(self.module, self.client, query)
 
     def get(self):
         query = "SHOW GRANTS FOR '%s'" % self.grantee
         result = execute_query(self.module, self.client, query)
-
-        if result == PRIV_ERR_CODE:
-            login_user = self.module.params['login_user']
-            msg = "Not enough privileges for user: %s to SHOW GRANTS" % login_user
-            self.module.fail_json(msg=msg)
 
         grants = {}
         for row in result:

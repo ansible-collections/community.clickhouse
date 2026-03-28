@@ -49,6 +49,15 @@ options:
     type: dict
     default: {}
 
+  success_on:
+    version_added: "2.2.0"
+    description:
+      - List of server error codes that will be treated as success.
+        https://github.com/ClickHouse/ClickHouse/blob/master/src/Common/ErrorCodes.cpp
+    type: list
+    elements: int
+    default: [497]
+
 requirements: [ 'clickhouse-driver' ]
 
 notes:

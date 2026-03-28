@@ -79,7 +79,7 @@
   ansible.builtin.assert:
     that:
     - result is failed
-    - result.msg is search("does not exist")
+    - result.code == 511
 
 - name: Grant initial privileges to alice
   register: result
