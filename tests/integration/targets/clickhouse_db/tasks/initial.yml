@@ -340,20 +340,90 @@
       that:
       - result.result == [['Test DB']]
 
-  # Test
-  # The change is not possible. It'll just show a warning and ignore
-  - name: Create database with another comment real mode
-    register: result
-    community.clickhouse.clickhouse_db:
-      state: present
-      name: test_db
-      comment: Test DB 1
+  - name: Test post 25.8 behaviour alter database modify comment
+    when: >
+      (server_info['version']['year'] == 25 and server_info['version']['feature'] | int >= 8)
+      or
+      server_info['version']['year'] | int > 25
+    block:
 
-  - name: Check ret values
-    ansible.builtin.assert:
-      that:
-      - result is not changed
-      - result.executed_statements == []
+      - name: Create database with another comment check mode
+        register: result
+        check_mode: true
+        community.clickhouse.clickhouse_db:
+          state: present
+          name: test_db
+          comment: Test DB 1
+
+      - name: Check ret values
+        ansible.builtin.assert:
+          that:
+            - result is changed
+            - result.executed_statements == ["ALTER DATABASE test_db MODIFY COMMENT 'Test DB 1'"]
+
+      - name: Create database with another comment real mode
+        register: result
+        community.clickhouse.clickhouse_db:
+          state: present
+          name: test_db
+          comment: Test DB 1
+
+      - name: Check ret values
+        ansible.builtin.assert:
+          that:
+          - result is changed
+          - result.executed_statements == ["ALTER DATABASE test_db MODIFY COMMENT 'Test DB 1'"]
+
+      - name: Create database with another comment real mode - idempotency
+        register: result
+        community.clickhouse.clickhouse_db:
+          state: present
+          name: test_db
+          comment: Test DB 1
+
+      - name: Check ret values
+        ansible.builtin.assert:
+          that:
+          - result is not changed
+
+      - name: Set database comment to original value
+        community.clickhouse.clickhouse_db:
+          state: present
+          name: test_db
+          comment: Test DB
+
+  - name: Test pre 25.8 behaviour alter database modify comment
+    when: >
+        (server_info['version']['year'] | int == 25 and server_info['version']['feature'] | int < 8)
+        or
+        server_info['version']['year'] | int < 25
+    block:
+      - name: Create database with another comment check mode - should end with warn
+        register: result
+        check_mode: true
+        community.clickhouse.clickhouse_db:
+          state: present
+          name: test_db
+          comment: Test DB 1
+
+      - name: Check ret values
+        ansible.builtin.assert:
+          that:
+            - result is not changed
+            - result.executed_statements == []
+
+      - name: Create database with another comment real mode - should end with warn
+        register: result
+        community.clickhouse.clickhouse_db:
+          state: present
+          name: test_db
+          comment: Test DB 1
+
+      - name: Check ret values
+        ansible.builtin.assert:
+          that:
+            - result is not changed
+            - result.executed_statements == []
 
   - name: Check the actual state
     register: result
