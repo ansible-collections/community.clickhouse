@@ -16,12 +16,11 @@ from ansible.module_utils.common.text.converters import to_native
 Client = None
 try:
     from clickhouse_driver import Client
+    from clickhouse_driver.errors import ServerException
     from clickhouse_driver import __version__ as driver_version
     HAS_DB_DRIVER = True
 except ImportError:
     HAS_DB_DRIVER = False
-
-PRIV_ERR_CODE = 497
 
 
 def client_common_argument_spec():
@@ -37,6 +36,7 @@ def client_common_argument_spec():
         login_user=dict(type='str', default=None),
         login_password=dict(type='str', default=None, no_log=True),
         client_kwargs=dict(type='dict', default={}),
+        success_on=dict(type='list', elements='int', default=[497]),
     )
 
 
@@ -110,11 +110,16 @@ def execute_query(module, client, query, execute_kwargs=None, set_settings=None)
             for setting in set_settings:
                 client.execute("SET %s = '%s'" % (setting, set_settings[setting]))
         result = client.execute(query, **execute_kwargs)
-    except Exception as e:
-        if "Not enough privileges" in to_native(e):
-            return PRIV_ERR_CODE
-        module.fail_json(msg="Failed to execute query: %s" % to_native(e))
-
+    except ServerException as e:
+        if e.code in module.params['success_on']:
+            module.exit_json(changed=False, msg="Code %i defined as success." % e.code)
+        module.fail_json(
+            msg="Failed to execute query.",
+            exception=to_native(e),
+            code=e.code,
+            message=e.message,
+            query=query
+        )
     return result
 
 
@@ -124,9 +129,6 @@ def get_server_version(module, client):
     Returns a dictionary with server version.
     """
     result = execute_query(module, client, "SELECT version()")
-
-    if result == PRIV_ERR_CODE:
-        return {PRIV_ERR_CODE: "Not enough privileges"}
 
     raw = result[0][0]
     split_raw = raw.split('.')

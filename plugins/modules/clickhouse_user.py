@@ -343,7 +343,6 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
     get_main_conn_kwargs,
 )
 
-PRIV_ERR_CODE = 497
 executed_statements = []
 
 
@@ -370,11 +369,6 @@ class ClickHouseUser():
                  "WHERE name = '%s'" % self.name)
 
         result = execute_query(self.module, self.client, query)
-
-        if result == PRIV_ERR_CODE:
-            login_user = self.module.params['login_user']
-            msg = "Not enough privileges for user: %s" % login_user
-            self.module.fail_json(msg=msg)
 
         if result != []:
             self.user_exists = True
