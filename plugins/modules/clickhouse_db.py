@@ -65,7 +65,7 @@ options:
   comment:
     description:
       - Database comment.
-      - Since 2.2.0 can change comments in existing databases(required server 25.8 or later).
+      - Since C(2.2.0) can change comments in existing databases (requires server 25.8 or later).
     type: str
     version_added: '0.4.0'
 '''
