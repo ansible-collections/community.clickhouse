@@ -5,5 +5,4 @@ minor_changes:
     was always treated as success with no way to disable this behavior.
     Old behavior is preserved by default.
     It is now possible to control which error codes are treated as
-    success using the new ``success_on`` parameter
-   [](https://github.com/ansible-collections/community.clickhouse/issues/117).
+    success using the new ``success_on`` parameter (https://github.com/ansible-collections/community.clickhouse/issues/117).
