@@ -361,6 +361,16 @@
             - result is changed
             - result.executed_statements == ["ALTER DATABASE test_db MODIFY COMMENT 'Test DB 1'"]
 
+      - name: Check the actual state
+        register: result
+        community.clickhouse.clickhouse_client:
+          execute: "SELECT comment FROM system.databases WHERE name = 'test_db'"
+
+      - name: Check if the comment hasn't changed
+        ansible.builtin.assert:
+          that:
+          - result.result == [['Test DB']]
+
       - name: Create database with another comment real mode
         register: result
         community.clickhouse.clickhouse_db:
@@ -373,6 +383,16 @@
           that:
           - result is changed
           - result.executed_statements == ["ALTER DATABASE test_db MODIFY COMMENT 'Test DB 1'"]
+
+      - name: Check the actual state
+        register: result
+        community.clickhouse.clickhouse_client:
+          execute: "SELECT comment FROM system.databases WHERE name = 'test_db'"
+
+      - name: Check if the comment has changed
+        ansible.builtin.assert:
+          that:
+            - result.result == [['Test DB 1']]
 
       - name: Create database with another comment real mode - idempotency
         register: result
@@ -412,6 +432,16 @@
             - result is not changed
             - result.executed_statements == []
 
+      - name: Check the actual state
+        register: result
+        community.clickhouse.clickhouse_client:
+          execute: "SELECT comment FROM system.databases WHERE name = 'test_db'"
+
+      - name: Check if the comment hasn't changed
+        ansible.builtin.assert:
+          that:
+            - result.result == [['Test DB']]
+
       - name: Create database with another comment real mode - should end with warn
         register: result
         community.clickhouse.clickhouse_db:
@@ -424,6 +454,16 @@
           that:
             - result is not changed
             - result.executed_statements == []
+
+      - name: Check the actual state
+        register: result
+        community.clickhouse.clickhouse_client:
+          execute: "SELECT comment FROM system.databases WHERE name = 'test_db'"
+
+      - name: Check if the comment hasn't changed
+        ansible.builtin.assert:
+          that:
+            - result.result == [['Test DB']]
 
   - name: Check the actual state
     register: result
