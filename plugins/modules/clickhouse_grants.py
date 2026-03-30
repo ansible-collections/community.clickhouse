@@ -214,7 +214,10 @@ class ClickHouseGrants():
                  "SELECT 1 FROM system.roles WHERE name = '%s' "
                  "LIMIT 1" % (self.grantee, self.grantee))
 
-        execute_query(self.module, self.client, query)
+        result = execute_query(self.module, self.client, query)
+
+        if not result:
+            self.module.fail_json(msg="Grantee %s does not exist" % self.grantee)
 
     def get(self):
         query = "SHOW GRANTS FOR '%s'" % self.grantee

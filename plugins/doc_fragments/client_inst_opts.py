@@ -52,7 +52,8 @@ options:
   success_on:
     version_added: "2.2.0"
     description:
-      - List of L(server error codes,https://github.com/ClickHouse/ClickHouse/blob/master/src/Common/ErrorCodes.cpp)  that will be treated as success, otherwise throw errors.
+      - List of L(server error codes,https://github.com/ClickHouse/ClickHouse/blob/master/src/Common/ErrorCodes.cpp)
+        that will be treated as success, otherwise throw errors.
     type: list
     elements: int
     default: [497]
