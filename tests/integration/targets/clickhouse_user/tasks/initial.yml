@@ -2140,3 +2140,119 @@
   community.clickhouse.clickhouse_user:
     state: absent
     name: test_user
+
+- name: Create user with settings as dictionary in real mode
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    settings:
+      max_memory_usage:
+        value: 15000
+        writability: readonly
+      max_memory_usage_for_all_queries:
+        value: 15000
+        min: 15000
+        max: 16000
+        writability: writable
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE USER 'test_user' SETTINGS max_memory_usage='15000' CONST, max_memory_usage_for_all_queries='15000' MIN '15000' MAX '16000' WRITABLE"]
+
+- name: Check user has settings
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT setting_name FROM system.settings_profile_elements WHERE user_name = 'test_user'"
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.result[0][0] == "max_memory_usage"
+      - result.result[1][0] == "max_memory_usage_for_all_queries"
+
+- name: Create user with settings as dictionary in real mode - idempotency
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    settings:
+      max_memory_usage:
+        value: 15000
+        writability: readonly
+      max_memory_usage_for_all_queries:
+        value: 15000
+        min: 15000
+        max: 16000
+        writability: writable
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+  
+- name: Test 13 - Create settings profiles for later tests
+  community.clickhouse.clickhouse_client:
+    execute: "{{ __query }}"
+  loop:
+    - CREATE SETTINGS PROFILE web
+    - CREATE SETTINGS PROFILE app
+  loop_control:
+    loop_var: __query
+
+- name: Alter user with settings as dictionary in real mode
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    profiles:
+      - web
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["ALTER USER 'test_user' SETTINGS PROFILE 'web'"]
+
+- name: Alter user removing settings with settings as dictionary - workaround 
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    settings: {}
+
+- name: Test 13 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["ALTER USER 'test_user' SETTINGS NONE"]
+
+- name: Alter user removing settings with settings as dictionary - idempotency
+  register: result
+  community.clickhouse.clickhouse_user:
+    state: present
+    name: test_user
+    settings: {}
+
+- name:  Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Drop test_user
+  community.clickhouse.clickhouse_role:
+    state: absent
+    name: test_role
+
+- name:  Drop test settings profiles
+  community.clickhouse.clickhouse_client:
+    execute: "{{ __query }}"
+  loop:
+    - DROP SETTINGS PROFILE 'web'
+    - DROP SETTINGS PROFILE 'app'
+  loop_control:
+    loop_var: __query
