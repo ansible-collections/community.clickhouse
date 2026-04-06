@@ -72,6 +72,14 @@
           <background_schedule_pool_size>16</background_schedule_pool_size>
       </clickhouse>
 
+- name: Configure clickhouse for testing named collections
+  ansible.builtin.copy:
+    dest: /etc/clickhouse-server/config.d/named_collections.xml
+    content: |
+      <clickhouse>
+        <display_secrets_in_show_and_select>1</display_secrets_in_show_and_select>
+      </clickhouse>
+
 - name: Enable and start clickhouse server
   ansible.builtin.systemd_service:
     name: clickhouse-server
