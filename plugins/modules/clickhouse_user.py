@@ -27,6 +27,7 @@ attributes:
 author:
   - Aleksandr Vagachev (@aleksvagachev)
   - Andrew Klychkov (@Andersson007)
+  - Rafal Kozlowski (@rkozlo)
 
 extends_documentation_fragment:
   - community.clickhouse.client_inst_opts
@@ -257,8 +258,11 @@ EXAMPLES = r'''
     login_password: my_password
     name: test_user
     settings:
-      - max_memory_usage = 20000 READONLY
-      - max_threads = 8
+      max_memory_usage:
+        value: 20000
+        writability: readonly
+      max_threads:
+        value: 8
 
 - name: Update user settings (idempotent - only updates if different)
   community.clickhouse.clickhouse_user:
@@ -277,7 +281,7 @@ EXAMPLES = r'''
         value: 8
         writability: writable
 
-- name: Create user with specific settings
+- name: Create user with specific settings and profile
   community.clickhouse.clickhouse_user:
     login_host: localhost
     login_user: alice
@@ -289,8 +293,13 @@ EXAMPLES = r'''
       type: sha256_hash
     cluster: test_cluster
     settings:
-      - max_memory_usage = 15000 MIN 15000 MAX 16000 READONLY
-      - PROFILE 'restricted'
+      max_memory_usage:
+        value: 15000
+        min: 15000
+        max: 16000
+        writability: readonly
+    profiles:
+      - restricted
     state: present
 
 - name: Create a user that can only connect from a specified host

@@ -28,6 +28,7 @@ author:
   - Don Naro (@oranod)
   - Aleksandr Vagachev (@aleksvagachev)
   - Andrew Klychkov (@Andersson007)
+  - Rafal Kozlowski (@rkozlo)
 
 extends_documentation_fragment:
   - community.clickhouse.client_inst_opts
@@ -78,8 +79,13 @@ EXAMPLES = r"""
     name: test_role
     state: present
     settings:
-      - max_memory_usage = 15000 MIN 15000 MAX 16000 READONLY
-      - PROFILE restricted
+      max_memory_usage:
+        value: 15000
+        min: 15000
+        max: 16000
+        writability: readonly
+    profiles:
+      - restricted
     cluster: test_cluster
 
 - name: Create a role with settings and profiles
@@ -87,11 +93,11 @@ EXAMPLES = r"""
     name: test_role
     state: present
     settings:
-        max_memory_usage:
-          value: 15000
-          min: 15000
-          max: 16000
-          writability: readonly
+      max_memory_usage:
+        value: 15000
+        min: 15000
+        max: 16000
+        writability: readonly
     profiles:
       - restricted
     cluster: test_cluster
