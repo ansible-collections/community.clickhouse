@@ -1,2 +1,4 @@
 minor_changes:
   - Refactored user/role settings for better maintainability and improved idempotency. Since now settings option accepts both list(old) argument or dictionary(new). Profiles are moved to a separate option. (https://github.com/ansible-collections/community.clickhouse/pull/178).
+  - clickhouse_user - added the ``profile`` argument to apply settings profiles to user (https://github.com/ansible-collections/community.clickhouse/pull/196).
+  - clickhouse_role - added the ``profile`` argument to apply settings profiles to role (https://github.com/ansible-collections/community.clickhouse/pull/196).  
