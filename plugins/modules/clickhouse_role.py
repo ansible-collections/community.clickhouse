@@ -61,7 +61,7 @@ options:
     version_added: 2.2.0
     description:
       - Settings profiles that will be applied to role.
-      - Can be only used with O(settings) as C(dict)
+      - Can be only used with O(settings) as C(dict).
     type: list
     elements: str
     default: []
