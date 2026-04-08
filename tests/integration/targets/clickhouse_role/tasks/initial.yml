@@ -267,3 +267,170 @@
     that:
     - result is not changed
     - result.executed_statements == []
+
+# Test 12 - Create role with new settings field
+- name: Test 12 - Create role with settings as dictionary in real mode
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: test_role
+    settings:
+      max_memory_usage:
+        value: 15000
+        writability: readonly
+      max_memory_usage_for_all_queries:
+        value: 15000
+        min: 15000
+        max: 16000
+        writability: writable
+
+- name: Test 12 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE ROLE test_role SETTINGS max_memory_usage='15000' CONST, max_memory_usage_for_all_queries='15000' MIN '15000' MAX '16000' WRITABLE"]
+
+- name: Test 12 - Check the role was created
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.roles WHERE name = 'test_role'"
+
+- name: Test 12 - Verify that the role is present
+  ansible.builtin.assert:
+    that:
+    - result.result == [[1]]
+
+- name: Test 12 - Create role with settings as dictionary in real mode - idempotency
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: test_role
+    settings:
+      max_memory_usage:
+        value: 15000
+        writability: readonly
+      max_memory_usage_for_all_queries:
+        value: 15000
+        min: 15000
+        max: 16000
+        writability: writable
+
+- name: Test 12 - Drop test_role
+  community.clickhouse.clickhouse_role:
+    state: absent
+    name: test_role
+
+# Test 13 - create role with passing profiles 
+- name: Test 13 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Test 13 - Create settings profiles for later tests
+  community.clickhouse.clickhouse_client:
+    execute: "{{ __query }}"
+  loop:
+    - CREATE SETTINGS PROFILE web
+    - CREATE SETTINGS PROFILE app
+  loop_control:
+    loop_var: __query
+
+- name: Test 13 - Create role with profiles in real mode
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: test_role
+    profiles:
+      - web
+      - app
+
+- name: Test 13 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE ROLE test_role SETTINGS PROFILE 'web', PROFILE 'app'"]
+
+- name: Test 13 - Check the role was created
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.roles WHERE name = 'test_role'"
+
+- name: Test 13 - Verify that the role is present
+  ansible.builtin.assert:
+    that:
+    - result.result == [[1]]
+
+- name: Test 13 - Create role with settings as dictionary in real mode - idempotency
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: test_role
+    profiles:
+      - web
+      - app
+
+- name: Test 13 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Test 13 - Alter role with settings as dictionary in real mode
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: test_role
+    profiles:
+      - web
+
+- name: Test 13 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["ALTER ROLE test_role SETTINGS PROFILE 'web'"]
+
+- name: Test 13 - Alter role removing settings with settings as dictionary - workaround 
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: test_role
+    settings: {}
+
+- name: Test 13 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["ALTER ROLE test_role SETTINGS NONE"]
+
+- name: Test 13 - Alter role removing settings with settings as dictionary - idempotency
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: test_role
+    settings: {}
+
+- name: Test 13 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Test 13 - Drop test_role
+  community.clickhouse.clickhouse_role:
+    state: absent
+    name: test_role
+
+- name: Test 13 - Drop test_role
+  community.clickhouse.clickhouse_role:
+    state: absent
+    name: test_role
+
+- name: Test 13 - Drop test settings profiles
+  community.clickhouse.clickhouse_client:
+    execute: "{{ __query }}"
+  loop:
+    - DROP SETTINGS PROFILE 'web'
+    - DROP SETTINGS PROFILE 'app'
+  loop_control:
+    loop_var: __query
