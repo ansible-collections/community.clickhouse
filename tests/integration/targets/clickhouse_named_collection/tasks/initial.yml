@@ -78,12 +78,13 @@
 - name: Check the collection was not created in check mode
   register: result
   community.clickhouse.clickhouse_client:
-    execute: "SELECT name FROM system.named_collections WHERE name = 'test_col'"
+    execute: "SELECT name, collection FROM system.named_collections WHERE name = 'test_col'"
+    login_user: test_user
 
 - name: Verify that the collection is present
   ansible.builtin.assert:
     that:
-    - result.result == [["test_col"]]
+    - 'result.result == [["test_col", {"user": "alice", "password": "test_pass"}]]'
 
 - name: Create named collection in real mode - idempotency
   community.clickhouse.clickhouse_named_collection:
