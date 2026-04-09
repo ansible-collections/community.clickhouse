@@ -210,7 +210,7 @@
   community.clickhouse.clickhouse_client:
     execute: "SELECT 1 FROM system.named_collections WHERE name = 'test_col'"
 
-- name: Verify that the collection is not present
+- name: Verify that the collection is present
   ansible.builtin.assert:
     that:
     - result.result == [[1]]
