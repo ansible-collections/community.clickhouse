@@ -1,0 +1,254 @@
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+- name: Fetch clickhouse_version
+  community.clickhouse.clickhouse_info:
+    limit:
+      - version
+  register: _info
+
+- name: End if not supported
+  ansible.builtin.meta: end_play
+  when:
+    - _info.version['year'] < 25 or (_info.version['year'] == 25 and _info.version['feature'] < 8)
+
+- name: Create test_user for named collections
+  community.clickhouse.clickhouse_user:
+    name: test_user
+    settings:
+      - format_display_secrets_in_show_and_select=1
+
+- name: Grant test_user
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    privileges:
+      - object: '*.*'
+        privs:
+          "ALL": true
+      - object: '*'
+        privs:
+          "NAMED COLLECTION ADMIN": true
+
+- name: Create named collection in check mode
+  community.clickhouse.clickhouse_named_collection:
+    name: test_col
+    collection:
+      - name: user
+        value: alice
+      - name: password
+        value: test_pass
+  register: result
+  check_mode: true
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE NAMED COLLECTION `test_col` AS user = '********', password = '********'"]
+
+- name: Check the collection was not created in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name FROM system.named_collections WHERE name = 'test_col'"
+
+- name: Verify that the collection is not present
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+- name: Create named collection in real mode
+  community.clickhouse.clickhouse_named_collection:
+    name: test_col
+    collection:
+      - name: user
+        value: alice
+      - name: password
+        value: test_pass
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE NAMED COLLECTION `test_col` AS user = '********', password = '********'"]
+
+- name: Check the collection was not created in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT name, collection FROM system.named_collections WHERE name = 'test_col'"
+    login_user: test_user
+
+- name: Verify that the collection is present
+  ansible.builtin.assert:
+    that:
+    - 'result.result == [["test_col", {"user": "alice", "password": "test_pass"}]]'
+
+- name: Create named collection in real mode - idempotency
+  community.clickhouse.clickhouse_named_collection:
+    name: test_col
+    collection:
+      - name: user
+        value: alice
+      - name: password
+        value: test_pass
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Alter named collection in real mode - hidden
+  community.clickhouse.clickhouse_named_collection:
+    name: test_col
+    collection:
+      - name: user
+        value: alice
+      - name: password
+        value: test_pass2
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Alter named collection in real mode - hidden - force rewrite
+  community.clickhouse.clickhouse_named_collection:
+    name: test_col
+    collection:
+      - name: user
+        value: alice
+      - name: password
+        value: test_pass2
+    rewrite: true
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["ALTER NAMED COLLECTION `test_col` SET user = '********', password = '********'"]
+
+- name: Check the collection was altered
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT collection FROM system.named_collections WHERE name = 'test_col'"
+    login_user: test_user
+
+- name: Verify that the collection has changed
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0]['user'] == 'alice'
+    - result.result[0][0]['password'] == 'test_pass2'
+
+- name: Alter named collection in real mode show secrets 
+  community.clickhouse.clickhouse_named_collection:
+    name: test_col
+    collection:
+      - name: user
+        value: alice
+      - name: password
+        value: test_pass3
+    login_user: test_user
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["ALTER NAMED COLLECTION `test_col` SET user = '********', password = '********'"]
+
+- name: Check the collection was altered
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT collection FROM system.named_collections WHERE name = 'test_col'"
+    login_user: test_user
+
+- name: Verify that the collection has changed
+  ansible.builtin.assert:
+    that:
+    - result.result[0][0]['user'] == 'alice'
+    - result.result[0][0]['password'] == 'test_pass3'
+
+- name: Alter named collection in real mode show secrets - idempotency
+  community.clickhouse.clickhouse_named_collection:
+    name: test_col
+    collection:
+      - name: user
+        value: alice
+      - name: password
+        value: test_pass3
+    login_user: test_user
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Drop named collection in check mode
+  community.clickhouse.clickhouse_named_collection:
+    name: test_col
+    state: absent
+  check_mode: true
+  register: result
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["DROP NAMED COLLECTION `test_col`"]
+
+- name: Check the collection was not dropped in check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.named_collections WHERE name = 'test_col'"
+
+- name: Verify that the collection is present
+  ansible.builtin.assert:
+    that:
+    - result.result == [[1]]
+
+- name: Drop named collection in real mode
+  community.clickhouse.clickhouse_named_collection:
+    name: test_col
+    state: absent
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["DROP NAMED COLLECTION `test_col`"]
+
+- name: Check the collection was dropped in real mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.named_collections WHERE name = 'test_col'"
+
+- name: Verify that the collection is not present
+  ansible.builtin.assert:
+    that:
+    - result.result == []
+
+- name: Drop named collection in real mode - idempotency
+  community.clickhouse.clickhouse_named_collection:
+    name: test_col
+    state: absent
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements == []
+
+- name: Drop test_user used to manage named collections
+  community.clickhouse.clickhouse_user:
+    name: test_user
+    state: absent
