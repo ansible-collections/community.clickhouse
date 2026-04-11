@@ -101,7 +101,7 @@
     - result is not changed
     - result.executed_statements == []
 
-- name: Alter named collection in real mode - hidden 
+- name: Alter named collection in real mode - hidden
   community.clickhouse.clickhouse_named_collection:
     name: test_col
     collection:
