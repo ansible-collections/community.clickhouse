@@ -198,7 +198,6 @@
     state: absent
   check_mode: true
   register: result
- 
 - name: Check the return values
   ansible.builtin.assert:
     that:
