@@ -1,7 +1,7 @@
 ####################################################################
 # WARNING: These are designed specifically for Ansible tests       #
 # and should not be used as examples of how to write Ansible roles #
-####################################################################  
+####################################################################
 - name: Fetch clickhouse_version
   community.clickhouse.clickhouse_info:
     limit:
