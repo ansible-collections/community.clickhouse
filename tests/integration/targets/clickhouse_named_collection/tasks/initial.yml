@@ -10,7 +10,7 @@
 
 - name: End if not supported
   ansible.builtin.meta: end_play
-  when: 
+  when:
     - _info.version['year'] < 25 or (_info.version['year'] == 25 and _info.version['feature'] < 8)
 
 - name: Create test_user for named collections
