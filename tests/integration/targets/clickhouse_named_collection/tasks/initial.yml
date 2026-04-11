@@ -27,7 +27,6 @@
       - object: '*.*'
         privs:
           "ALL": true
-  
       - object: '*'
         privs:
           "NAMED COLLECTION ADMIN": true
