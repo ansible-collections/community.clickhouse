@@ -89,7 +89,7 @@ EXAMPLES = r'''
       - name: password
         value: test_pass
 
-- name: Create named collection with forcing recreate
+- name: Create named collection with forcing rewrite
   community.clickhouse.clickhouse_named_collection:
     name: test_col
     collection:
@@ -97,7 +97,7 @@ EXAMPLES = r'''
         value: alice
       - name: password
         value: test_pass
-    recreate: true
+    rewrite: true
 
 - name: Drop named collection
   community.clickhouse.clickhouse_named_collection:
