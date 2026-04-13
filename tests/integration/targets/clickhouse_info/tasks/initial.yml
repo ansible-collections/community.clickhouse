@@ -82,7 +82,23 @@
 - name: Check it returned something
   ansible.builtin.assert:
     that:
-    - result["users"]["497"] == "Not enough privileges"
+    - result.changed == false
+    - result.failed == false
+
+- name: Query DB using non-default connect params disabling default success_on
+  register: result
+  ignore_errors: true
+  community.clickhouse.clickhouse_info:
+    login_host: localhost
+    login_user: alice
+    login_password: my_password
+    success_on: []
+
+- name: Check exception
+  ansible.builtin.assert:
+    that:
+    - result.code == 497
+    - "result.message is match('^DB::Exception: alice: Not enough privileges')"
 
 - name: Limit gathered values, one value does not exist
   register: result

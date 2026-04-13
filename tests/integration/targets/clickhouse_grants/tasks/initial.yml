@@ -79,7 +79,7 @@
   ansible.builtin.assert:
     that:
     - result is failed
-    - result.msg is search("does not exist")
+    - result.msg == 'Grantee notexists does not exist'
 
 - name: Grant initial privileges to alice
   register: result

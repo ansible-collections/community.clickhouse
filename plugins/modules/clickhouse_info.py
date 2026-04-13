@@ -181,9 +181,6 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
 )
 
 
-PRIV_ERR_CODE = 497
-
-
 def get_databases(module, client):
     """Get databases.
 
@@ -192,9 +189,6 @@ def get_databases(module, client):
     query = ("SELECT name, engine, data_path, metadata_path, uuid, "
              "engine_full, comment FROM system.databases")
     result = execute_query(module, client, query)
-
-    if result == PRIV_ERR_CODE:
-        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     db_info = {}
     for row in result:
@@ -219,9 +213,6 @@ def get_clusters(module, client):
              "host_address, port, is_local, user, default_database, errors_count, "
              "slowdowns_count, estimated_recovery_time FROM system.clusters")
     result = execute_query(module, client, query)
-
-    if result == PRIV_ERR_CODE:
-        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     cluster_info = {}
 
@@ -276,9 +267,6 @@ def get_roles(module, client):
     query = "SELECT name, id, storage FROM system.roles"
     result = execute_query(module, client, query)
 
-    if result == PRIV_ERR_CODE:
-        return {str(PRIV_ERR_CODE): "Not enough privileges"}
-
     roles_info = {}
     for row in result:
         role_name = row[0]
@@ -305,9 +293,6 @@ def get_tables(module, client):
              "has_own_data, loading_dependencies_database, loading_dependencies_table, "
              "loading_dependent_database, loading_dependent_table FROM system.tables")
     result = execute_query(module, client, query)
-
-    if result == PRIV_ERR_CODE:
-        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     tables_info = {}
     for row in result:
@@ -362,9 +347,6 @@ def get_dictionaries(module, client):
              "loading_duration, last_exception, comment FROM system.dictionaries")
     result = execute_query(module, client, query)
 
-    if result == PRIV_ERR_CODE:
-        return {str(PRIV_ERR_CODE): "Not enough privileges"}
-
     dictionaries_info = {}
     for row in result:
         dict_database = row[0] if row[0] else 'dict'
@@ -406,9 +388,6 @@ def get_settings(module, client):
              "type, default, alias_for FROM system.settings")
     result = execute_query(module, client, query)
 
-    if result == PRIV_ERR_CODE:
-        return {str(PRIV_ERR_CODE): "Not enough privileges"}
-
     settings_info = {}
     for row in result:
         settings_info[row[0]] = {
@@ -435,9 +414,6 @@ def get_merge_tree_settings(module, client):
              "readonly, type FROM system.merge_tree_settings")
     result = execute_query(module, client, query)
 
-    if result == PRIV_ERR_CODE:
-        return {str(PRIV_ERR_CODE): "Not enough privileges"}
-
     merge_tree_settings_info = {}
     for row in result:
         merge_tree_settings_info[row[0]] = {
@@ -463,9 +439,6 @@ def get_users(module, client):
              "default_roles_list, default_roles_except, grantees_any, "
              "grantees_list, grantees_except, default_database FROM system.users")
     result = execute_query(module, client, query)
-
-    if result == PRIV_ERR_CODE:
-        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     user_info = {}
     for row in result:
@@ -525,9 +498,6 @@ def get_settings_profiles(module, client):
              "apply_to_except FROM system.settings_profiles")
     result = execute_query(module, client, query)
 
-    if result == PRIV_ERR_CODE:
-        return {str(PRIV_ERR_CODE): "Not enough privileges"}
-
     profile_info = {}
     for row in result:
         profile_info[row[0]] = {
@@ -550,9 +520,6 @@ def get_quotas(module, client):
     query = ("SELECT name, id, storage, keys, durations, apply_to_all, "
              "apply_to_list, apply_to_except FROM system.quotas")
     result = execute_query(module, client, query)
-
-    if result == PRIV_ERR_CODE:
-        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     quota_info = {}
     for row in result:
@@ -578,9 +545,6 @@ def get_all_grants(module, client):
              "table, column, is_partial_revoke, grant_option FROM system.grants")
 
     result = execute_query(module, client, query)
-
-    if result == PRIV_ERR_CODE:
-        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     grants_info = {
         'users': {},
@@ -620,9 +584,6 @@ def get_settings_profile_elements(module, client):
              "index, setting_name, value, min, max, writability, "
              "inherit_profile FROM system.settings_profile_elements")
     result = execute_query(module, client, query)
-
-    if result == PRIV_ERR_CODE:
-        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     settings_profile_elements = {'profiles': {},
                                  'users': {},
@@ -668,9 +629,6 @@ def get_storage_policies(module, client):
              "disks, volume_type, max_data_part_size, "
              "move_factor, prefer_not_to_merge FROM system.storage_policies")
     result = execute_query(module, client, query)
-
-    if result == PRIV_ERR_CODE:
-        return {str(PRIV_ERR_CODE): "Not enough privileges"}
 
     storage_policies_info = {}
     for row in result:

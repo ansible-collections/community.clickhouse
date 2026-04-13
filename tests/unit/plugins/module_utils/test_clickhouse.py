@@ -24,6 +24,7 @@ class FakeAnsibleModule:
             "login_db": None,
             "login_password": None,
             "client_kwargs": {},
+            "success_on": [497],
         }
 
     def fail_json(self, msg):
@@ -37,7 +38,8 @@ def test_client_common_argument_spec():
         'login_user': {'type': 'str', 'default': None},
         'login_host': {'type': 'str', 'default': 'localhost'},
         'login_password': {'type': 'str', 'default': None, 'no_log': True},
-        'client_kwargs': {'type': 'dict', 'default': {}}
+        'client_kwargs': {'type': 'dict', 'default': {}},
+        'success_on': {'type': 'list', 'elements': 'int', 'default': [497]},
     }
 
     assert client_common_argument_spec() == EXPECTED
