@@ -6,7 +6,7 @@ If you have any questions after reading, please contact the community via one or
 
 ## Using AI tools for assistance
 
-TBD: Add a link to the Ansible AI Policy once it's in place.
+TODO: Add a link to the Ansible AI Policy once it's in place.
 
 When using AI tools to assist with contributing to this project, follow our AI policy:
 
