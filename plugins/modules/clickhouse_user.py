@@ -50,14 +50,14 @@ options:
     required: true
   password:
     description:
-      - This option is deprecated and will be removed in 3.0.0. Look at authentication instead.
+      - This option is deprecated and will be removed in 3.0.0. Use O(authentication) instead.
       - Set the user's password.
       - Password can be passed unhashed or hashed.
       - Cannot be used together with O(authentication).
     type: str
   type_password:
     description:
-      - This option is deprecated and will be removed in 3.0.0. Look at authentication instead.
+      - This option is deprecated and will be removed in 3.0.0. Use O(authentication) instead.
       - The type of password being transmitted(plaintext_password, sha256_password, sha256_hash...).
       - For more details, see U(https://clickhouse.com/docs/en/sql-reference/statements/create/user).
       - Cannot be used together with O(authentication).
