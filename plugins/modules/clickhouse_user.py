@@ -50,7 +50,7 @@ options:
     required: true
   password:
     description:
-      - This option is deprecated and will be removed in 3.0.0. Look at authentication instead.
+      - This option is deprecated and will be removed in 3.0.0. Use O(authentication) instead.
       - Set the user's password.
       - Password can be passed unhashed or hashed.
       - Cannot be used together with O(authentication).
