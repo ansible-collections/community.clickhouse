@@ -46,7 +46,13 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["CREATE NAMED COLLECTION `test_col` AS user = '********', password = '********'"]
+    - result.executed_statements == ["CREATE NAMED COLLECTION `test_col` AS `user` = %(val_0)s, `password` = %(val_1)s"]
+    - >
+        result.query_parameters == 
+        [{
+          "val_0": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER",
+          "val_1": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
+        }]
 
 - name: Check the collection was not created in check mode
   register: result
@@ -72,7 +78,13 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["CREATE NAMED COLLECTION `test_col` AS user = '********', password = '********'"]
+    - result.executed_statements == ["CREATE NAMED COLLECTION `test_col` AS `user` = %(val_0)s, `password` = %(val_1)s"]
+    - >
+        result.query_parameters == 
+        [{
+          "val_0": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER",
+          "val_1": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
+        }]
 
 - name: Check the collection was not created in check mode
   register: result
@@ -100,6 +112,7 @@
     that:
     - result is not changed
     - result.executed_statements == []
+    - result.query_parameters == []
 
 - name: Alter named collection in real mode - hidden
   community.clickhouse.clickhouse_named_collection:
@@ -132,7 +145,13 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["ALTER NAMED COLLECTION `test_col` SET user = '********', password = '********'"]
+    - result.executed_statements == ["ALTER NAMED COLLECTION `test_col` SET `user` = %(val_0)s, `password` = %(val_1)s"]
+    - >
+      result.query_parameters == 
+      [{
+        "val_0": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER",
+        "val_1": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
+      }]
 
 - name: Check the collection was altered
   register: result
@@ -161,7 +180,13 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["ALTER NAMED COLLECTION `test_col` SET user = '********', password = '********'"]
+    - result.executed_statements == ["ALTER NAMED COLLECTION `test_col` SET `user` = %(val_0)s, `password` = %(val_1)s"]
+    - >
+      result.query_parameters == 
+      [{
+        "val_0": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER",
+        "val_1": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
+      }]
 
 - name: Check the collection was altered
   register: result
@@ -191,6 +216,7 @@
     that:
     - result is not changed
     - result.executed_statements == []
+    - result.query_parameters == []
 
 - name: Drop named collection in check mode
   community.clickhouse.clickhouse_named_collection:
@@ -203,6 +229,7 @@
     that:
     - result is changed
     - result.executed_statements == ["DROP NAMED COLLECTION `test_col`"]
+    - result.query_parameters == [{}]
 
 - name: Check the collection was not dropped in check mode
   register: result
@@ -225,6 +252,7 @@
     that:
     - result is changed
     - result.executed_statements == ["DROP NAMED COLLECTION `test_col`"]
+    - result.query_parameters == [{}]
 
 - name: Check the collection was dropped in real mode
   register: result
