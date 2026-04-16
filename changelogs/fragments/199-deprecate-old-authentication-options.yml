@@ -1,0 +1,2 @@
+deprecated_features:
+  - clickhouse_user - ``password`` and ``type_password`` are deprecated and will be removed in ``community.clickhouse 3.0.0``, use the ``authentication`` instead.

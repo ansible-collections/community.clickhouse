@@ -50,12 +50,14 @@ options:
     required: true
   password:
     description:
+      - This option is deprecated and will be removed in 3.0.0. Use O(authentication) instead.
       - Set the user's password.
       - Password can be passed unhashed or hashed.
       - Cannot be used together with O(authentication).
     type: str
   type_password:
     description:
+      - This option is deprecated and will be removed in 3.0.0. Use O(authentication) instead.
       - The type of password being transmitted(plaintext_password, sha256_password, sha256_hash...).
       - For more details, see U(https://clickhouse.com/docs/en/sql-reference/statements/create/user).
       - Cannot be used together with O(authentication).
@@ -854,8 +856,20 @@ def main():
     argument_spec.update(
         state=dict(type='str', choices=['present', 'absent'], default='present'),
         name=dict(type='str', required=True),
-        password=dict(type='str', default=None, no_log=True),
-        type_password=dict(type='str', default='sha256_password', no_log=False),
+        password=dict(
+            type='str',
+            default=None,
+            no_log=True,
+            removed_in_version='3.0.0',
+            removed_from_collection='community.clickhouse'
+        ),
+        type_password=dict(
+            type='str',
+            default='sha256_password',
+            no_log=False,
+            removed_in_version='3.0.0',
+            removed_from_collection='community.clickhouse'
+        ),
         authentication=dict(
             type='dict',
             default=None,
@@ -934,7 +948,6 @@ def main():
     # Do the job
     changed = False
     user = ClickHouseUser(module, client, name)
-
     if state == 'present':
         if not user.user_exists:
             changed = user.create(type_password, password, cluster, user_hosts, settings,
