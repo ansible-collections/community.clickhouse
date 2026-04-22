@@ -190,19 +190,6 @@ class ClickHouseNamedCollection:
                 msg=f"Passed named collection isn't sourced by SQL. Got: {source}"
             )
 
-    def fetch(self):
-        """Get named collection paramters."""
-        if not self.exists:
-            return None
-
-        query = "SELECT collection, source FROM system.named_collections WHERE name = '%s'" % self.name
-        result = execute_query(self.module, self.client, query)
-        if result:
-            if result[0][1] != 'SQL':
-                self.module.fail_json(msg="Passed named collection isn't sourced by SQL. Got: '%s'" % result[0][1])
-            return result[0][0]
-        return None
-
     def _normalize_current_collection_data(self, collection):
         """Normalize raw db output into normalized form used in module options."""
         """At this moment only support value field."""

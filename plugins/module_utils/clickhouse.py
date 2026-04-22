@@ -165,6 +165,6 @@ def get_on_cluster_clause(module, cluster):
 def validate_identifier(module, name, context="identifier"):
     if not name:
         module.fail_json(msg=f"{context.capitalize()} cannot be empty")
-    if not VALID_IDENTIFIER_PATTERN.match(name):
+    elif not VALID_IDENTIFIER_PATTERN.match(name):
         module.fail_json(msg=f"Invalid {context}: '{name}'")
     return name

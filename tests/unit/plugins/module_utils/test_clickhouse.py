@@ -10,6 +10,7 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
     version_clickhouse_driver,
     client_common_argument_spec,
     get_main_conn_kwargs,
+    validate_identifier
 )
 
 REASON = "The clickhouse_driver module is not installed"
@@ -86,3 +87,66 @@ def test_check_clickhouse_driver():
     result = check_clickhouse_driver(fake_module)
 
     assert result is None or "clickhouse_driver" in result
+
+
+@pytest.mark.parametrize("malicious_name", [
+    "test; DROP TABLE users; --",
+    "test`; DROP TABLE users; --",
+    "test' OR '1'='1",
+    'test"; DROP TABLE users; --',
+    "123_test",
+    "test.test",
+    "`test`",
+    "test`collection",
+])
+def test_validate_function_against_malicious_names(mocker, malicious_name):
+    mock_module = mocker.MagicMock()
+    mock_module.fail_json = mocker.MagicMock()
+
+    validate_identifier(mock_module, malicious_name)
+
+    call_msg = mock_module.fail_json.call_args[1]['msg']
+
+    mock_module.fail_json.assert_called_once()
+    assert "Invalid identifier:" in call_msg
+
+
+def test_validate_function_with_empty_name(mocker):
+    mock_module = mocker.MagicMock()
+    mock_module.fail_json = mocker.MagicMock()
+
+    validate_identifier(mock_module, "")
+
+    call_msg = mock_module.fail_json.call_args[1]['msg']
+
+    mock_module.fail_json.assert_called_once()
+    assert "cannot be empty" in call_msg
+
+
+@pytest.mark.parametrize("correct_name", [
+    "test",
+    "test_name",
+    "test_name1",
+    "test1",
+    "test123"
+])
+def test_validate_function_with_correct_names(mocker, correct_name):
+    mock_module = mocker.MagicMock()
+    mock_module.fail_json = mocker.MagicMock()
+
+    result = validate_identifier(mock_module, correct_name)
+
+    mock_module.fail_json.assert_not_called()
+
+    assert result == correct_name
+
+
+def test_validate_identifier_with_custom_context(mocker):
+    mock_module = mocker.MagicMock()
+    mock_module.fail_json = mocker.MagicMock()
+
+    validate_identifier(mock_module, "invalid!", "cluster name")
+
+    mock_module.fail_json.assert_called_once()
+    call_msg = mock_module.fail_json.call_args[1]['msg']
+    assert "Invalid cluster name" in call_msg
