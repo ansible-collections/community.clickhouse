@@ -10,7 +10,9 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
     version_clickhouse_driver,
     client_common_argument_spec,
     get_main_conn_kwargs,
-    validate_identifier
+    validate_identifier,
+    validate_db_table,
+    normalize_db_table
 )
 
 REASON = "The clickhouse_driver module is not installed"
@@ -87,6 +89,84 @@ def test_check_clickhouse_driver():
     result = check_clickhouse_driver(fake_module)
 
     assert result is None or "clickhouse_driver" in result
+
+
+@pytest.mark.parametrize("wrong_db_table", [
+    "1.tab",
+    "1a.tab",
+    "db.tab.tab",
+    "db.**",
+    "db..tab",
+    "db.tab*extra",
+    "db.*extra",
+    "db.*.extra",
+    ".tab",
+    "db.",
+    "db*",
+])
+def test_validate_db_table_against_not_allowed_names(mocker, wrong_db_table):
+    mock_module = mocker.MagicMock()
+    mock_module.fail_json = mocker.MagicMock()
+
+    validate_db_table(mock_module, wrong_db_table)
+
+    call_msg = mock_module.fail_json.call_args[1]['msg']
+
+    mock_module.fail_json.assert_called_once()
+    assert "Invalid format:" in call_msg
+
+
+@pytest.mark.parametrize("correct_db_table", [
+    "db.tab",
+    "d.tab",
+    "tab",
+    "_db.tab",
+    "db._tab",
+    "db.*",
+    "_db_.tab_",
+])
+def test_validate_db_table_against_allowed_names(mocker, correct_db_table):
+    mock_module = mocker.MagicMock()
+    mock_module.fail_json = mocker.MagicMock()
+
+    validate_db_table(mock_module, correct_db_table)
+
+    mock_module.fail_json.assert_not_called()
+
+
+@pytest.mark.parametrize("input_name,expected", [
+    ("table", "`current_db`.`table`"),
+    ("_table", "`current_db`.`_table`"),
+])
+def test_normalize_db_table_with_db_call(mocker, input_name, expected):
+    mock_module = mocker.MagicMock()
+    mock_module.fail_json = mocker.MagicMock()
+    mock_client = mocker.MagicMock()
+    mock_execute_query = mocker.patch("ansible_collections.community.clickhouse.plugins.module_utils.clickhouse.execute_query",
+                                      return_value=[('current_db',)])
+
+    result = normalize_db_table(mock_module, mock_client, input_name)
+
+    assert result == expected
+    mock_execute_query.assert_called_once()
+
+
+@pytest.mark.parametrize("input_name,expected", [
+    ("db.tab", "`db`.`tab`"),
+    ("db.*", "`db`.*"),
+    ("_db.tab", "`_db`.`tab`"),
+])
+def test_normalize_db_table_without_db_call(mocker, input_name, expected):
+    mock_module = mocker.MagicMock()
+    mock_module.fail_json = mocker.MagicMock()
+    mock_client = mocker.MagicMock()
+    mock_execute_query = mocker.patch("ansible_collections.community.clickhouse.plugins.module_utils.clickhouse.execute_query",
+                                      return_value=[('current_db',)])
+
+    result = normalize_db_table(mock_module, mock_client, input_name)
+
+    assert result == expected
+    mock_execute_query.assert_not_called()
 
 
 @pytest.mark.parametrize("malicious_name", [

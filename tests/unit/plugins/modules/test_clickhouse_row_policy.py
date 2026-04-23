@@ -9,7 +9,7 @@ def row_policy(mocker):
     mock_module.check_mode = False
     mock_client = mocker.MagicMock()
 
-    return ClickHouseRowPolicy(module=mock_module, client=mock_client, name="test_policy")
+    return ClickHouseRowPolicy(module=mock_module, client=mock_client, name="test_policy", database="test_db", table="test_table")
 
 
 def get_executed_query(mock_execute):
@@ -36,15 +36,15 @@ def test_fetch_row_policy_not_exists(row_policy, mock_execute):
 def test_fetch_row_policy_exists(row_policy, mocker):
     mock_execute = mocker.patch(
         "ansible_collections.community.clickhouse.plugins.modules.clickhouse_row_policy.execute_query",
-        return_value=[('mydb', 'table1', 'b = 1', 0, 0, ['test_user'], [])]
+        return_value=[('b = 1', 0, 0, ['test_user'], [])]
 
     )
     row_policy._load()
 
     assert mock_execute.call_count == 1
     assert row_policy.exists is True
-    assert row_policy.database == 'mydb'
-    assert row_policy.table == 'table1'
+    assert row_policy.database == 'test_db'
+    assert row_policy.table == 'test_table'
     assert row_policy.select_filter == 'b = 1'
     assert row_policy.is_restrictive == 0
     assert row_policy.apply_to_all == 0
@@ -64,125 +64,143 @@ def test_build_to_clause_apply_to_all(row_policy):
 
 def test_build_to_clause_apply_to_all_except_one(row_policy):
     result = row_policy._build_to_clause([], 1, ['except1'])
-    assert result == " TO ALL EXCEPT except1"
+    assert result == " TO ALL EXCEPT `except1`"
 
 
 def test_build_to_clause_apply_to_all_except_many(row_policy):
     result = row_policy._build_to_clause([], 1, ['except1', 'except2'])
-    assert result == " TO ALL EXCEPT except1, except2"
+    assert result == " TO ALL EXCEPT `except1`, `except2`"
 
 
 def test_build_to_clause_apply_to_list_one(row_policy):
     result = row_policy._build_to_clause(['test_user'], 0, [])
-    assert result == " TO test_user"
+    assert result == " TO `test_user`"
 
 
 def test_build_to_clause_apply_to_list_many(row_policy):
     result = row_policy._build_to_clause(['test_user', 'test_user2'], 0, [])
-    assert result == " TO test_user, test_user2"
-
-
-def test_build_target_passed_db_table(row_policy, mocker):
-    mock_execute = mocker.patch("ansible_collections.community.clickhouse.plugins.modules.clickhouse_row_policy.execute_query",
-        return_value=[('default_db')])
-    result = row_policy._build_target("db.table")
-    assert result == "db.table"
-    assert mock_execute.call_count == 0
-
-
-def test_build_target_passed_db_asterix(row_policy, mocker):
-    mock_execute =mocker.patch("ansible_collections.community.clickhouse.plugins.modules.clickhouse_row_policy.execute_query",
-        return_value=[('default_db')])
-    result = row_policy._build_target("db.*")
-    assert result == "db.*"
-    assert mock_execute.call_count == 0
-
-
-def test_build_target_passed_table_only(row_policy, mocker):
-    mock_execute = mocker.patch("ansible_collections.community.clickhouse.plugins.modules.clickhouse_row_policy.execute_query",
-        return_value=[('default_db')])
-    result = row_policy._build_target("table")
-    assert result == "default_db.table"
-    assert mock_execute.call_count == 1
+    assert result == " TO `test_user`, `test_user2`"
 
 
 def test_build_using_paramter_simple(row_policy, mocker):
     mock_execute = mocker.patch("ansible_collections.community.clickhouse.plugins.modules.clickhouse_row_policy.execute_query",
-        return_value=[('SELECT 1 FROM _to_normalize WHERE a = 1')])
+                                return_value=[('SELECT 1 FROM _to_normalize WHERE a = 1')])
     result = row_policy._normalize_using_parameter('a=1')
     assert result == 'a = 1'
     assert mock_execute.call_count == 1
 
 
-def test_build_using_paramter_complex (row_policy, mocker):
+def test_build_using_paramter_complex(row_policy, mocker):
     mock_execute = mocker.patch("ansible_collections.community.clickhouse.plugins.modules.clickhouse_row_policy.execute_query",
-        return_value=[('SELECT 1 FROM _to_normalize WHERE (((b >= 1) AND (c <= 2)) OR 1 OR 2) OR 3')])
+                                return_value=[('SELECT 1 FROM _to_normalize WHERE (((b >= 1) AND (c <= 2)) OR 1 OR 2) OR 3')])
     result = row_policy._normalize_using_parameter('(((b>=1)    AND (c<=2))OR 1 OR 2)OR 3')
     assert result == '(((b >= 1) AND (c <= 2)) OR 1 OR 2) OR 3'
     assert mock_execute.call_count == 1
 
+
 def test_create_row_policy_no_assign(row_policy, mocker):
     mock_execute = mocker.patch("ansible_collections.community.clickhouse.plugins.modules.clickhouse_row_policy.execute_query",
-        return_value=[('SELECT 1 FROM _to_normalize WHERE b = a')])
+                                return_value=[('SELECT 1 FROM _to_normalize WHERE b = a')])
     row_policy._exist = False
-    changed = row_policy.create("db.tab", "b = a", 0, [], 0, [], None)
+    changed = row_policy.create("b = a", 0, [], 0, [], None)
     actuall_query = get_executed_query(mock_execute)
     assert changed is True
     assert mock_execute.call_count == 2
-    assert actuall_query == "CREATE ROW POLICY 'test_policy' ON db.tab USING b = a AS PERMISSIVE"
+    assert actuall_query == "CREATE ROW POLICY `test_policy` ON `test_db`.`test_table` USING b = a AS PERMISSIVE"
+
 
 def test_create_row_policy_on_cluster(row_policy, mocker):
     mock_execute = mocker.patch("ansible_collections.community.clickhouse.plugins.modules.clickhouse_row_policy.execute_query",
-        return_value=[('SELECT 1 FROM _to_normalize WHERE b = a')])
+                                return_value=[('SELECT 1 FROM _to_normalize WHERE b = a')])
     row_policy._exist = False
-    changed = row_policy.create("db.tab", "b = a", 0, [], 0, [], 'test_cluster')
+    changed = row_policy.create("b = a", 0, [], 0, [], 'test_cluster')
     actuall_query = get_executed_query(mock_execute)
     assert changed is True
     assert mock_execute.call_count == 2
-    assert actuall_query == "CREATE ROW POLICY 'test_policy' ON CLUSTER 'test_cluster' ON db.tab USING b = a AS PERMISSIVE"
+    assert actuall_query == "CREATE ROW POLICY `test_policy` ON `test_db`.`test_table` ON CLUSTER `test_cluster` USING b = a AS PERMISSIVE"
 
 
 def test_create_row_policy_restrictive_no_assign(row_policy, mocker):
     mock_execute = mocker.patch("ansible_collections.community.clickhouse.plugins.modules.clickhouse_row_policy.execute_query",
-        return_value=[('SELECT 1 FROM _to_normalize WHERE b = a')])
+                                return_value=[('SELECT 1 FROM _to_normalize WHERE b = a')])
     row_policy._exist = False
-    changed = row_policy.create("db.tab", "b = a", 1, [], 0, [], None)
+    changed = row_policy.create("b = a", 1, [], 0, [], None)
     actuall_query = get_executed_query(mock_execute)
     assert changed is True
     assert mock_execute.call_count == 2
-    assert actuall_query == "CREATE ROW POLICY 'test_policy' ON db.tab USING b = a AS RESTRICTIVE"
+    assert actuall_query == "CREATE ROW POLICY `test_policy` ON `test_db`.`test_table` USING b = a AS RESTRICTIVE"
 
 
 def test_create_row_policy_assign_all(row_policy, mocker):
     mock_execute = mocker.patch("ansible_collections.community.clickhouse.plugins.modules.clickhouse_row_policy.execute_query",
-        return_value=[('SELECT 1 FROM _to_normalize WHERE b = a')])
+                                return_value=[('SELECT 1 FROM _to_normalize WHERE b = a')])
     row_policy._exist = False
-    changed = row_policy.create("db.tab", "b = a", 0, [], 1, [], None)
+    changed = row_policy.create("b = a", 0, [], 1, [], None)
     actuall_query = get_executed_query(mock_execute)
     assert changed is True
     assert mock_execute.call_count == 2
-    assert actuall_query == "CREATE ROW POLICY 'test_policy' ON db.tab USING b = a AS PERMISSIVE TO ALL"
+    assert actuall_query == "CREATE ROW POLICY `test_policy` ON `test_db`.`test_table` USING b = a AS PERMISSIVE TO ALL"
 
 
 def test_create_row_policy_assign_all_except(row_policy, mocker):
     mock_execute = mocker.patch("ansible_collections.community.clickhouse.plugins.modules.clickhouse_row_policy.execute_query",
-        return_value=[('SELECT 1 FROM _to_normalize WHERE b = a')])
+                                return_value=[('SELECT 1 FROM _to_normalize WHERE b = a')])
     row_policy._exist = False
-    changed = row_policy.create("db.tab", "b = a", 0, [], 1, ['except1', 'except2'], None)
+    changed = row_policy.create("b = a", 0, [], 1, ['except1', 'except2'], None)
     actuall_query = get_executed_query(mock_execute)
     assert changed is True
     assert mock_execute.call_count == 2
-    assert actuall_query == "CREATE ROW POLICY 'test_policy' ON db.tab USING b = a AS PERMISSIVE TO ALL EXCEPT except1, except2"
+    assert actuall_query == "CREATE ROW POLICY `test_policy` ON `test_db`.`test_table` USING b = a AS PERMISSIVE TO ALL EXCEPT `except1`, `except2`"
 
 
 def test_create_row_policy_assign_list(row_policy, mocker):
     mock_execute = mocker.patch("ansible_collections.community.clickhouse.plugins.modules.clickhouse_row_policy.execute_query",
-        return_value=[('SELECT 1 FROM _to_normalize WHERE b = a')])
+                                return_value=[('SELECT 1 FROM _to_normalize WHERE b = a')])
     row_policy._exist = False
-    changed = row_policy.create("db.tab", "b = a", 0, ['test_user', 'test_role'], 0, [], None)
+    changed = row_policy.create("b = a", 0, ['test_user', 'test_role'], 0, [], None)
     actuall_query = get_executed_query(mock_execute)
     assert changed is True
     assert mock_execute.call_count == 2
-    assert actuall_query == "CREATE ROW POLICY 'test_policy' ON db.tab USING b = a AS PERMISSIVE TO test_user, test_role"
+    assert actuall_query == "CREATE ROW POLICY `test_policy` ON `test_db`.`test_table` USING b = a AS PERMISSIVE TO `test_user`, `test_role`"
 
 
+def test_drop_row_policy(row_policy, mocker):
+    mock_execute = mocker.patch("ansible_collections.community.clickhouse.plugins.modules.clickhouse_row_policy.execute_query")
+    row_policy._exist = True
+    changed = row_policy.drop(None)
+    actuall_query = get_executed_query(mock_execute)
+    assert changed is True
+    assert mock_execute.call_count == 1
+    assert actuall_query == "DROP ROW POLICY `test_policy` ON `test_db`.`test_table`"
+
+
+def test_drop_row_policy_on_cluster(row_policy, mocker):
+    mock_execute = mocker.patch("ansible_collections.community.clickhouse.plugins.modules.clickhouse_row_policy.execute_query")
+    row_policy._exist = True
+    changed = row_policy.drop('test_cluster')
+    actuall_query = get_executed_query(mock_execute)
+    assert changed is True
+    assert mock_execute.call_count == 1
+    assert actuall_query == "DROP ROW POLICY `test_policy` ON `test_db`.`test_table` ON CLUSTER `test_cluster`"
+
+
+def test_alter_row_policy(row_policy, mocker):
+    mock_execute = mocker.patch("ansible_collections.community.clickhouse.plugins.modules.clickhouse_row_policy.execute_query",
+                                return_value=[('SELECT 1 FROM _to_normalize WHERE b = a')])
+    row_policy._exist = True
+    changed = row_policy.alter("b = a", 0, [], 0, [], None)
+    actuall_query = get_executed_query(mock_execute)
+    assert changed is True
+    assert mock_execute.call_count == 2
+    assert actuall_query == "ALTER ROW POLICY `test_policy` ON `test_db`.`test_table` USING b = a AS PERMISSIVE"
+
+
+def test_alter_row_policy_on_cluster(row_policy, mocker):
+    mock_execute = mocker.patch("ansible_collections.community.clickhouse.plugins.modules.clickhouse_row_policy.execute_query",
+                                return_value=[('SELECT 1 FROM _to_normalize WHERE b = a')])
+    row_policy._exist = True
+    changed = row_policy.alter("b = a", 0, [], 0, [], 'test_cluster')
+    actuall_query = get_executed_query(mock_execute)
+    assert changed is True
+    assert mock_execute.call_count == 2
+    assert actuall_query == "ALTER ROW POLICY `test_policy` ON `test_db`.`test_table` ON CLUSTER `test_cluster` USING b = a AS PERMISSIVE"
