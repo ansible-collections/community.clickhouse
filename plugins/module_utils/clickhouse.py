@@ -10,6 +10,8 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
+import re
+
 from ansible.module_utils.basic import missing_required_lib
 from ansible.module_utils.common.text.converters import to_native
 
@@ -21,6 +23,8 @@ try:
     HAS_DB_DRIVER = True
 except ImportError:
     HAS_DB_DRIVER = False
+
+VALID_IDENTIFIER_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
 
 
 def client_common_argument_spec():
@@ -149,3 +153,18 @@ def get_server_version(module, client):
         version["type"] = None
 
     return version
+
+
+def get_on_cluster_clause(module, cluster):
+    if not cluster:
+        return ""
+    validate_identifier(module, cluster, "cluster name")
+    return f" ON CLUSTER `{cluster}`"
+
+
+def validate_identifier(module, name, context="identifier"):
+    if not name:
+        module.fail_json(msg=f"{context.capitalize()} cannot be empty")
+    elif not VALID_IDENTIFIER_PATTERN.match(name):
+        module.fail_json(msg=f"Invalid {context}: '{name}'")
+    return name

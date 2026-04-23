@@ -112,7 +112,14 @@ executed_statements:
     - Data-modifying executed statements.
   returned: on success
   type: list
-  sample: ["CREATE NAMED COLLECTION `test_col` AS user = '********', password = '********'"]
+  sample: ["CREATE NAMED COLLECTION `test_col` AS `user` = %(val_0)s, `password` = %(val_1)s"]
+
+query_parameters:
+  description:
+    - Query parameters passed to query from executed_statements.
+  returned: on succes
+  type: list
+  sample: [{"val_0": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER", "val_1": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"}]
 '''
 
 from ansible.module_utils.basic import AnsibleModule
@@ -123,20 +130,25 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
     connect_to_db_via_client,
     execute_query,
     get_main_conn_kwargs,
-    get_server_version
+    get_server_version,
+    get_on_cluster_clause,
+    validate_identifier
 )
 
 executed_statements = []
+query_parameters = []
 
 
 class ClickHouseNamedCollection:
     def __init__(self, module, client, name):
         self.module = module
         self.client = client
+        validate_identifier(module, name, "collection name")
         self.name = name
         self._exists = None
         self._source = None
         self._current = None
+        self._query_parameters = {}
 
     @property
     def exists(self):
@@ -178,19 +190,6 @@ class ClickHouseNamedCollection:
                 msg=f"Passed named collection isn't sourced by SQL. Got: {source}"
             )
 
-    def fetch(self):
-        """Get named collection paramters."""
-        if not self.exists:
-            return None
-
-        query = "SELECT collection, source FROM system.named_collections WHERE name = '%s'" % self.name
-        result = execute_query(self.module, self.client, query)
-        if result:
-            if result[0][1] != 'SQL':
-                self.module.fail_json(msg="Passed named collection isn't sourced by SQL. Got: '%s'" % result[0][1])
-            return result[0][0]
-        return None
-
     def _normalize_current_collection_data(self, collection):
         """Normalize raw db output into normalized form used in module options."""
         """At this moment only support value field."""
@@ -211,9 +210,14 @@ class ClickHouseNamedCollection:
 
     def _build_list_collection(self, collection):
         parts = []
+        i = 0
         for name, content in collection.items():
+            validate_identifier(self.module, name, "collection key")
+
             for value in content.values():
-                parts.append("%s = '%s'" % (name, value))
+                parts.append(f"`{name}` = %(val_{i})s")
+                self._query_parameters[f'val_{i}'] = value
+                i += 1
         return parts
 
     def _should_skip_alter(self, collection, rewrite):
@@ -231,37 +235,40 @@ class ClickHouseNamedCollection:
     def _build_alter_query(self, collection, cluster):
         parts = self._build_list_collection(collection)
         query = f"ALTER NAMED COLLECTION `{self.name}`"
-        if cluster:
-            query += f" ON CLUSTER '{cluster}'"
+        query += get_on_cluster_clause(self.module, cluster)
+
         query += " SET " + ", ".join(parts)
         return query
 
     def create(self, collection, cluster):
         if not collection:
             self.module.fail_json(msg="Collection not passed")
-        query = "CREATE NAMED COLLECTION `%s`" % self.name
-        if cluster:
-            query += " ON CLUSTER '%s'" % cluster
+        query = f"CREATE NAMED COLLECTION `{self.name}`"
+        query += get_on_cluster_clause(self.module, cluster)
+
         query += " AS "
         parts = self._build_list_collection(collection)
         query += ", ".join(parts)
-
+        execute_kwargs = {'params': self._query_parameters}
         executed_statements.append(query)
 
-        if not self.module.check_mode:
-            execute_query(self.module, self.client, query)
+        query_parameters.append(self._query_parameters.copy())
 
+        if not self.module.check_mode:
+            execute_query(self.module, self.client, query, execute_kwargs)
         return True
 
     def drop(self, cluster):
-        query = "DROP NAMED COLLECTION `%s`" % self.name
-        if cluster:
-            query += " ON CLUSTER '%s'" % cluster
+        query = f"DROP NAMED COLLECTION `{self.name}`"
+
+        query += get_on_cluster_clause(self.module, cluster)
 
         executed_statements.append(query)
 
+        query_parameters.append(self._query_parameters.copy())
+        execute_kwargs = {'params': self._query_parameters}
         if not self.module.check_mode:
-            execute_query(self.module, self.client, query)
+            execute_query(self.module, self.client, query, execute_kwargs)
 
         return True
 
@@ -270,13 +277,12 @@ class ClickHouseNamedCollection:
             self.module.fail_json(msg="Collection not passed")
         if self._should_skip_alter(collection, rewrite):
             return False
-
         query = self._build_alter_query(collection, cluster)
-
         executed_statements.append(query)
-
+        query_parameters.append(self._query_parameters.copy())
+        execute_kwargs = {'params': self._query_parameters}
         if not self.module.check_mode:
-            execute_query(self.module, self.client, query)
+            execute_query(self.module, self.client, query, execute_kwargs)
         return True
 
     def _normalize_collection_input(self, collection_list):
@@ -369,7 +375,7 @@ def main():
     client.disconnect_connection()
 
     # Users will get this in JSON output after execution
-    module.exit_json(changed=changed, executed_statements=executed_statements)
+    module.exit_json(changed=changed, executed_statements=executed_statements, query_parameters=query_parameters)
 
 
 if __name__ == "__main__":

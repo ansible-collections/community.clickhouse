@@ -1,0 +1,2 @@
+minor_changes:
+  - clickhouse_named_collection - improve SQL injection protection with parameterized queries, identifier validation, and new `query_parameters` output.
