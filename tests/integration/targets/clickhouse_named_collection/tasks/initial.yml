@@ -46,7 +46,13 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["CREATE NAMED COLLECTION `test_col` AS user = '********', password = '********'"]
+    - result.executed_statements == ["CREATE NAMED COLLECTION `test_col` AS `user` = %(val_0)s, `password` = %(val_1)s"]
+    - >
+        result.query_parameters == 
+        [{
+          "val_0": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER",
+          "val_1": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
+        }]
 
 - name: Check the collection was not created in check mode
   register: result
@@ -72,7 +78,13 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["CREATE NAMED COLLECTION `test_col` AS user = '********', password = '********'"]
+    - result.executed_statements == ["CREATE NAMED COLLECTION `test_col` AS `user` = %(val_0)s, `password` = %(val_1)s"]
+    - >
+        result.query_parameters == 
+        [{
+          "val_0": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER",
+          "val_1": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
+        }]
 
 - name: Check the collection was not created in check mode
   register: result
@@ -100,6 +112,7 @@
     that:
     - result is not changed
     - result.executed_statements == []
+    - result.query_parameters == []
 
 - name: Alter named collection in real mode - hidden
   community.clickhouse.clickhouse_named_collection:
@@ -132,7 +145,13 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["ALTER NAMED COLLECTION `test_col` SET user = '********', password = '********'"]
+    - result.executed_statements == ["ALTER NAMED COLLECTION `test_col` SET `user` = %(val_0)s, `password` = %(val_1)s"]
+    - >
+      result.query_parameters == 
+      [{
+        "val_0": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER",
+        "val_1": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
+      }]
 
 - name: Check the collection was altered
   register: result
@@ -161,7 +180,13 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["ALTER NAMED COLLECTION `test_col` SET user = '********', password = '********'"]
+    - result.executed_statements == ["ALTER NAMED COLLECTION `test_col` SET `user` = %(val_0)s, `password` = %(val_1)s"]
+    - >
+      result.query_parameters == 
+      [{
+        "val_0": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER",
+        "val_1": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
+      }]
 
 - name: Check the collection was altered
   register: result
@@ -191,6 +216,7 @@
     that:
     - result is not changed
     - result.executed_statements == []
+    - result.query_parameters == []
 
 - name: Drop named collection in check mode
   community.clickhouse.clickhouse_named_collection:
@@ -198,11 +224,13 @@
     state: absent
   check_mode: true
   register: result
+
 - name: Check the return values
   ansible.builtin.assert:
     that:
     - result is changed
     - result.executed_statements == ["DROP NAMED COLLECTION `test_col`"]
+    - result.query_parameters == [{}]
 
 - name: Check the collection was not dropped in check mode
   register: result
@@ -225,6 +253,7 @@
     that:
     - result is changed
     - result.executed_statements == ["DROP NAMED COLLECTION `test_col`"]
+    - result.query_parameters == [{}]
 
 - name: Check the collection was dropped in real mode
   register: result
@@ -247,6 +276,88 @@
     that:
     - result is not changed
     - result.executed_statements == []
+
+- name: Test against malicious arguments
+  community.clickhouse.clickhouse_named_collection:
+    name: test_col
+    collection:
+      - name: "{{ __col.name }}"
+        value: "{{ __col.value }}"
+  check_mode: true
+  ignore_errors: true
+  register: result
+  loop:
+    - name: "test; DROP TABLE users; --"
+      value: alice
+    - name: "test`; DROP TABLE users; --"
+      value: alice
+    - name: "test' OR '1'='1"
+      value: alice
+    - name: 'test"; DROP TABLE users; --'
+      value: alice
+    - name: "123_invalid"
+      value: alice
+    - name: "test.test"
+      value: alice
+  loop_control:
+    loop_var: __col
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - __item.failed is true
+      - '"Invalid collection key" in __item.msg'
+    success_msg: "{{ __item.msg }}"
+    quiet: true
+  loop: "{{ result.results }}"
+  loop_control:
+    loop_var: __item
+    label: "{{ __item.__col }}"
+
+- name: Create malicious collection in real mode
+  community.clickhouse.clickhouse_named_collection:
+    name: test_col
+    collection:
+      - name: user
+        value: alice; drop database system
+      - name: password
+        value: "pass\";drop database system"
+      - name: host
+        value: "host';drop database system"
+      - name: port
+        value: "host`;drop database system"
+    login_user: test_user
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+
+- name: Fetch collection content
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT collection FROM system.named_collections WHERE name = 'test_col'"
+    login_user: test_user
+
+- name: Verify content of tested collection
+  ansible.builtin.assert:
+    that:
+    - >-
+      result.result ==
+        [[
+          {
+              "host": "host';drop database system",
+              "password": "pass\";drop database system",
+              "port": "host`;drop database system",
+              "user": "alice; drop database system"
+          }
+        ]]
+
+- name: Drop tested named collection
+  community.clickhouse.clickhouse_named_collection:
+    name: test_col
+    state: absent
 
 - name: Drop test_user used to manage named collections
   community.clickhouse.clickhouse_user:

@@ -18,6 +18,12 @@ def get_executed_query(mock_execute):
     return args[2] if len(args) > 2 else kwargs.get('query')
 
 
+def get_query_params(mock_execute):
+    # Assumes execute_query(module, client, query, params)
+    args, kwargs = mock_execute.call_args
+    return args[3] if len(args) > 2 else kwargs.get('params')
+
+
 @pytest.fixture
 def mock_execute(mocker):
     return mocker.patch(
@@ -135,17 +141,17 @@ def test_should_skip_alter_not_equal(collection):
 
 def test_build_alter_query_single(collection):
     query = collection._build_alter_query({'user': {'value': 'alice'}}, None)
-    assert query == "ALTER NAMED COLLECTION `test_collection` SET user = 'alice'"
+    assert query == "ALTER NAMED COLLECTION `test_collection` SET `user` = %(val_0)s"
 
 
 def test_build_alter_query_double(collection):
     query = collection._build_alter_query({'user': {'value': 'alice'}, 'password': {'value': 'test_pass'}}, None)
-    assert query == "ALTER NAMED COLLECTION `test_collection` SET user = 'alice', password = 'test_pass'"
+    assert query == "ALTER NAMED COLLECTION `test_collection` SET `user` = %(val_0)s, `password` = %(val_1)s"
 
 
 def test_build_alter_query_double_plus_cluster(collection):
     query = collection._build_alter_query({'user': {'value': 'alice'}, 'password': {'value': 'test_pass'}}, 'north')
-    assert query == "ALTER NAMED COLLECTION `test_collection` ON CLUSTER 'north' SET user = 'alice', password = 'test_pass'"
+    assert query == "ALTER NAMED COLLECTION `test_collection` ON CLUSTER `north` SET `user` = %(val_0)s, `password` = %(val_1)s"
 
 
 def test_create_collection_empty_params(collection):
@@ -164,25 +170,31 @@ def test_create_collection_with_one_param(collection, mock_execute):
     collection._exist = False
     changed = collection.create({'user': {'value': 'alice'}}, None)
     actuall_query = get_executed_query(mock_execute)
+    query_params = get_query_params(mock_execute)
     assert changed is True
     assert mock_execute.call_count == 1
-    assert actuall_query == "CREATE NAMED COLLECTION `test_collection` AS user = 'alice'"
+    assert actuall_query == "CREATE NAMED COLLECTION `test_collection` AS `user` = %(val_0)s"
+    assert query_params == {'params': {'val_0': 'alice'}}
 
 
 def test_create_collection_with_two_param(collection, mock_execute):
     changed = collection.create({'user': {'value': 'alice'}, 'password': {'value': 'test_pass'}}, None)
     actuall_query = get_executed_query(mock_execute)
+    query_params = get_query_params(mock_execute)
     assert changed is True
     assert mock_execute.call_count == 1
-    assert actuall_query == "CREATE NAMED COLLECTION `test_collection` AS user = 'alice', password = 'test_pass'"
+    assert actuall_query == "CREATE NAMED COLLECTION `test_collection` AS `user` = %(val_0)s, `password` = %(val_1)s"
+    assert query_params == {'params': {'val_0': 'alice', 'val_1': 'test_pass'}}
 
 
 def test_create_collection_with_three_param_plus_cluster(collection, mock_execute):
     changed = collection.create({'user': {'value': 'alice'}, 'password': {'value': 'test_pass'}, 'host': {'value': 'host1'}}, 'north')
     actuall_query = get_executed_query(mock_execute)
+    query_params = get_query_params(mock_execute)
     assert changed is True
     assert mock_execute.call_count == 1
-    assert actuall_query == "CREATE NAMED COLLECTION `test_collection` ON CLUSTER 'north' AS user = 'alice', password = 'test_pass', host = 'host1'"
+    assert actuall_query == "CREATE NAMED COLLECTION `test_collection` ON CLUSTER `north` AS `user` = %(val_0)s, `password` = %(val_1)s, `host` = %(val_2)s"
+    assert query_params == {'params': {'val_0': 'alice', 'val_1': 'test_pass', 'val_2': 'host1'}}
 
 
 def test_alter_collection_empty_params(collection):
@@ -205,9 +217,11 @@ def test_alter_collection_no_hidden_with_one_param(collection, mock_execute):
     collection._current = {'user': {'value': 'alice'}, 'password': {'value': 'test_pass'}}
     changed = collection.alter({'user': {'value': 'alice'}}, None, False)
     actuall_query = get_executed_query(mock_execute)
+    query_params = get_query_params(mock_execute)
     assert changed is True
     assert mock_execute.call_count == 1
-    assert actuall_query == "ALTER NAMED COLLECTION `test_collection` SET user = 'alice'"
+    assert actuall_query == "ALTER NAMED COLLECTION `test_collection` SET `user` = %(val_0)s"
+    assert query_params == {'params': {'val_0': 'alice'}}
 
 
 def test_alter_collection_no_hidden_with_two_param(collection, mock_execute):
@@ -216,9 +230,11 @@ def test_alter_collection_no_hidden_with_two_param(collection, mock_execute):
     collection._current = {'user': {'value': 'alice'}, 'password': {'value': 'test_pass'}}
     changed = collection.alter({'user': {'value': 'alice'}, 'password': {'value': 'test_pass2'}}, None, False)
     actuall_query = get_executed_query(mock_execute)
+    query_params = get_query_params(mock_execute)
     assert changed is True
     assert mock_execute.call_count == 1
-    assert actuall_query == "ALTER NAMED COLLECTION `test_collection` SET user = 'alice', password = 'test_pass2'"
+    assert actuall_query == "ALTER NAMED COLLECTION `test_collection` SET `user` = %(val_0)s, `password` = %(val_1)s"
+    assert query_params == {'params': {'val_0': 'alice', 'val_1': 'test_pass2'}}
 
 
 def test_alter_collection_no_hidden_no_changes(collection, mock_execute):
@@ -245,9 +261,11 @@ def test_alter_collection_hidden_rewrite(collection, mock_execute):
     collection._current = {'user': {'value': '[HIDDEN]'}, 'password': {'value': '[HIDDEN]'}}
     changed = collection.alter({'user': {'value': 'alice'}, 'password': {'value': 'test_pass'}}, None, True)
     actuall_query = get_executed_query(mock_execute)
+    query_params = get_query_params(mock_execute)
     assert changed is True
     assert mock_execute.call_count == 1
-    assert actuall_query == "ALTER NAMED COLLECTION `test_collection` SET user = 'alice', password = 'test_pass'"
+    assert actuall_query == "ALTER NAMED COLLECTION `test_collection` SET `user` = %(val_0)s, `password` = %(val_1)s"
+    assert query_params == {'params': {'val_0': 'alice', 'val_1': 'test_pass'}}
 
 
 def test_drop_collection(collection, mock_execute):
@@ -256,6 +274,8 @@ def test_drop_collection(collection, mock_execute):
     collection._current = {'user': {'value': '[HIDDEN]'}, 'password': {'value': '[HIDDEN]'}}
     changed = collection.drop(None)
     actuall_query = get_executed_query(mock_execute)
+    query_params = get_query_params(mock_execute)
     assert changed is True
     assert mock_execute.call_count == 1
     assert actuall_query == "DROP NAMED COLLECTION `test_collection`"
+    assert query_params == {'params': {}}
