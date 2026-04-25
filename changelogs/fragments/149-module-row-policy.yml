@@ -1,0 +1,2 @@
+major_changes:
+  - clickhouse_row_policy - add new module to manage ClickHouse row policies. (#149)

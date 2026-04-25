@@ -1,0 +1,282 @@
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+- name: Create list of test cases for clickhouse_row_policy module
+  ansible.builtin.set_fact:
+    test_cases:
+      - name: test_policy1
+        database: test_db
+        table: test_table
+        using: b = 1
+        restrictive: false
+        apply_to: ['test_role']
+        __expected_query: "CREATE ROW POLICY `test_policy1` ON `test_db`.`test_table` USING b = 1 AS PERMISSIVE TO `test_role`"
+        __expected_alter: "ALTER ROW POLICY `test_policy1` ON `test_db`.`test_table` USING b = 1 AS PERMISSIVE TO `test_role`"
+        __expected_drop: "DROP ROW POLICY `test_policy1` ON `test_db`.`test_table`"
+
+      - name: test_policy2
+        database: test_db
+        table: test_table
+        using: b = 1
+        restrictive: true
+        apply_to: ['test_role']
+        __expected_query: "CREATE ROW POLICY `test_policy2` ON `test_db`.`test_table` USING b = 1 AS RESTRICTIVE TO `test_role`"
+        __expected_alter: "ALTER ROW POLICY `test_policy2` ON `test_db`.`test_table` USING b = 1 AS RESTRICTIVE TO `test_role`"
+        __expected_drop: "DROP ROW POLICY `test_policy2` ON `test_db`.`test_table`"
+
+      - name: test_policy3
+        database: test_db
+        table: test_table
+        using: b = 1
+        restrictive: false
+        apply_to_all: true
+        apply_to_except: []
+        __expected_query: "CREATE ROW POLICY `test_policy3` ON `test_db`.`test_table` USING b = 1 AS PERMISSIVE TO ALL"
+        __expected_alter: "ALTER ROW POLICY `test_policy3` ON `test_db`.`test_table` USING b = 1 AS PERMISSIVE TO ALL"
+        __expected_drop: "DROP ROW POLICY `test_policy3` ON `test_db`.`test_table`"
+
+      - name: test_policy4
+        database: test_db
+        table: test_table
+        using: b = 1
+        restrictive: false
+        apply_to_all: true
+        apply_to_except: ['test_role', 'test_user']
+        __expected_query: "CREATE ROW POLICY `test_policy4` ON `test_db`.`test_table` USING b = 1 AS PERMISSIVE TO ALL EXCEPT `test_role`, `test_user`"
+        __expected_alter: "ALTER ROW POLICY `test_policy4` ON `test_db`.`test_table` USING b = 1 AS PERMISSIVE TO ALL EXCEPT `test_role`, `test_user`"
+        __expected_drop: "DROP ROW POLICY `test_policy4` ON `test_db`.`test_table`"
+
+      - name: test_policy5
+        database: test_db
+        table: test_table
+        using: (((b>=1) AND (c<=2))OR 1 OR 2)OR 3
+        restrictive: true
+        apply_to: ['test_role']
+        __expected_query: "CREATE ROW POLICY `test_policy5` ON `test_db`.`test_table` USING (((b >= 1) AND (c <= 2)) OR 1 OR 2) OR 3 AS RESTRICTIVE TO `test_role`"
+        __expected_alter: "ALTER ROW POLICY `test_policy5` ON `test_db`.`test_table` USING (((b >= 1) AND (c <= 2)) OR 1 OR 2) OR 3 AS RESTRICTIVE TO `test_role`"
+        __expected_drop: "DROP ROW POLICY `test_policy5` ON `test_db`.`test_table`"
+
+      - name: test_policy6
+        database: test_db
+        table: test_table
+        using: b = 1
+        restrictive: false
+        apply_to_all: true
+        apply_to_except: ['test_role']
+        __expected_query: "CREATE ROW POLICY `test_policy6` ON `test_db`.`test_table` USING b = 1 AS PERMISSIVE TO ALL EXCEPT `test_role`"
+        __expected_alter: "ALTER ROW POLICY `test_policy6` ON `test_db`.`test_table` USING b = 1 AS PERMISSIVE TO ALL EXCEPT `test_role`"
+        __expected_drop: "DROP ROW POLICY `test_policy6` ON `test_db`.`test_table`"
+
+      - name: test_policy7
+        database: test_db
+        table: test_table
+        using: b=1 or a=1
+        restrictive: false
+        apply_to_all: true
+        apply_to_except: ['test_role']
+        __expected_query: "CREATE ROW POLICY `test_policy7` ON `test_db`.`test_table` USING (b = 1) OR (a = 1) AS PERMISSIVE TO ALL EXCEPT `test_role`"
+        __expected_alter: "ALTER ROW POLICY `test_policy7` ON `test_db`.`test_table` USING (b = 1) OR (a = 1) AS PERMISSIVE TO ALL EXCEPT `test_role`"
+        __expected_drop: "DROP ROW POLICY `test_policy7` ON `test_db`.`test_table`"
+
+      - name: test_policy8
+        database: test_db
+        using: b=1
+        restrictive: false
+        apply_to_all: true
+        apply_to_except: ['test_role']
+        __expected_query: "CREATE ROW POLICY `test_policy8` ON `test_db`.* USING b = 1 AS PERMISSIVE TO ALL EXCEPT `test_role`"
+        __expected_alter: "ALTER ROW POLICY `test_policy8` ON `test_db`.* USING b = 1 AS PERMISSIVE TO ALL EXCEPT `test_role`"
+        __expected_drop: "DROP ROW POLICY `test_policy8` ON `test_db`.*"
+
+- name: Create test roles for tests
+  community.clickhouse.clickhouse_role:
+    name: "{{ item }}"
+  loop:
+    - test_role
+    - test_role2
+
+- name: Create test users for tests
+  community.clickhouse.clickhouse_user:
+    name: "{{ item }}"
+  loop:
+    - test_user
+    - test_user2
+
+- name: Create row policy in check mode
+  community.clickhouse.clickhouse_row_policy:
+    name: test_policy
+    database: test_db
+    table: test_table
+    using: b = 1
+    apply_to:
+      - test_role
+  register: result
+  check_mode: true
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["CREATE ROW POLICY `test_policy` ON `test_db`.`test_table` USING b = 1 AS PERMISSIVE TO `test_role`"]
+
+- name: Check the row policy is not created
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.row_policies WHERE name = %(name)s AND database = %(database)s AND table = %(table)s"
+    execute_kwargs:
+      params:
+        name: test_policy
+        database: test_db
+        table: test_table
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.result == []
+
+- name: Create row policy in real mode
+  community.clickhouse.clickhouse_row_policy:
+    name: test_policy
+    database: test_db
+    table: test_table
+    using: b = 1
+    apply_to:
+      - test_role
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["CREATE ROW POLICY `test_policy` ON `test_db`.`test_table` USING b = 1 AS PERMISSIVE TO `test_role`"]
+
+- name: Check the row policy is created
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT select_filter, is_restrictive, apply_to_all, apply_to_list, apply_to_except FROM system.row_policies WHERE short_name = %(name)s AND database = %(database)s AND table = %(table)s"
+    execute_kwargs:
+      params:
+        name: test_policy
+        database: test_db
+        table: test_table
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.result[0][0] == 'b = 1'
+      - result.result[0][1] == 0
+      - result.result[0][2] == 0
+      - result.result[0][3] == ['test_role']
+      - result.result[0][4] == []
+
+- name: Create row policy in real mode - idempotency
+  community.clickhouse.clickhouse_row_policy:
+    name: test_policy
+    database: test_db
+    table: test_table
+    using: b = 1
+    apply_to:
+      - test_role
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == false
+      - result.executed_statements == []
+
+- name: Drop row policy in check mode
+  community.clickhouse.clickhouse_row_policy:
+    name: test_policy
+    database: test_db
+    table: test_table
+    state: absent
+  check_mode: true
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["DROP ROW POLICY `test_policy` ON `test_db`.`test_table`"]
+
+- name: Check the row policy is not dropped
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.row_policies WHERE short_name = %(name)s AND database = %(database)s AND table = %(table)s"
+    execute_kwargs:
+      params:
+        name: test_policy
+        database: test_db
+        table: test_table
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.result[0] == [1]
+
+- name: Drop row policy in real mode
+  community.clickhouse.clickhouse_row_policy:
+    name: test_policy
+    database: test_db
+    table: test_table
+    state: absent
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["DROP ROW POLICY `test_policy` ON `test_db`.`test_table`"]
+
+- name: Check the row policy is dropped
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.row_policies WHERE short_name = %(name)s AND database = %(database)s AND table = %(table)s"
+    execute_kwargs:
+      params:
+        name: test_policy
+        database: test_db
+        table: test_table
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.result == []
+
+- name: Iterate over test cases
+  ansible.builtin.include_tasks: test_sequence.yml
+  vars:
+    _test_case: "{{ _item }}"
+  loop: "{{ test_cases }}"
+  loop_control:
+    label: "{{ _item.name }}"
+    loop_var: _item
+
+- name: Drop test role
+  community.clickhouse.clickhouse_role:
+    name: "{{ item }}"
+    state: absent
+  loop:
+    - test_role
+    - test_role2
+
+- name: Drop test user
+  community.clickhouse.clickhouse_user:
+    name: "{{ item }}"
+    state: absent
+  loop:
+    - test_user
+    - test_user2
+
+- name: Check the row policies are dropped
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.row_policies"
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.result == []
