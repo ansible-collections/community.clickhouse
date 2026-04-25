@@ -145,7 +145,6 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
 )
 
 executed_statements = []
-query_parameters = []
 
 
 class ClickHouseRowPolicy:
@@ -203,6 +202,8 @@ class ClickHouseRowPolicy:
         if self._exists is not None:
             return
 
+        # In ClickHouse * is as empty string. We can't pass self.table.
+        table_value = '' if self.table == '*' else self.table
         query = """SELECT
                         select_filter,
                         is_restrictive,
@@ -214,7 +215,7 @@ class ClickHouseRowPolicy:
                         short_name = %(short_name)s
                         AND database = %(database)s
                         AND table = %(table)s"""
-        query_parameters = {'short_name': self.name, 'database': self.database, 'table': self.table}
+        query_parameters = {'short_name': self.name, 'database': self.database, 'table': table_value}
         result = execute_query(self.module, self.client, query, {'params': query_parameters})
 
         if not result:
@@ -243,13 +244,37 @@ class ClickHouseRowPolicy:
             result += ", ".join(quoted_except)
         return result
 
+    def _get_restrictive_clause(self, restrictive):
+        if restrictive:
+            return " AS RESTRICTIVE"
+        else:
+            return " AS PERMISSIVE"
+
     def _normalize_using_parameter(self, input):
         """Best get what DB will create. Complex condition can easily brake idempotency."""
         query = "SELECT formatQuerySingleLine(CONCAT('SELECT 1 FROM _to_normalize WHERE ', %(cond)s))"
         execute_kwargs = {'params': {'cond': input}}
         result = execute_query(self.module, self.client, query, execute_kwargs)
-        using = result[0].split(" WHERE ")[1]
+        using = result[0][0].split(" WHERE ")[1]
         return using
+
+    def _compare_apply_to(self, apply_to, apply_to_all, apply_to_except):
+        if self.apply_to_all != apply_to_all:
+            return False
+        if self.apply_to_all and set(self.apply_to_except) != set(apply_to_except):
+            return False
+        if not self.apply_to_all and set(self.apply_to_list) != set(apply_to):
+            return False
+        return True
+
+    def _needs_update(self, using, restrictive, apply_to, apply_to_all, apply_to_except):
+        if self.select_filter != using:
+            return True
+        if self.is_restrictive != restrictive:
+            return True
+        if not self._compare_apply_to(apply_to, apply_to_all, apply_to_except):
+            return True
+        return False
 
     def create(self, using, restrictive, apply_to, apply_to_all, apply_to_except, cluster):
         query = f"CREATE ROW POLICY `{self.name}`"
@@ -259,10 +284,27 @@ class ClickHouseRowPolicy:
         query += get_on_cluster_clause(self.module, cluster)
         using_normalized = self._normalize_using_parameter(using)
         query += f" USING {using_normalized}"
-        if restrictive:
-            query += " AS RESTRICTIVE"
-        else:
-            query += " AS PERMISSIVE"
+        query += self._get_restrictive_clause(restrictive)
+        query += self._build_to_clause(apply_to, apply_to_all, apply_to_except)
+
+        executed_statements.append(query)
+
+        if not self.module.check_mode:
+            execute_query(self.module, self.client, query)
+
+        return True
+
+    def alter(self, using, restrictive, apply_to, apply_to_all, apply_to_except, cluster):
+        using_normalized = self._normalize_using_parameter(using)
+        if not self._needs_update(using_normalized, restrictive, apply_to, apply_to_all, apply_to_except):
+            return False
+        query = f"ALTER ROW POLICY `{self.name}`"
+        # Target table
+        target_normalized = normalize_db_table(self.module, self.client, self.database + '.' + self.table)
+        query += f" ON {target_normalized}"
+        query += get_on_cluster_clause(self.module, cluster)
+        query += f" USING {using_normalized}"
+        query += self._get_restrictive_clause(restrictive)
         query += self._build_to_clause(apply_to, apply_to_all, apply_to_except)
 
         executed_statements.append(query)
@@ -278,47 +320,6 @@ class ClickHouseRowPolicy:
         target_normalized = normalize_db_table(self.module, self.client, self.database + '.' + self.table)
         query += f" ON {target_normalized}"
         query += get_on_cluster_clause(self.module, cluster)
-        executed_statements.append(query)
-
-        if not self.module.check_mode:
-            execute_query(self.module, self.client, query)
-
-        return True
-
-    def _compare_apply_to(self, apply_to, apply_to_all, apply_to_except):
-        if self.apply_to_all != apply_to_all:
-            return False
-        if self.apply_to_all and set(self.apply_to_except) != set(apply_to_except):
-            return False
-        if not self.apply_to_all and set(self.apply_to_list) != set(apply_to):
-            return False
-        return True
-
-    def needs_update(self, using, restrictive, apply_to, apply_to_all, apply_to_except):
-        if self.select_filter != self._normalize_using_parameter(using):
-            return True
-        if self.is_restrictive != restrictive:
-            return True
-        if not self._compare_apply_to(apply_to, apply_to_all, apply_to_except):
-            return True
-        return False
-
-    def alter(self, using, restrictive, apply_to, apply_to_all, apply_to_except, cluster):
-        if not self.needs_update(using, restrictive, apply_to, apply_to_all, apply_to_except):
-            return False
-        query = f"ALTER ROW POLICY `{self.name}`"
-        # Target table
-        target_normalized = normalize_db_table(self.module, self.client, self.database + '.' + self.table)
-        query += f" ON {target_normalized}"
-        query += get_on_cluster_clause(self.module, cluster)
-        using_normalized = self._normalize_using_parameter(using)
-        query += f" USING {using_normalized}"
-        if restrictive:
-            query += " AS RESTRICTIVE"
-        else:
-            query += " AS PERMISSIVE"
-        query += self._build_to_clause(apply_to, apply_to_all, apply_to_except)
-
         executed_statements.append(query)
 
         if not self.module.check_mode:
@@ -398,7 +399,7 @@ def main():
     client.disconnect_connection()
 
     # Users will get this in JSON output after execution
-    module.exit_json(changed=changed, executed_statements=executed_statements, query_parameters=query_parameters)
+    module.exit_json(changed=changed, executed_statements=executed_statements)
 
 
 if __name__ == "__main__":
