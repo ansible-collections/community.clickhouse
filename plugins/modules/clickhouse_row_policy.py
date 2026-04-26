@@ -255,7 +255,7 @@ class ClickHouseRowPolicy:
         query = "SELECT formatQuerySingleLine(CONCAT('SELECT 1 FROM _to_normalize WHERE ', %(cond)s))"
         execute_kwargs = {'params': {'cond': input}}
         result = execute_query(self.module, self.client, query, execute_kwargs)
-        using = result[0][0].split(" WHERE ")[1]
+        using = result[0][0].split(" WHERE ", 1)[1]
         return using
 
     def _compare_apply_to(self, apply_to, apply_to_all, apply_to_except):
