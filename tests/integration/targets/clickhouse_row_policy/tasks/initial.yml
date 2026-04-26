@@ -90,6 +90,16 @@
         __expected_alter: "ALTER ROW POLICY `test_policy8` ON `test_db`.* USING b = 1 AS PERMISSIVE TO ALL EXCEPT `test_role`"
         __expected_drop: "DROP ROW POLICY `test_policy8` ON `test_db`.*"
 
+      - name: test_policy9
+        database: test_db
+        using: b = 1
+        restrictive: false
+        apply_to_all: false
+        apply_to_except: []
+        __expected_query: "CREATE ROW POLICY `test_policy9` ON `test_db`.* USING b = 1 AS PERMISSIVE"
+        __expected_alter: "ALTER ROW POLICY `test_policy9` ON `test_db`.* USING b = 1 AS PERMISSIVE"
+        __expected_drop: "DROP ROW POLICY `test_policy9` ON `test_db`.*"
+
 - name: Create test roles for tests
   community.clickhouse.clickhouse_role:
     name: "{{ item }}"
