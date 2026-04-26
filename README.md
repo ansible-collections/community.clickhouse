@@ -51,7 +51,7 @@ ansible-galaxy collection install community.clickhouse --upgrade
 You can also install a specific version of the collection, for example, if you need to downgrade when something is broken in the latest version (please report an issue in this repository). Use the following syntax:
 
 ```bash
-ansible-galaxy collection install community.clickhouse:==0.6.0
+ansible-galaxy collection install community.clickhouse:==2.0.0
 ```
 
 See [Ansible Using collections](https://docs.ansible.com/projects/ansible/latest/user_guide/collections_using.html) for more details.
@@ -146,9 +146,12 @@ The process of decision making in this collection is based on discussing and fin
 We maintain each major release version (1.x.y, 2.x.y, ...) for two years after the next major version is released.
 
 Here is the table for the support timeline:
-- 1.x.y: to be released
+- 1.x.y: released 23-11-2025
+- 2.x.y: released 12-01-2026
 
 ## Tested with
+
+This collection is automatically tested against two latest ClickHouse LTS releases.
 
 See our [CI matrix](https://github.com/ansible-collections/community.clickhouse/blob/main/.github/workflows/ansible-test-plugins.yml) for more information about ansible-core and ClickHouse versions the collection is tested with.
 
