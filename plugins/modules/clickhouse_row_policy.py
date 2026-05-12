@@ -282,7 +282,7 @@ class ClickHouseRowPolicy:
     def create(self, using, restrictive, apply_to, apply_to_all, apply_to_except, cluster):
         query = f"CREATE ROW POLICY `{self.name}`"
         # Target table
-        target_normalized = normalize_db_table(self.module, self.client, self.database + '.' + self.table)
+        target_normalized = normalize_db_table(self.module, self.client, self.database, self.table)
         query += f" ON {target_normalized}"
         query += get_on_cluster_clause(self.module, cluster)
         using_normalized = self._normalize_using_parameter(using)
@@ -303,7 +303,7 @@ class ClickHouseRowPolicy:
             return False
         query = f"ALTER ROW POLICY `{self.name}`"
         # Target table
-        target_normalized = normalize_db_table(self.module, self.client, self.database + '.' + self.table)
+        target_normalized = normalize_db_table(self.module, self.client, self.database, self.table)
         query += f" ON {target_normalized}"
         query += get_on_cluster_clause(self.module, cluster)
         query += f" USING {using_normalized}"
@@ -320,7 +320,7 @@ class ClickHouseRowPolicy:
     def drop(self, cluster):
         query = f"DROP ROW POLICY `{self.name}`"
         # Target table
-        target_normalized = normalize_db_table(self.module, self.client, self.database + '.' + self.table)
+        target_normalized = normalize_db_table(self.module, self.client, self.database, self.table)
         query += f" ON {target_normalized}"
         query += get_on_cluster_clause(self.module, cluster)
         executed_statements.append(query)
