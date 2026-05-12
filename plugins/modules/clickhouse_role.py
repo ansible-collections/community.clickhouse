@@ -18,9 +18,10 @@ description:
   - Creates or removes a ClickHouse role.
 
 attributes:
-  check_mode:
-    description: Supports check_mode.
+  idempotent:
     support: full
+    description:
+      - O(settings) can break idempotency. To avoid this do not use deprecated C(list) settings.
 
 version_added: '0.5.0'
 

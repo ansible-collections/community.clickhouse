@@ -17,11 +17,6 @@ short_description: Creates or removes a ClickHouse quota
 description:
   - Creates or removes a ClickHouse quota.
 
-attributes:
-  check_mode:
-    description: Supports check_mode.
-    support: full
-
 version_added: '1.1.0'
 
 author:

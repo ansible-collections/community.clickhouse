@@ -20,10 +20,9 @@ description:
   - Supports config files in the YAML and XML formats.
   - Does not change server state.
 
-attributes:
-  check_mode:
-    description: Supports check_mode.
-    support: full
+extends_documentation_fragment:
+  - community.clickhouse.attributes
+  - community.clickhouse.attributes.idempotent_not_modify_state
 
 author:
   - Andrew Klychkov (@Andersson007)

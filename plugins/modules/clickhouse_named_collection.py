@@ -24,8 +24,11 @@ description:
   - Module is supported only on version 25.8 or later.
 
 attributes:
-  check_mode:
-    description: Supports check_mode.
+  idempotent:
+    description:
+      - At second run will not change anything.
+      - If O(login_user) doesn't has proper privileges module can't determine if collection differes.
+      - O(rewrite) still will be idempotent if O(login_user) has privileges to display collection content.
     support: full
 
 author:

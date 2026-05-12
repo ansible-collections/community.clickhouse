@@ -20,9 +20,11 @@ description:
     New features will be added in the future.
 
 attributes:
-  check_mode:
-    description: Supports check_mode.
-    support: full
+  idempotent:
+    support: partial
+    description:
+      - O(settings) can break idempotency. To avoid this do not use deprecated C(list) settings.
+      - O(update_password) turn off idempotency. ClickHouse doesn't expose password hashes and alter will always be executed.
 
 author:
   - Aleksandr Vagachev (@aleksvagachev)

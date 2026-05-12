@@ -18,11 +18,6 @@ description:
     L(clickhouse-driver,https://clickhouse-driver.readthedocs.io/en/latest) Client interface.
   - Does not change server state.
 
-attributes:
-  check_mode:
-    description: Supports check_mode.
-    support: full
-
 version_added: '0.1.0'
 
 author:
@@ -30,6 +25,8 @@ author:
   - Aleksandr Vagachev (@aleksvagachev)
 
 extends_documentation_fragment:
+  - community.clickhouse.attributes
+  - community.clickhouse.attributes.idempotent_not_modify_state
   - community.clickhouse.client_inst_opts
 
 options:
