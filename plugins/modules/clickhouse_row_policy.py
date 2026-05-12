@@ -22,6 +22,9 @@ attributes:
   check_mode:
     description: Supports check_mode.
     support: full
+  idempotent:
+    description: When run twice in a row outside check mode, with the same arguments, the second invocation indicates no change.
+    support: full
 
 author:
     - Rafal Kozlowski (@rkozlo) <rafalkozlowski07@gmail.com>
