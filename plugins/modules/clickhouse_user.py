@@ -23,8 +23,8 @@ attributes:
   idempotent:
     support: partial
     description:
-      - O(settings) can break idempotency. To avoid this do not use deprecated C(list) settings.
-      - O(update_password) turn off idempotency. ClickHouse doesn't expose password hashes and alter will always be executed.
+      - O(settings) can break idempotency when the deprecated C(list) format is used. Use the dictionary format instead.
+      - O(update_password) turns off idempotency because ClickHouse doesn't expose password hashes and the update will always be executed.
 
 author:
   - Aleksandr Vagachev (@aleksvagachev)
