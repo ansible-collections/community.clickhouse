@@ -66,7 +66,7 @@ options:
     version_added: '0.4.0'
 attributes:
   idempotent:
-    support: full
+    support: partial
     details:
       - Obviously O(state=rename) will fail at second run.
 '''
