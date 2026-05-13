@@ -21,7 +21,7 @@ attributes:
   idempotent:
     support: full
     description:
-      - O(settings) can break idempotency. To avoid this do not use deprecated C(list) settings.
+      - O(settings) can break idempotency when the deprecated C(list) format is used. Use the dictionary format instead.
 
 version_added: '0.5.0'
 
