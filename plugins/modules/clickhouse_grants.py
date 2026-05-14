@@ -17,12 +17,19 @@ description:
   - Grants, updates, or revokes privileges for ClickHouse users and roles.
   - This module uses the L(clickhouse-driver,https://clickhouse-driver.readthedocs.io/en/latest) client interface.
 
+attributes:
+  check_mode:
+    description: Supports check_mode.
+    support: full
+  idempotent:
+    description: At second run will not change anything.
+    support: full
+
 author:
   - Andrew Klychkov (@Andersson007)
   - Fabian Kohn (@fako1024)
 
 extends_documentation_fragment:
-  - community.clickhouse.attributes
   - community.clickhouse.client_inst_opts
 
 version_added: '0.9.0'

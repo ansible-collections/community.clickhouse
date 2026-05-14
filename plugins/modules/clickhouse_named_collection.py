@@ -24,6 +24,9 @@ description:
   - Module is supported only on version 25.8 or later.
 
 attributes:
+  check_mode:
+    description: Supports check_mode.
+    support: full
   idempotent:
     description:
       - At second run will not change anything.

@@ -19,13 +19,21 @@ description:
 
 version_added: '0.3.0'
 
+attributes:
+  check_mode:
+    description: Supports check_mode.
+    support: full
+  idempotent:
+    support: partial
+    description:
+      - Obviously O(state=rename) will fail at second run.
+
 author:
   - Andrew Klychkov (@Andersson007)
   - Aleksandr Vagachev (@aleksvagachev)
   - Rafal Kozlowski (@rkozlo)
 
 extends_documentation_fragment:
-  - community.clickhouse.attributes
   - community.clickhouse.client_inst_opts
 
 options:
@@ -64,11 +72,6 @@ options:
       - Since C(2.2.0) can change comments in existing databases (requires server 25.8 or later).
     type: str
     version_added: '0.4.0'
-attributes:
-  idempotent:
-    support: partial
-    details:
-      - Obviously O(state=rename) will fail at second run.
 '''
 
 EXAMPLES = r'''

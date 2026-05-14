@@ -18,6 +18,9 @@ description:
   - Creates or removes a ClickHouse role.
 
 attributes:
+  check_mode:
+    description: Supports check_mode.
+    support: full
   idempotent:
     support: full
     description:

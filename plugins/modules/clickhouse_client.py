@@ -25,7 +25,6 @@ author:
   - Aleks Vagachev (@aleksvagachev)
 
 extends_documentation_fragment:
-  - community.clickhouse.attributes
   - community.clickhouse.client_inst_opts
 
 notes:

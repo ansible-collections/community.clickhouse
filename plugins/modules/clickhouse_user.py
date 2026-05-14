@@ -20,6 +20,9 @@ description:
     New features will be added in the future.
 
 attributes:
+  check_mode:
+    description: Supports check_mode.
+    support: full
   idempotent:
     support: partial
     description:
