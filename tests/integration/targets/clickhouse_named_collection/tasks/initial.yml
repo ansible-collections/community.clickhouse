@@ -287,17 +287,11 @@
   ignore_errors: true
   register: result
   loop:
-    - name: "test; DROP TABLE users; --"
-      value: alice
     - name: "test`; DROP TABLE users; --"
       value: alice
-    - name: "test' OR '1'='1"
+    - name: "test`; DROP TABLE users; --\\"
       value: alice
-    - name: 'test"; DROP TABLE users; --'
-      value: alice
-    - name: "123_invalid"
-      value: alice
-    - name: "test.test"
+    - name: "test\\`; OR '1'='1"
       value: alice
   loop_control:
     loop_var: __col

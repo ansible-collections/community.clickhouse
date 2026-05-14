@@ -1,0 +1,157 @@
+- name: Create row policy {{ _test_case.name }}
+  community.clickhouse.clickhouse_row_policy:
+    name: "{{ _test_case.name | default(omit) }}"
+    database: "{{ _test_case.database | default(omit) }}"
+    table: "{{ _test_case.table | default(omit) }}"
+    using: "{{ _test_case.using | default(omit) }}"
+    restrictive: "{{ _test_case.restrictive | default(omit) }}"
+    apply_to: "{{ _test_case.apply_to | default(omit) }}"
+    apply_to_all: "{{ _test_case.apply_to_all | default(omit) }}"
+    apply_to_except: "{{ _test_case.apply_to_except | default(omit) }}"
+    cluster: "{{ _test_case.cluster | default(omit) }}"
+  register: result
+
+- name: Check the return values {{ _test_case.name }}
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements[0] == _test_case.__expected_query
+
+- name: Create row policy {{ _test_case.name }} - idempotency test 
+  community.clickhouse.clickhouse_row_policy:
+    name: "{{ _test_case.name | default(omit) }}"
+    database: "{{ _test_case.database | default(omit) }}"
+    table: "{{ _test_case.table | default(omit) }}"
+    using: "{{ _test_case.using | default(omit) }}"
+    restrictive: "{{ _test_case.restrictive | default(omit) }}"
+    apply_to: "{{ _test_case.apply_to | default(omit) }}"
+    apply_to_all: "{{ _test_case.apply_to_all | default(omit) }}"
+    apply_to_except: "{{ _test_case.apply_to_except | default(omit) }}"
+    cluster: "{{ _test_case.cluster | default(omit) }}"
+  register: result
+
+- name: Check the return values {{ _test_case.name }}
+  ansible.builtin.assert:
+    that:
+      - result.changed == false
+      - result.executed_statements == []
+
+- name: Drop row policy {{ _test_case.name }}
+  community.clickhouse.clickhouse_row_policy:
+    name: "{{ _test_case.name | default(omit) }}"
+    database: "{{ _test_case.database | default(omit) }}"
+    table: "{{ _test_case.table | default(omit) }}"
+    state: absent
+  register: result
+
+- name: Check the return values {{ _test_case.name }}
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements[0] == _test_case.__expected_drop
+
+- name: Check the row policy {{ _test_case.name }} is dropped
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.row_policies WHERE short_name = '{{ _test_case.name }}' AND database = '{{ _test_case.database }}' AND table = '{{ _test_case.table | default('') }}'"
+  register: result
+
+- name: Check the return values {{ _test_case.name }}
+  ansible.builtin.assert:
+    that:
+      - result.result == []
+
+- name: Create plain row policy {{ _test_case.name }}
+  community.clickhouse.clickhouse_row_policy:
+    name: "{{ _test_case.name | default(omit) }}"
+    database: "{{ _test_case.database | default(omit) }}"
+    table: "{{ _test_case.table | default(omit) }}"
+    using: b = b
+
+- name: Check the return values {{ _test_case.name }}
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+
+- name: Alter row policy {{ _test_case.name }}
+  community.clickhouse.clickhouse_row_policy:
+    name: "{{ _test_case.name | default(omit) }}"
+    database: "{{ _test_case.database | default(omit) }}"
+    table: "{{ _test_case.table | default(omit) }}"
+    using: "{{ _test_case.using | default(omit) }}"
+    restrictive: "{{ _test_case.restrictive | default(omit) }}"
+    apply_to: "{{ _test_case.apply_to | default(omit) }}"
+    apply_to_all: "{{ _test_case.apply_to_all | default(omit) }}"
+    apply_to_except: "{{ _test_case.apply_to_except | default(omit) }}"
+    cluster: "{{ _test_case.cluster | default(omit) }}"
+  register: result
+
+- name: Check the return values {{ _test_case.name }}
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements[0] == _test_case.__expected_alter
+
+- name: Alter row policy {{ _test_case.name }} - idempotency test
+  community.clickhouse.clickhouse_row_policy:
+    name: "{{ _test_case.name | default(omit) }}"
+    database: "{{ _test_case.database | default(omit) }}"
+    table: "{{ _test_case.table | default(omit) }}"
+    using: "{{ _test_case.using | default(omit) }}"
+    restrictive: "{{ _test_case.restrictive | default(omit) }}"
+    apply_to: "{{ _test_case.apply_to | default(omit) }}"
+    apply_to_all: "{{ _test_case.apply_to_all | default(omit) }}"
+    apply_to_except: "{{ _test_case.apply_to_except | default(omit) }}"
+    cluster: "{{ _test_case.cluster | default(omit) }}"
+  register: result
+
+- name: Check the return values {{ _test_case.name }}
+  ansible.builtin.assert:
+    that:
+      - result.changed == false
+      - result.executed_statements == []
+
+- name: Compare values in ClickHouse with passed values {{ _test_case.name }}
+  block:
+    - name: Fetch created row policy {{ _test_case.name }}
+      community.clickhouse.clickhouse_client:
+        execute: "SELECT select_filter, is_restrictive, apply_to_list, apply_to_all, apply_to_except FROM system.row_policies WHERE short_name = %(name)s AND database = %(database)s AND table = %(table)s"
+        execute_kwargs:
+          params:
+            name: "{{ _test_case.name }}"
+            database: "{{ _test_case.database }}"
+            table: "{{ _test_case.table | default('') }}"
+      register: result
+
+    - name: Fetch `using` parameter for assertion {{ _test_case.name }}
+      community.clickhouse.clickhouse_client:
+        execute: "SELECT formatQuerySingleLine(CONCAT('SELECT 1 FROM _to_normalize WHERE ', %(select_filter)s))"
+        execute_kwargs:
+          params:
+            select_filter: "{{ _test_case.using }}"
+      when: _test_case.using is defined
+      register: result_using
+    
+    - debug:
+        var: result_using
+    
+    - name: Prepare `using` parameter for assertion {{ _test_case.name }}
+      set_fact:
+        _using_reformatted: "{{ result_using.result[0][0] | split('WHERE ') | last }}"
+      when: _test_case.using is defined
+    
+    - name: Assert parameters against db values {{ _test_case.name }}
+      ansible.builtin.assert:
+        that:
+          - result.result[0][0] == _using_reformatted | default('')
+          - result.result[0][1] == _test_case.restrictive | default(0)
+          - result.result[0][2] == _test_case.apply_to | default([])
+          - result.result[0][3] == _test_case.apply_to_all | default(0)
+          - result.result[0][4] == _test_case.apply_to_except | default([])
+
+- name: Drop row policy {{ _test_case.name }}
+  community.clickhouse.clickhouse_row_policy:
+    name: "{{ _test_case.name | default(omit) }}"
+    database: "{{ _test_case.database | default(omit) }}"
+    table: "{{ _test_case.table | default(omit) }}"
+    state: absent
+  register: result
