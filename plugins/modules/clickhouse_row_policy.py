@@ -32,7 +32,7 @@ author:
 extends_documentation_fragment:
   - community.clickhouse.client_inst_opts
 
-version_added: "2.3.0"
+version_added: "2.2.0"
 
 options:
   state:
