@@ -10,7 +10,8 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
     version_clickhouse_driver,
     client_common_argument_spec,
     get_main_conn_kwargs,
-    validate_identifier
+    validate_identifier,
+    normalize_db_table
 )
 
 REASON = "The clickhouse_driver module is not installed"
@@ -89,13 +90,47 @@ def test_check_clickhouse_driver():
     assert result is None or "clickhouse_driver" in result
 
 
+@pytest.mark.parametrize("table,expected", [
+    ("table", "`current_db`.`table`"),
+    ("_table", "`current_db`.`_table`"),
+])
+def test_normalize_db_table_with_db_call(mocker, table, expected):
+    mock_module = mocker.MagicMock()
+    mock_module.fail_json = mocker.MagicMock()
+    mock_client = mocker.MagicMock()
+    mock_execute_query = mocker.patch("ansible_collections.community.clickhouse.plugins.module_utils.clickhouse.execute_query",
+                                      return_value=[('current_db',)])
+
+    result = normalize_db_table(mock_module, mock_client, None, table)
+
+    assert result == expected
+    mock_execute_query.assert_called_once()
+
+
+@pytest.mark.parametrize("database,table,expected", [
+    ("db", "tab", "`db`.`tab`"),
+    ("db", "*", "`db`.*"),
+    ("_db", "tab", "`_db`.`tab`"),
+])
+def test_normalize_db_table_without_db_call(mocker, database, table, expected):
+    mock_module = mocker.MagicMock()
+    mock_module.fail_json = mocker.MagicMock()
+    mock_client = mocker.MagicMock()
+    mock_execute_query = mocker.patch("ansible_collections.community.clickhouse.plugins.module_utils.clickhouse.execute_query",
+                                      return_value=[('current_db',)])
+
+    result = normalize_db_table(mock_module, mock_client, database, table)
+
+    assert result == expected
+    mock_execute_query.assert_not_called()
+
+
 @pytest.mark.parametrize("malicious_name", [
-    "test; DROP TABLE users; --",
+    "test; DROP TABLE users; --\\",
     "test`; DROP TABLE users; --",
-    "test' OR '1'='1",
-    'test"; DROP TABLE users; --',
-    "123_test",
-    "test.test",
+    "test` OR '1'='1",
+    'test"; DROP TABLE users; --\\',
+    "test\\.test",
     "`test`",
     "test`collection",
 ])
@@ -128,7 +163,8 @@ def test_validate_function_with_empty_name(mocker):
     "test_name",
     "test_name1",
     "test1",
-    "test123"
+    "test123",
+    "test-table"
 ])
 def test_validate_function_with_correct_names(mocker, correct_name):
     mock_module = mocker.MagicMock()
@@ -145,7 +181,7 @@ def test_validate_identifier_with_custom_context(mocker):
     mock_module = mocker.MagicMock()
     mock_module.fail_json = mocker.MagicMock()
 
-    validate_identifier(mock_module, "invalid!", "cluster name")
+    validate_identifier(mock_module, "invalid!`", "cluster name")
 
     mock_module.fail_json.assert_called_once()
     call_msg = mock_module.fail_json.call_args[1]['msg']

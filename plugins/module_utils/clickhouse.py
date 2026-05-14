@@ -24,7 +24,7 @@ try:
 except ImportError:
     HAS_DB_DRIVER = False
 
-VALID_IDENTIFIER_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+VALID_IDENTIFIER_PATTERN = re.compile(r'^[^`\\]+$')
 
 
 def client_common_argument_spec():
@@ -168,3 +168,24 @@ def validate_identifier(module, name, context="identifier"):
     elif not VALID_IDENTIFIER_PATTERN.match(name):
         module.fail_json(msg=f"Invalid {context}: '{name}'")
     return name
+
+
+def normalize_db_table(module, client, database, table):
+    """We want to make sure target is correct.
+    When passed without db, default for session will apply and it can break idempotency.
+    Ex:
+        db, table → `db`.`table`
+        None, table    → `default`.`table`
+        db, *     → `db`.*
+        db, None → `db`.*
+    """
+    if not database:
+        query = "SELECT currentDatabase()"
+        database = execute_query(module, client, query)[0][0]
+    else:
+        validate_identifier(module, database)
+    if not table or table == '*':
+        return f"`{database}`.*"
+    else:
+        validate_identifier(module, table)
+    return f"`{database}`.`{table}`"
