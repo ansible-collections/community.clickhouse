@@ -152,7 +152,7 @@ Here is the table for the support timeline:
 
 ## Tested with
 
-This collection is automatically tested against two latest ClickHouse LTS releases.
+This collection is automatically tested against ClickHouse LTS releases from the last two years.
 
 See our [CI matrix](https://github.com/ansible-collections/community.clickhouse/blob/main/.github/workflows/ansible-test-plugins.yml) for more information about ansible-core and ClickHouse versions the collection is tested with.
 
