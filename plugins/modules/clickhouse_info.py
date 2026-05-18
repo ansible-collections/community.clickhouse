@@ -22,6 +22,9 @@ attributes:
   check_mode:
     description: Supports check_mode.
     support: full
+  idempotent:
+    description: Module only reads info. Always returns changed=false.
+    support: full
 
 version_added: '0.1.0'
 

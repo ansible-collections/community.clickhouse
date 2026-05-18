@@ -24,6 +24,9 @@ attributes:
   check_mode:
     description: Supports check_mode.
     support: full
+  idempotent:
+    description: Module only reads info. Always returns changed=false.
+    support: full
 
 author:
   - Andrew Klychkov (@Andersson007)

@@ -23,6 +23,11 @@ attributes:
   check_mode:
     description: Supports check_mode.
     support: full
+  idempotent:
+    support: partial
+    description:
+      - O(settings) can break idempotency when the deprecated C(list) format is used. Use the dictionary format instead.
+      - O(update_password) turns off idempotency because ClickHouse doesn't expose password hashes and the update will always be executed.
 
 author:
   - Aleksandr Vagachev (@aleksvagachev)

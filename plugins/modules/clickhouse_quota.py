@@ -21,6 +21,9 @@ attributes:
   check_mode:
     description: Supports check_mode.
     support: full
+  idempotent:
+    description: At second run will not change anything.
+    support: full
 
 version_added: '1.1.0'
 

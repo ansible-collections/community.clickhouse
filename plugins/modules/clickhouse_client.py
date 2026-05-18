@@ -52,6 +52,15 @@ options:
     type: dict
     default: {}
     version_added: '0.5.0'
+attributes:
+  idempotent:
+    support: none
+    description:
+      - Module always will return changed=true.
+  check_mode:
+    support: none
+    description:
+      - Module executes arbitary query. Check mode not supported.
 '''
 
 EXAMPLES = r'''

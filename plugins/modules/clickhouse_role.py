@@ -21,6 +21,10 @@ attributes:
   check_mode:
     description: Supports check_mode.
     support: full
+  idempotent:
+    support: full
+    description:
+      - O(settings) can break idempotency when the deprecated C(list) format is used. Use the dictionary format instead.
 
 version_added: '0.5.0'
 

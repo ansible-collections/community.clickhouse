@@ -17,12 +17,16 @@ description:
   - Creates or removes a ClickHouse database using the
     L(clickhouse-driver,https://clickhouse-driver.readthedocs.io/en/latest) Client interface.
 
+version_added: '0.3.0'
+
 attributes:
   check_mode:
     description: Supports check_mode.
     support: full
-
-version_added: '0.3.0'
+  idempotent:
+    support: partial
+    description:
+      - Obviously O(state=rename) will fail at second run.
 
 author:
   - Andrew Klychkov (@Andersson007)
