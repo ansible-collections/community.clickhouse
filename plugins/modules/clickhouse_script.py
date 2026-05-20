@@ -16,7 +16,7 @@ module: clickhouse_script
 short_description: Run SQL queries from a file
 
 description:
-    - This module allows to execute sql queries from files.
+    - This module allows to execute SQL queries from files.
     - Queries has to be separated with C(;)
     - Module uses sqlglot for parsing file.
     - Module uses server side parametrization. Ex {d:Date}, {id:String}.
