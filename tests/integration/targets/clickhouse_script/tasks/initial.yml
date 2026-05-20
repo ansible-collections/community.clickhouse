@@ -202,3 +202,18 @@
   ansible.builtin.file:
     path: test.sql
     state: absent
+
+- name: Upload script
+  ansible.builtin.copy:
+    src: files/test_fancy_queries.sql
+    dest: test.sql
+
+- name: Execute script with fancy functions
+  community.clickhouse.clickhouse_script:
+    path: test.sql
+  register: result
+
+- name: Remove file
+  ansible.builtin.file:
+    path: test.sql
+    state: absent
