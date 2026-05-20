@@ -26,6 +26,10 @@ version_added: '2.3.0'
 author:
   - Rafal Kozlowski (@rkozlo)
 
+requirements:
+  - sqlglot
+  - clickhouse-driver
+
 extends_documentation_fragment:
   - community.clickhouse.client_inst_opts
 
