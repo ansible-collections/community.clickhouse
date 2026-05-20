@@ -32,7 +32,7 @@ extends_documentation_fragment:
 options:
   path:
     description:
-      - Path of sql file to execute.
+      - Path to a SQL file to execute.
     type: str
     required: true
   parameters:
