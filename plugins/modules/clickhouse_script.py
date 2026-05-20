@@ -13,7 +13,7 @@ DOCUMENTATION = r'''
 ---
 module: clickhouse_script
 
-short_description: Run sql queries passed in file.
+short_description: Run SQL queries from a file
 
 description:
     - This module allows to execute sql queries from files.
