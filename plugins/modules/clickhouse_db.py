@@ -146,10 +146,15 @@ class ClickHouseDB():
         self.__populate_info()
 
     def __populate_info(self):
-
-        query = ("SELECT engine, comment "
-                 "FROM system.databases "
-                 "WHERE name = %(name)s")
+        # TODO: If anyone can determine the version when the comment feature
+        # was added to database more precisely, you're welcome to adjust it here
+        if self.srv_version['year'] >= 22:
+            # The comment is not supported in all versions
+            query = ("SELECT engine, comment "
+                     "FROM system.databases "
+                     "WHERE name = %(name)s")
+        else:
+            query = "SELECT engine FROM system.databases WHERE name = %(name)s"
 
         # Will move this function to the lib later and reuse
         exec_kwargs = {'params': {'name': self.name}}
@@ -160,7 +165,8 @@ class ClickHouseDB():
             # If exists
             self.exists = True
             self.engine = result[0][0]
-            self.comment = result[0][1]
+            if self.srv_version['year'] >= 22:
+                self.comment = result[0][1]
 
     def create(self, engine, comment):
         query = "CREATE DATABASE %s" % self.name
@@ -198,7 +204,11 @@ class ClickHouseDB():
         # When it will support more options probably better
         # will be moving query builder above and here only link comment.
         if comment and comment != self.comment:
-            if (self.srv_version['year'] == 25 and self.srv_version['feature'] >= 8) or self.srv_version['year'] >= 26:
+            if self.srv_version['year'] < 22:
+                msg = ('The module supports the comment feature for ClickHouse '
+                       'versions equal to or higher than 22.*. Ignored.')
+                self.module.warn(msg)
+            elif (self.srv_version['year'] == 25 and self.srv_version['feature'] >= 8) or self.srv_version['year'] >= 26:
                 query = "ALTER DATABASE %s" % self.name
                 if self.cluster:
                     query += " ON CLUSTER %s" % self.cluster

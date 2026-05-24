@@ -1,2 +1,0 @@
-breaking_changes:
-  - removed support for pre 22.x version in clickhouse_db module.
