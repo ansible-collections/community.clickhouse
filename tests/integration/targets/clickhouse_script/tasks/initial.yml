@@ -217,3 +217,28 @@
   ansible.builtin.file:
     path: test.sql
     state: absent
+
+- name: Upload script
+  ansible.builtin.copy:
+    src: files/test_fail_query.sql
+    dest: test.sql
+
+- name: Execute script with error
+  community.clickhouse.clickhouse_script:
+    path: test.sql
+  register: result
+  ignore_errors: true
+
+- name: Check return
+  ansible.builtin.assert:
+    that:
+      - >-
+        result.custom_message.success_queries == [
+          "SELECT 1",
+          "SELECT 1"
+        ]
+
+- name: Remove file
+  ansible.builtin.file:
+    path: test.sql
+    state: absent

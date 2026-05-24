@@ -95,7 +95,7 @@ def connect_to_db_via_client(module, main_conn_kwargs, client_kwargs):
     return client
 
 
-def execute_query(module, client, query, execute_kwargs=None, set_settings=None):
+def execute_query(module, client, query, execute_kwargs=None, set_settings=None, custom_message=None):
     """Execute query.
 
     Returns rows returned in response.
@@ -116,13 +116,14 @@ def execute_query(module, client, query, execute_kwargs=None, set_settings=None)
         result = client.execute(query, **execute_kwargs)
     except ServerException as e:
         if e.code in module.params['success_on']:
-            module.exit_json(changed=False, msg="Code %i defined as success." % e.code)
+            module.exit_json(changed=False, msg="Code %i defined as success." % e.code, custom_message=custom_message)
         module.fail_json(
             msg="Failed to execute query.",
             exception=to_native(e),
             code=e.code,
             message=e.message,
-            query=query
+            query=query,
+            custom_message=custom_message
         )
     return result
 

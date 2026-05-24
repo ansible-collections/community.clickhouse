@@ -89,6 +89,15 @@ query_parameters:
       "d": "2026-05-19"
     }
   ]
+custom_message:
+  description:
+    - Queries that was successfully executed.
+  returned: on failure
+  type: dict
+  sample:
+    success_queries:
+      - SELECT 1
+      - SELECT 1
 '''
 
 from ansible.module_utils.basic import AnsibleModule, missing_required_lib
@@ -165,9 +174,9 @@ class ClickHouseScript():
             query_parameters.append(parameters)
         for stmt in statements:
             sql = stmt.sql(dialect="clickhouse")
-            executed_statements.append(sql)
             if not self.module.check_mode:
-                execute_query(self.module, self.client, sql, execute_kwargs=execute_kwargs)
+                execute_query(self.module, self.client, sql, execute_kwargs=execute_kwargs, custom_message={'success_queries': executed_statements})
+            executed_statements.append(sql)
 
 
 def main():
