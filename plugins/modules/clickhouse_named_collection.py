@@ -136,7 +136,6 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
     connect_to_db_via_client,
     execute_query,
     get_main_conn_kwargs,
-    get_server_version,
     get_on_cluster_clause,
     validate_identifier
 )
@@ -358,9 +357,8 @@ def main():
 
     # Connect to DB
     client = connect_to_db_via_client(module, main_conn_kwargs, client_kwargs)
-    server_version = get_server_version(module, client)
 
-    if server_version['year'] < 25 or (server_version['year'] == 25 and server_version['feature'] < 8):
+    if client.version['year'] < 25 or (client.version['year'] == 25 and client.version['feature'] < 8):
         module.fail_json(msg="Server version not supported. Require 25.8 or later.")
 
     # Do the job

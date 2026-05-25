@@ -11,10 +11,11 @@ def mock_execute(mocker):
     )
 
 
-def _create_db(mocker, name="test_db", cluster=None, comment=None):
+def _create_db(mocker, name="test_db", cluster=None, comment=None, version=None):
     mock_module = mocker.MagicMock()
     mock_module.check_mode = False
     mock_client = mocker.MagicMock()
+    mock_client.version = version
 
     return ClickHouseDB(
         module=mock_module,
@@ -30,11 +31,7 @@ def db_factory(mocker):
     def _make(cluster=None, comment=None, name="test_db", version=None):
         # Patch version before creating DB
         version_to_use = version if version else {'year': 26, 'feature': 1}
-        mocker.patch(
-            "ansible_collections.community.clickhouse.plugins.modules.clickhouse_db.get_server_version",
-            return_value=version_to_use
-        )
-        return _create_db(mocker, name=name, cluster=cluster, comment=comment)
+        return _create_db(mocker, name=name, cluster=cluster, comment=comment, version=version_to_use)
     return _make
 
 

@@ -179,7 +179,6 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
     connect_to_db_via_client,
     execute_query,
     get_main_conn_kwargs,
-    get_server_version,
     version_clickhouse_driver,
 )
 
@@ -679,6 +678,11 @@ def handle_limit_values(module, supported_ret_vals, limit):
     return stripped_vals
 
 
+def get_version(module, client):
+
+    return client.version
+
+
 def main():
     # Set up arguments.
     # If there are common arguments shared across several modules,
@@ -708,7 +712,7 @@ def main():
     # and a corresponding function in this dictionary
     ret_val_func_mapping = {
         'driver': get_driver,
-        'version': get_server_version,
+        'version': get_version,
         'databases': get_databases,
         'users': get_users,
         'roles': get_roles,
