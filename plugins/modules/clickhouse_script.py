@@ -91,7 +91,7 @@ query_parameters:
   ]
 custom_message:
   description:
-    - Queries that was successfully executed.
+    - Queries that was successfully executed in case if one of them fail. Normally, executed queries are returned via RV(executed_statements).
   returned: on failure
   type: dict
   sample:
