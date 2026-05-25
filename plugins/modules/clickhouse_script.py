@@ -71,7 +71,7 @@ EXAMPLES = r'''
 RETURN = r'''
 executed_statements:
   description:
-    - Queries executed from file.
+    - Queries executed from file. In case of failure, queries executed prior to the failed one are returned via RV(custom_message).
   returned: on success
   type: list
   sample: [
