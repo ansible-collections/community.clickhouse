@@ -21,7 +21,7 @@ description:
     - Module uses sqlglot for parsing file.
     - Module uses server side parametrization. Ex {d:Date}, {id:String}.
 
-version_added: '2.3.0'
+version_added: '2.2.0'
 
 author:
   - Rafal Kozlowski (@rkozlo)
