@@ -11,3 +11,4 @@
 # Do not delete this file even if the collection has no dependencies!
 
 clickhouse-driver
+sqlglot

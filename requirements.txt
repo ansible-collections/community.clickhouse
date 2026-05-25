@@ -1,3 +1,4 @@
 clickhouse_driver
 pyyaml
 xmltodict
+sqlglot

@@ -1,0 +1,244 @@
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+- name: Upload script
+  ansible.builtin.copy:
+    src: files/test_simple.sql
+    dest: test.sql
+
+- name: Execute script in check mode
+  community.clickhouse.clickhouse_script:
+    path: test.sql
+  check_mode: true
+  register: result
+
+- name: Check return
+  ansible.builtin.assert:
+    that:
+      - >-
+        result.executed_statements == [
+          "CREATE DATABASE IF NOT EXISTS test_db",
+          "CREATE TABLE IF NOT EXISTS test_db.test_table (date DATE, userID String, action LowCardinality(String), counter UInt64) ENGINE=MergeTree PARTITION BY toYYYYMM(date) PRIMARY KEY (date, action) ORDER BY (date, action, userID)",
+          "INSERT INTO test_db.test_table VALUES (('2026-05-19'), ('ab'), ('cl'), (1))",
+          "INSERT INTO test_db.test_table VALUES (('2026-05-19'), ('ac'), ('cl'), (2))"
+        ]
+
+- name: Check actual state
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.databases WHERE name = 'test_db'"
+  register: result
+
+- name: Check return
+  ansible.builtin.assert:
+    that:
+      - result.result == []
+
+- name: Execute script in real mode
+  community.clickhouse.clickhouse_script:
+    path: test.sql
+  register: result
+
+- name: Check return
+  ansible.builtin.assert:
+    that:
+      - >-
+        result.executed_statements == [
+          "CREATE DATABASE IF NOT EXISTS test_db",
+          "CREATE TABLE IF NOT EXISTS test_db.test_table (date DATE, userID String, action LowCardinality(String), counter UInt64) ENGINE=MergeTree PARTITION BY toYYYYMM(date) PRIMARY KEY (date, action) ORDER BY (date, action, userID)",
+          "INSERT INTO test_db.test_table VALUES (('2026-05-19'), ('ab'), ('cl'), (1))",
+          "INSERT INTO test_db.test_table VALUES (('2026-05-19'), ('ac'), ('cl'), (2))"
+        ]
+
+- name: Check actual state
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.databases WHERE name = 'test_db'"
+  register: result
+
+- name: Check return
+  ansible.builtin.assert:
+    that:
+      - result.result == [[1]]
+
+- name: Check actual state - data
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT * FROM test_db.test_table order by userID"
+  register: result
+
+- name: Check return
+  ansible.builtin.assert:
+    that:
+      - >-
+        result.result == [
+          [
+            "2026-05-19",
+            "ab",
+            "cl",
+            1
+          ],
+          [
+            "2026-05-19",
+            "ac",
+            "cl",
+            2
+          ]
+        ]
+
+- name: Clean db after test
+  community.clickhouse.clickhouse_client:
+    execute: "DROP DATABASE test_db"
+
+- name: Remove file
+  ansible.builtin.file:
+    path: test.sql
+    state: absent
+
+- name: Upload script
+  ansible.builtin.copy:
+    src: files/test_parametrized.sql
+    dest: test.sql
+
+- name: Execute script in check mode
+  community.clickhouse.clickhouse_script:
+    path: test.sql
+    parameters:
+      d: '2026-05-19'
+      a: 'cl'
+  check_mode: true
+  register: result
+
+- name: Check return
+  ansible.builtin.assert:
+    that:
+      - >-
+        result.executed_statements == [
+          "CREATE DATABASE IF NOT EXISTS test_db",
+          "CREATE TABLE IF NOT EXISTS test_db.test_table (date DATE, userID String, action LowCardinality(String), counter UInt64) ENGINE=MergeTree PARTITION BY toYYYYMM(date) PRIMARY KEY (date, action) ORDER BY (date, action, userID)",
+          "INSERT INTO test_db.test_table VALUES (({d: DATE}), ('ab'), ({a: String}), (1))",
+          "INSERT INTO test_db.test_table VALUES (({d: DATE}), ('ac'), ({a: String}), (2))"
+        ]
+      - >-
+        result.query_parameters == [
+          {
+            "a": "cl",
+            "d": "2026-05-19"
+          }
+        ]
+
+- name: Execute script in real mode
+  community.clickhouse.clickhouse_script:
+    path: test.sql
+    parameters:
+      d: '2026-05-19'
+      a: 'cl'
+  register: result
+
+- name: Check actual state
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.databases WHERE name = 'test_db'"
+  register: result
+
+- name: Check return
+  ansible.builtin.assert:
+    that:
+      - result.result == [[1]]
+
+- name: Check actual state - data
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT * FROM test_db.test_table order by userID"
+  register: result
+
+- name: Check return
+  ansible.builtin.assert:
+    that:
+      - >-
+        result.result == [
+          [
+            "2026-05-19",
+            "ab",
+            "cl",
+            1
+          ],
+          [
+            "2026-05-19",
+            "ac",
+            "cl",
+            2
+          ]
+        ]
+
+- name: Clean db after test
+  community.clickhouse.clickhouse_client:
+    execute: "DROP DATABASE test_db"
+
+- name: Remove file
+  ansible.builtin.file:
+    path: test.sql
+    state: absent
+
+- name: Upload script
+  ansible.builtin.copy:
+    src: files/test_malicious.sql
+    dest: test.sql
+
+- name: Execute script in check mode
+  community.clickhouse.clickhouse_script:
+    path: test.sql
+  check_mode: true
+  register: result
+
+- name: Check return
+  ansible.builtin.assert:
+    that:
+      - >-
+        result.executed_statements == [
+          "SELECT 1 FROM test_db.test_tab WHERE userID = 'test;'",
+          "SELECT 1 FROM test_db.test_tab WHERE userID = 'test`'",
+          "SELECT 1 FROM test_db.test_tab WHERE userID = 'test;`;'"
+        ]
+
+- name: Remove file
+  ansible.builtin.file:
+    path: test.sql
+    state: absent
+
+- name: Upload script
+  ansible.builtin.copy:
+    src: files/test_fancy_queries.sql
+    dest: test.sql
+
+- name: Execute script with fancy functions
+  community.clickhouse.clickhouse_script:
+    path: test.sql
+  register: result
+
+- name: Remove file
+  ansible.builtin.file:
+    path: test.sql
+    state: absent
+
+- name: Upload script
+  ansible.builtin.copy:
+    src: files/test_fail_query.sql
+    dest: test.sql
+
+- name: Execute script with error
+  community.clickhouse.clickhouse_script:
+    path: test.sql
+  register: result
+  ignore_errors: true
+
+- name: Check return
+  ansible.builtin.assert:
+    that:
+      - >-
+        result.custom_message.success_queries == [
+          "SELECT 1",
+          "SELECT 1"
+        ]
+
+- name: Remove file
+  ansible.builtin.file:
+    path: test.sql
+    state: absent
