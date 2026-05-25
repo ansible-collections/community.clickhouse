@@ -92,6 +92,10 @@ def connect_to_db_via_client(module, main_conn_kwargs, client_kwargs):
     except Exception as e:
         module.fail_json(msg="Failed to connect to database: %s" % to_native(e))
 
+    # Display warning about using unsuporrted server version.
+    client.version = get_server_version(module, client)
+    if client.version['year'] < 24 or client.version['year'] == 24 and client.version['feature'] < 8:
+        module.warn("Used server version is not activately maintained with this collection. Some features may not work properly.")
     return client
 
 
