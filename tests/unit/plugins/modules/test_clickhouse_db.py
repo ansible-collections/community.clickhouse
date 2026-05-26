@@ -15,7 +15,7 @@ def _create_db(mocker, name="test_db", cluster=None, comment=None, version=None)
     mock_module = mocker.MagicMock()
     mock_module.check_mode = False
     mock_client = mocker.MagicMock()
-    mock_client.version = version
+    mocker.patch('ansible_collections.community.clickhouse.plugins.modules.clickhouse_db.get_server_version', return_value=version)
 
     return ClickHouseDB(
         module=mock_module,

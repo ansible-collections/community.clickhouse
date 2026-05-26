@@ -129,6 +129,7 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
     connect_to_db_via_client,
     execute_query,
     get_main_conn_kwargs,
+    get_server_version,
 )
 
 
@@ -150,7 +151,8 @@ class ClickHouseDB():
     def __populate_info(self):
         # TODO: If anyone can determine the version when the comment feature
         # was added to database more precisely, you're welcome to adjust it here
-        if self.client.version['year'] >= 22:
+        server_version = get_server_version(self.module, self.client)
+        if server_version['year'] >= 22:
             # The comment is not supported in all versions
             query = ("SELECT engine, comment "
                      "FROM system.databases "
@@ -167,7 +169,7 @@ class ClickHouseDB():
             # If exists
             self.exists = True
             self.engine = result[0][0]
-            if self.client.version['year'] >= 22:
+            if server_version['year'] >= 22:
                 self.comment = result[0][1]
 
     def create(self, engine, comment):
@@ -201,16 +203,16 @@ class ClickHouseDB():
                    "change it. The recreation of the database is required "
                    "in order to change it." % (engine, self.engine))
             self.module.warn(msg)
-
+        server_version = get_server_version(self.module, self.client)
         # At this moment ALTER DATABASE supports only MODIFY COMMENT.
         # When it will support more options probably better
         # will be moving query builder above and here only link comment.
         if comment and comment != self.comment:
-            if self.client.version['year'] < 22:
+            if server_version['year'] < 22:
                 msg = ('The module supports the comment feature for ClickHouse '
                        'versions equal to or higher than 22.*. Ignored.')
                 self.module.warn(msg)
-            elif (self.client.version['year'] == 25 and self.client.version['feature'] >= 8) or self.client.version['year'] >= 26:
+            elif (server_version['year'] == 25 and server_version['feature'] >= 8) or server_version['year'] >= 26:
                 query = "ALTER DATABASE %s" % self.name
                 if self.cluster:
                     query += " ON CLUSTER %s" % self.cluster
@@ -224,7 +226,7 @@ class ClickHouseDB():
                 return True
             else:
                 self.module.warn(
-                    f"Server version {self.client.version['year']}.{self.client.version['feature']} "
+                    f"Server version {server_version['year']}.{server_version['feature']} "
                     f"does not support MODIFY COMMENT. Required: 25.8 or higher"
                 )
 
