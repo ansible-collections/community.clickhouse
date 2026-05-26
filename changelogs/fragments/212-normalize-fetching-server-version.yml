@@ -1,2 +1,2 @@
 minor_changes:
-  - Fetch server version once during opnening connection to db.
+  - Fetch server version only once during opening connection to a database.
