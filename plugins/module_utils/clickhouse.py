@@ -89,12 +89,13 @@ def connect_to_db_via_client(module, main_conn_kwargs, client_kwargs):
         # when unpacking them separately to Client()
         client_kwargs.update(main_conn_kwargs)
         client = Client(**client_kwargs)
+        client.connection.connect()
     except Exception as e:
         module.fail_json(msg="Failed to connect to database: %s" % to_native(e))
 
     # Display warning about using unsuporrted server version.
-    client.version = get_server_version(module, client)
-    if client.version['year'] < 24 or client.version['year'] == 24 and client.version['feature'] < 8:
+    server_version = get_server_version(module, client)
+    if server_version['year'] < 24 or server_version['year'] == 24 and server_version['feature'] < 8:
         module.warn("Used server version is not activately maintained with this collection. Some features may not work properly.")
     return client
 
@@ -137,25 +138,13 @@ def get_server_version(module, client):
 
     Returns a dictionary with server version.
     """
-    result = execute_query(module, client, "SELECT version()")
-
-    raw = result[0][0]
-    split_raw = raw.split('.')
+    result = client.connection.server_info.version_tuple()
 
     version = {}
-    version["raw"] = raw
 
-    version["year"] = int(split_raw[0])
-    version["feature"] = int(split_raw[1])
-    version["maintenance"] = int(split_raw[2])
-
-    if '-' in split_raw[3]:
-        tmp = split_raw[3].split('-')
-        version["build"] = int(tmp[0])
-        version["type"] = tmp[1]
-    else:
-        version["build"] = int(split_raw[3])
-        version["type"] = None
+    version["year"] = result[0]
+    version["feature"] = result[1]
+    version["maintenance"] = result[2]
 
     return version
 

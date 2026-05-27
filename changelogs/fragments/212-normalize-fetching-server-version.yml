@@ -1,0 +1,2 @@
+minor_changes:
+  - Fetch server version only once during opening connection to a database.

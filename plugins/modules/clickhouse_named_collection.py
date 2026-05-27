@@ -138,7 +138,7 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
     get_main_conn_kwargs,
     get_server_version,
     get_on_cluster_clause,
-    validate_identifier
+    validate_identifier,
 )
 
 executed_statements = []
