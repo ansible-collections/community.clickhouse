@@ -4,6 +4,45 @@ Ansible community.clickhouse collection changelog Release Notes
 
 .. contents:: Topics
 
+v2.2.0
+======
+
+Release Summary
+---------------
+
+This is a minor release of the ``community.clickhouse`` collection.
+This changelog contains all changes to the modules and plugins in this collection
+that have been made after the previous release.
+
+Major Changes
+-------------
+
+- clickhouse_named_collection - new module to add/modify/delete named collections in database.
+
+Minor Changes
+-------------
+
+- Added warning about using unsupported server version.
+- Fetch server version only once during opening connection to a database.
+- Refactored user/role settings for better maintainability and improved idempotency. Since now settings option accepts both list(old) argument or dictionary(new). Profiles are moved to a separate option. (https://github.com/ansible-collections/community.clickhouse/pull/178).
+- clickhouse_client - Change how server errors are handled. Previously, error code 497 (ACCESS_DENIED / not enough privileges) was always treated as success with no way to disable this behavior. Old behavior is preserved by default. It is now possible to control which error codes are treated as success using the new ``success_on`` parameter (https://github.com/ansible-collections/community.clickhouse/issues/117).
+- clickhouse_db - support for changing database comment. Requires ClickHouse server version >= 25.8 (https://github.com/ansible-collections/community.clickhouse/issues/189).
+- clickhouse_named_collection - improve SQL injection protection with parameterized queries, identifier validation, and new `query_parameters` output.
+- clickhouse_role - added the ``profile`` argument to apply settings profiles to role (https://github.com/ansible-collections/community.clickhouse/pull/196).
+- clickhouse_user - added the ``profile`` argument to apply settings profiles to user (https://github.com/ansible-collections/community.clickhouse/pull/196).
+
+Deprecated Features
+-------------------
+
+- clickhouse_user - ``password`` and ``type_password`` are deprecated and will be removed in ``community.clickhouse 3.0.0``, use the ``authentication`` instead.
+
+New Modules
+-----------
+
+- clickhouse_named_collection - Creates, removes or modify a ClickHouse named collection using the clickhouse\-driver Client interface
+- clickhouse_row_policy - Creates, removes or modify a ClickHouse row policy using the clickhouse\-driver Client interface
+- clickhouse_script - Run SQL queries from a file
+
 v2.1.0
 ======
 

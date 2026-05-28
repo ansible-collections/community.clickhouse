@@ -1,2 +1,0 @@
-major_changes:
-  - clickhouse_named_collection - new module to add/modify/delete named collections in database.
