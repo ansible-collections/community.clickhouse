@@ -1,3 +1,3 @@
 minor_changes:
-  - clickhouse_db - validate passed identifiers. Close them in backticks to keep it consistent with other modules.
-  - clickhouse_db - check if passed engine is supported before executing query. Module checks if passed name exists in system.database_engines.
+  - clickhouse_db - validate passed identifiers. Close them in backticks to keep it consistent with other modules (https://github.com/ansible-collections/community.clickhouse/pull/214).
+  - clickhouse_db - check if passed engine is supported before executing query. Module checks if passed name exists in system.database_engines (https://github.com/ansible-collections/community.clickhouse/pull/214).
