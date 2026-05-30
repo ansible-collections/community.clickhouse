@@ -65,10 +65,17 @@ def test_alter_role_one_profile_one_setting_new_setting(role, mock_execute):
 
 
 def test_drop(role, mock_execute):
-    changed = role.drop()
+    changed = role.drop(None)
     actual_query = get_executed_query(mock_execute)
     assert changed is True
     assert actual_query == "DROP ROLE test_role"
+
+
+def test_drop_on_cluster(role, mock_execute):
+    changed = role.drop('test_cluster')
+    actual_query = get_executed_query(mock_execute)
+    assert changed is True
+    assert actual_query == "DROP ROLE test_role ON CLUSTER test_cluster"
 
 
 def test_alter_role_none_settings_nor_profile(role, mock_execute, mocker):

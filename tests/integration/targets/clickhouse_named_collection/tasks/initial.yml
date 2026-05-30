@@ -353,6 +353,61 @@
     name: test_col
     state: absent
 
+- name: Create named collection on cluster
+  community.clickhouse.clickhouse_named_collection:
+    name: test_col
+    cluster: default
+    collection:
+      - name: user
+        value: alice
+    login_user: test_user
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE NAMED COLLECTION `test_col` ON CLUSTER `default` AS `user` = %(val_0)s"]
+    - >
+        result.query_parameters == 
+        [{
+          "val_0": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
+        }]
+
+- name: Alter named collection on cluster
+  community.clickhouse.clickhouse_named_collection:
+    name: test_col
+    cluster: default
+    collection:
+      - name: user
+        value: alice2
+    login_user: test_user
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["ALTER NAMED COLLECTION `test_col` ON CLUSTER `default` SET `user` = %(val_0)s"]
+    - >
+        result.query_parameters == 
+        [{
+          "val_0": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
+        }]
+
+- name: Drop named collection on cluster
+  community.clickhouse.clickhouse_named_collection:
+    name: test_col
+    cluster: default
+    state: absent
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["DROP NAMED COLLECTION `test_col` ON CLUSTER `default`"]
+
 - name: Drop test_user used to manage named collections
   community.clickhouse.clickhouse_user:
     name: test_user

@@ -1,0 +1,2 @@
+bugfixes:
+  - clickhouse_role - fix cluster for drop role
