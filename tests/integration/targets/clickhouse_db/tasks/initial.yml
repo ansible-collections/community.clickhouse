@@ -197,6 +197,47 @@
     - result.result == []
 
 # Test
+- name: Create database on cluster
+  community.clickhouse.clickhouse_db:
+    name: test_db
+    state: present
+    cluster: default
+  register: result
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE DATABASE test_db ON CLUSTER default"]
+
+- name: Rename database on cluster
+  community.clickhouse.clickhouse_db:
+    name: test_db
+    state: rename
+    cluster: default
+    target: test_db2
+  register: result
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["RENAME DATABASE test_db TO test_db2 ON CLUSTER default"]
+
+- name: Drop database on cluster
+  community.clickhouse.clickhouse_db:
+    name: test_db2
+    state: absent
+    cluster: default
+  register: result
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["DROP DATABASE test_db2 ON CLUSTER default"]
+
+# Test
 - name: Drop non-existing database
   register: result
   community.clickhouse.clickhouse_db:
@@ -406,11 +447,26 @@
           that:
           - result is not changed
 
-      - name: Set database comment to original value
+      - name: Alter database with another comment on cluster
+        register: result
+        community.clickhouse.clickhouse_db:
+          state: present
+          name: test_db
+          comment: Test DB 2
+          cluster: default
+
+      - name: Check ret values
+        ansible.builtin.assert:
+          that:
+          - result is changed
+          - result.executed_statements == ["ALTER DATABASE test_db ON CLUSTER default MODIFY COMMENT 'Test DB 2'"]
+
+      - name: Set database comment to original value on cluster
         community.clickhouse.clickhouse_db:
           state: present
           name: test_db
           comment: Test DB
+          cluster: default
 
   - name: Test pre 25.8 behaviour alter database modify comment
     when: >

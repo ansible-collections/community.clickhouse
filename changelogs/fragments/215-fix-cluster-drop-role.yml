@@ -1,0 +1,2 @@
+bugfixes:
+  - clickhouse_role - fix cluster for drop role (https://github.com/ansible-collections/community.clickhouse/pull/215).

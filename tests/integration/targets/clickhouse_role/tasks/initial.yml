@@ -434,3 +434,46 @@
     - DROP SETTINGS PROFILE 'app'
   loop_control:
     loop_var: __query
+
+# Test 14 - test role with on cluster
+- name: Test 14 - Create role on cluster
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: test_role
+    cluster: default
+
+- name: Test 14 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE ROLE test_role ON CLUSTER default"]
+
+- name: Test 14 - Alter role on cluster
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: present
+    name: test_role
+    cluster: default
+    settings:
+      max_threads:
+        value: 1
+
+- name: Test 14 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["ALTER ROLE test_role ON CLUSTER default SETTINGS max_threads='1'"]
+
+- name: Test 14 - Drop role on cluster
+  register: result
+  community.clickhouse.clickhouse_role:
+    state: absent
+    name: test_role
+    cluster: default
+
+- name: Test 14 - Check the return values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["DROP ROLE test_role ON CLUSTER default"]

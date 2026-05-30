@@ -63,6 +63,14 @@
     group: clickhouse
     mode: '0600'
 
+- name: Create keeper directory(workaround bug 24.8)
+  ansible.builtin.file:
+    state: directory
+    path: /var/lib/clickhouse-keeper
+    owner: clickhouse
+    group: clickhouse
+    mode: 755
+
 - name: Configure clickhouse thread pool for container environment
   ansible.builtin.copy:
     dest: /etc/clickhouse-server/config.d/container.xml
