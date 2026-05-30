@@ -130,6 +130,8 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
     execute_query,
     get_main_conn_kwargs,
     get_server_version,
+    validate_identifier,
+    get_on_cluster_clause,
 )
 
 
@@ -140,6 +142,7 @@ class ClickHouseDB():
     def __init__(self, module, client, name, cluster, comment):
         self.module = module
         self.client = client
+        validate_identifier(module, name, "db name")
         self.name = name
         self.cluster = cluster
         # Set default values, then update
@@ -172,12 +175,19 @@ class ClickHouseDB():
             if server_version['year'] >= 22:
                 self.comment = result[0][1]
 
-    def create(self, engine, comment):
-        query = "CREATE DATABASE %s" % self.name
-        if self.cluster:
-            query += " ON CLUSTER %s" % self.cluster
+    def _validate_db_engine(self, target_engine):
+        '''Prevent executing incorrect queries.'''
+        query = "SELECT 1 FROM system.database_engines WHERE name = %(engine)s"
+        exec_kwargs = {'params': {'engine': target_engine}}
+        result = execute_query(self.module, self.client, query, exec_kwargs)
+        if not result:
+            self.module.fail_json(msg=f"Passed engine {target_engine} is not supported by current version.")
 
+    def create(self, engine, comment):
+        query = "CREATE DATABASE `%s`" % self.name
+        query += get_on_cluster_clause(self.module, self.cluster)
         if engine:
+            self._validate_db_engine(engine)
             query += " ENGINE = %s" % engine
 
         if comment:
@@ -213,9 +223,9 @@ class ClickHouseDB():
                        'versions equal to or higher than 22.*. Ignored.')
                 self.module.warn(msg)
             elif (server_version['year'] == 25 and server_version['feature'] >= 8) or server_version['year'] >= 26:
-                query = "ALTER DATABASE %s" % self.name
+                query = "ALTER DATABASE `%s`" % self.name
                 if self.cluster:
-                    query += " ON CLUSTER %s" % self.cluster
+                    query += get_on_cluster_clause(self.module, self.cluster)
                 query += " MODIFY COMMENT '%s'" % comment
 
                 executed_statements.append(query)
@@ -233,9 +243,9 @@ class ClickHouseDB():
         return False
 
     def rename(self, target):
-        query = "RENAME DATABASE %s TO %s" % (self.name, target)
-        if self.cluster:
-            query += " ON CLUSTER %s" % self.cluster
+        validate_identifier(self.module, target, "db name")
+        query = "RENAME DATABASE `%s` TO `%s`" % (self.name, target)
+        query += get_on_cluster_clause(self.module, self.cluster)
 
         executed_statements.append(query)
 
@@ -245,9 +255,8 @@ class ClickHouseDB():
         return True
 
     def drop(self):
-        query = "DROP DATABASE %s" % self.name
-        if self.cluster:
-            query += " ON CLUSTER %s" % self.cluster
+        query = "DROP DATABASE `%s`" % self.name
+        query += get_on_cluster_clause(self.module, self.cluster)
 
         executed_statements.append(query)
 
