@@ -158,6 +158,11 @@ class ClickHouseDB():
                      "FROM system.databases "
                      "WHERE name = %(name)s")
         else:
+            self.module.deprecate(
+                msg="Used server version is not maintained. Upgrade server version.",
+                version="3.0.0",
+                collection_name="community.clickhouse",
+            )
             query = "SELECT engine FROM system.databases WHERE name = %(name)s"
 
         # Will move this function to the lib later and reuse

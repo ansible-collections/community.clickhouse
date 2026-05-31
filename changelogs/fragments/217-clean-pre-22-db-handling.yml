@@ -1,0 +1,2 @@
+deprecated_features:
+  - clickhouse_db - deprecate pre 22.x handling code for comments (https://github.com/ansible-collections/community.clickhouse/issues/217).
