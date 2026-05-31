@@ -188,6 +188,48 @@
     that:
       - result.changed == false
 
+- name: Create settings profile on cluster
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    cluster: default
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["CREATE SETTINGS PROFILE `test_profile` ON CLUSTER `default`"]
+
+- name: ALTER settings profile on cluster
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    cluster: default
+    settings:
+      max_threads:
+        value: 1
+      
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["ALTER SETTINGS PROFILE `test_profile` ON CLUSTER `default` SETTINGS max_threads='1'"]
+
+- name: Drop settings profile on cluster
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    cluster: default
+    state: absent
+      
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["DROP SETTINGS PROFILE `test_profile` ON CLUSTER `default`"]
+
 - name: Create settings profiles for inherince tests
   community.clickhouse.clickhouse_settings_profile:
     name: "{{ __set.name }}"
