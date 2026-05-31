@@ -373,6 +373,11 @@ def main():
             # Role exists, check if settings need to be updated
             if isinstance(desired_settings, list):
                 if desired_settings is not None and len(desired_settings) > 0:  # Only check settings if they are specified and not empty
+                    module.deprecate(
+                        msg="List based settings are deprecated. Use dictionary instead.",
+                        version="3.0.0",
+                        collection_name="community.clickhouse",
+                    )
                     current_definition = role.get_current_role_definition()
                     current_settings = role.parse_settings_from_create_statement(current_definition) if current_definition else []
 
