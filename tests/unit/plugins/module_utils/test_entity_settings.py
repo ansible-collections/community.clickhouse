@@ -31,6 +31,20 @@ def role_ent(mocker):
     return EntitySettings(module=mock_module, client=mock_client, entity_name="test_role", entity_type="role")
 
 
+@pytest.fixture
+def profile_ent(mocker):
+    mocker.patch(
+        "ansible_collections.community.clickhouse.plugins.module_utils.entity_settings.execute_query",
+        return_value=[
+            ('max_memory_usage', '15000', '15000', '16000', 'CONST', None)
+        ]
+    )
+    mock_module = mocker.MagicMock()
+    mock_module.check_mode = False
+    mock_client = mocker.MagicMock()
+    return EntitySettings(module=mock_module, client=mock_client, entity_name="test_profile", entity_type="profile")
+
+
 def test_where_clause_for_user(user_ent):
     result = user_ent._get_where_column()
     assert result == "user_name"
@@ -39,6 +53,11 @@ def test_where_clause_for_user(user_ent):
 def test_where_clause_for_role(role_ent):
     result = role_ent._get_where_column()
     assert result == "role_name"
+
+
+def test_where_clause_for_profile(profile_ent):
+    result = profile_ent._get_where_column()
+    assert result == "profile_name"
 
 
 def test_result_for_fetching_current_setings(user_ent):
@@ -426,6 +445,32 @@ def test_returning_entity_set_only_profiles(user_ent):
     )
     assert result[0] is True
     assert result[1] == " SETTINGS PROFILE 'web', PROFILE 'app', PROFILE 'front'"
+    assert result[2] == {
+        'before': {
+            'settings': {
+                'max_memory_usage': {
+                    'value': '15000',
+                    'min': '15000',
+                    'max': '16000',
+                    'writability': 'CONST'
+                }
+            },
+            'profiles': []
+        },
+        'after': {
+            'settings': {},
+            'profiles': ['web', 'app', 'front']
+        }
+    }
+
+
+def test_returning_profile_inherit(profile_ent):
+    result = profile_ent.compare_and_build_clause(
+        {},
+        ['web', 'app', 'front']
+    )
+    assert result[0] is True
+    assert result[1] == " SETTINGS INHERIT `web`, INHERIT `app`, INHERIT `front`"
     assert result[2] == {
         'before': {
             'settings': {
