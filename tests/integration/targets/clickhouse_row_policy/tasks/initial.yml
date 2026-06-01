@@ -256,6 +256,55 @@
     that:
       - result.result == []
 
+- name: Create the row policy on cluster
+  community.clickhouse.clickhouse_row_policy:
+    name: test_policy
+    database: test_db
+    table: test_table
+    using: b = 1
+    apply_to:
+      - test_role
+    cluster: default
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["CREATE ROW POLICY `test_policy` ON `test_db`.`test_table` ON CLUSTER `default` USING b = 1 AS PERMISSIVE TO `test_role`"]
+
+- name: Alter the row policy on cluster
+  community.clickhouse.clickhouse_row_policy:
+    name: test_policy
+    database: test_db
+    table: test_table
+    using: b = 2
+    apply_to:
+      - test_role
+    cluster: default
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["ALTER ROW POLICY `test_policy` ON `test_db`.`test_table` ON CLUSTER `default` USING b = 2 AS PERMISSIVE TO `test_role`"]
+
+- name: Drop row policy on cluster
+  community.clickhouse.clickhouse_row_policy:
+    name: test_policy
+    database: test_db
+    table: test_table
+    state: absent
+    cluster: default
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["DROP ROW POLICY `test_policy` ON `test_db`.`test_table` ON CLUSTER `default`"]
+
 - name: Iterate over test cases
   ansible.builtin.include_tasks: test_sequence.yml
   vars:

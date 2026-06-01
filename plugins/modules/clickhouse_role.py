@@ -246,12 +246,12 @@ class ClickHouseRole:
 
         return current_normalized != desired_normalized
 
-    def create(self):
+    def create(self, cluster):
         if not self.exists:
             query = "CREATE ROLE %s" % self.name
 
-            if self.module.params['cluster']:
-                query += " ON CLUSTER %s" % self.module.params['cluster']
+            if cluster:
+                query += " ON CLUSTER %s" % cluster
 
             if isinstance(self.module.params['settings'], list):
                 list_settings = self.module.params['settings']
@@ -307,9 +307,12 @@ class ClickHouseRole:
 
         return True
 
-    def drop(self):
+    def drop(self, cluster):
         if self.exists:
             query = "DROP ROLE %s" % self.name
+            if cluster:
+                query += " ON CLUSTER %s" % cluster
+
             executed_statements.append(query)
 
             if not self.module.check_mode:
@@ -368,7 +371,7 @@ def main():
     if state == "present":
         if not role.exists:
             # Role doesn't exist, create it
-            changed = role.create()
+            changed = role.create(cluster)
         else:
             # Role exists, check if settings need to be updated
             if isinstance(desired_settings, list):
@@ -384,7 +387,7 @@ def main():
     else:
         # If state is absent
         if role.exists:
-            changed = role.drop()
+            changed = role.drop(cluster)
 
     # Close connection
     client.disconnect_connection()
