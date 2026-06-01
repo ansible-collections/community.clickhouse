@@ -1,0 +1,3 @@
+deprecated_features:
+  - clickhouse_user - list based settings and profiles are marked as deprecated and sheduled for removal in 3.0.0 (https://github.com/ansible-collections/community.clickhouse/issues/218).
+  - clickhouse_role - list based settings and profiles are marked as deprecated and sheduled for removal in 3.0.0 (https://github.com/ansible-collections/community.clickhouse/issues/218).
