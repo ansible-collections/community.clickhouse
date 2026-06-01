@@ -16,6 +16,7 @@ def _create_db(mocker, name="test_db", cluster=None, comment=None, version=None)
     mock_module.check_mode = False
     mock_client = mocker.MagicMock()
     mocker.patch('ansible_collections.community.clickhouse.plugins.modules.clickhouse_db.get_server_version', return_value=version)
+    mocker.patch('ansible_collections.community.clickhouse.plugins.modules.clickhouse_db.validate_identifier', return_value=None)
 
     return ClickHouseDB(
         module=mock_module,
@@ -43,35 +44,35 @@ def test_plain_db_with_default_options(db_factory, mock_execute):
     db = db_factory()
     db.create(engine=None, comment=None)
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "CREATE DATABASE test_db"
+    assert actual_query == "CREATE DATABASE `test_db`"
 
 
 def test_plain_db_with_options(db_factory, mock_execute):
     db = db_factory()
     db.create(engine='Ordinary', comment='test comment')
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "CREATE DATABASE test_db ENGINE = Ordinary COMMENT 'test comment'"
+    assert actual_query == "CREATE DATABASE `test_db` ENGINE = Ordinary COMMENT 'test comment'"
 
 
 def test_altering_existing_database_comment(db_factory, mock_execute):
     db = db_factory()
     db.update(engine=None, comment='test comment2')
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "ALTER DATABASE test_db MODIFY COMMENT 'test comment2'"
+    assert actual_query == "ALTER DATABASE `test_db` MODIFY COMMENT 'test comment2'"
 
 
 def test_renaming_database(db_factory, mock_execute):
     db = db_factory()
     db.rename(target='test_db2')
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "RENAME DATABASE test_db TO test_db2"
+    assert actual_query == "RENAME DATABASE `test_db` TO `test_db2`"
 
 
 def test_droping_database(db_factory, mock_execute):
     db = db_factory()
     db.drop()
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "DROP DATABASE test_db"
+    assert actual_query == "DROP DATABASE `test_db`"
 
 
 def test_altering_database_comment_not_supported(db_factory, mocker):
@@ -89,3 +90,17 @@ def test_altering_database_comment_not_supported(db_factory, mocker):
 
     db.module.warn.assert_called_once()
     mock_execute.assert_not_called()
+
+
+def test_db_engine_supported(db_factory, mocker):
+    db = db_factory()
+    mocker.patch('ansible_collections.community.clickhouse.plugins.modules.clickhouse_db.execute_query', return_value=[[1]])
+    db._validate_db_engine('Test engine')
+    db.module.fail_json.assert_not_called()
+
+
+def test_db_engine_not_supported(db_factory, mocker):
+    db = db_factory()
+    mocker.patch('ansible_collections.community.clickhouse.plugins.modules.clickhouse_db.execute_query', return_value=[])
+    db._validate_db_engine('Test engine')
+    db.module.fail_json.assert_called_once()

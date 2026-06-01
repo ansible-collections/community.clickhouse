@@ -15,7 +15,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['CREATE DATABASE test_db']
+    - result.executed_statements == ['CREATE DATABASE `test_db`']
 
 - name: Check the actual state
   register: result
@@ -40,7 +40,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["CREATE DATABASE test_db ENGINE = Memory"]
+    - result.executed_statements == ["CREATE DATABASE `test_db` ENGINE = Memory"]
 
 - name: Check the actual state
   register: result
@@ -63,7 +63,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["CREATE DATABASE test_db ENGINE = Memory"]
+    - result.executed_statements == ["CREATE DATABASE `test_db` ENGINE = Memory"]
 
 - name: Check the actual state
   register: result
@@ -161,7 +161,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["DROP DATABASE test_db"]
+    - result.executed_statements == ["DROP DATABASE `test_db`"]
 
 - name: Check the actual state
   register: result
@@ -184,7 +184,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["DROP DATABASE test_db"]
+    - result.executed_statements == ["DROP DATABASE `test_db`"]
 
 - name: Check the actual state
   register: result
@@ -195,6 +195,47 @@
   ansible.builtin.assert:
     that:
     - result.result == []
+
+# Test
+- name: Create database on cluster
+  community.clickhouse.clickhouse_db:
+    name: test_db
+    state: present
+    cluster: default
+  register: result
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["CREATE DATABASE test_db ON CLUSTER default"]
+
+- name: Rename database on cluster
+  community.clickhouse.clickhouse_db:
+    name: test_db
+    state: rename
+    cluster: default
+    target: test_db2
+  register: result
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["RENAME DATABASE test_db TO test_db2 ON CLUSTER default"]
+
+- name: Drop database on cluster
+  community.clickhouse.clickhouse_db:
+    name: test_db2
+    state: absent
+    cluster: default
+  register: result
+
+- name: Check ret values
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["DROP DATABASE test_db2 ON CLUSTER default"]
 
 # Test
 - name: Drop non-existing database
@@ -240,7 +281,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["RENAME DATABASE test_rename_db TO dev_db"]
+    - result.executed_statements == ["RENAME DATABASE `test_rename_db` TO `dev_db`"]
 
 # Test
 - name: Rename database in check mode
@@ -255,7 +296,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["RENAME DATABASE dev_db TO test_rename_db"]
+    - result.executed_statements == ["RENAME DATABASE `dev_db` TO `test_rename_db`"]
 
 # Test rename database if there is nothing to rename
 - name: Rename database if there is nothing to rename
@@ -314,7 +355,7 @@
     ansible.builtin.assert:
       that:
       - result is changed
-      - result.executed_statements == ["CREATE DATABASE test_db COMMENT 'Test DB'"]
+      - result.executed_statements == ["CREATE DATABASE `test_db` COMMENT 'Test DB'"]
 
   # Test
   - name: Create database with comment real mode
@@ -328,7 +369,7 @@
     ansible.builtin.assert:
       that:
       - result is changed
-      - result.executed_statements == ["CREATE DATABASE test_db COMMENT 'Test DB'"]
+      - result.executed_statements == ["CREATE DATABASE `test_db` COMMENT 'Test DB'"]
 
   - name: Check the actual state
     register: result
@@ -359,7 +400,7 @@
         ansible.builtin.assert:
           that:
             - result is changed
-            - result.executed_statements == ["ALTER DATABASE test_db MODIFY COMMENT 'Test DB 1'"]
+            - result.executed_statements == ["ALTER DATABASE `test_db` MODIFY COMMENT 'Test DB 1'"]
 
       - name: Check the actual state
         register: result
@@ -382,7 +423,7 @@
         ansible.builtin.assert:
           that:
           - result is changed
-          - result.executed_statements == ["ALTER DATABASE test_db MODIFY COMMENT 'Test DB 1'"]
+          - result.executed_statements == ["ALTER DATABASE `test_db` MODIFY COMMENT 'Test DB 1'"]
 
       - name: Check the actual state
         register: result
@@ -406,11 +447,26 @@
           that:
           - result is not changed
 
-      - name: Set database comment to original value
+      - name: Alter database with another comment on cluster
+        register: result
+        community.clickhouse.clickhouse_db:
+          state: present
+          name: test_db
+          comment: Test DB 2
+          cluster: default
+
+      - name: Check ret values
+        ansible.builtin.assert:
+          that:
+          - result is changed
+          - result.executed_statements == ["ALTER DATABASE test_db ON CLUSTER default MODIFY COMMENT 'Test DB 2'"]
+
+      - name: Set database comment to original value on cluster
         community.clickhouse.clickhouse_db:
           state: present
           name: test_db
           comment: Test DB
+          cluster: default
 
   - name: Test pre 25.8 behaviour alter database modify comment
     when: >
@@ -487,3 +543,17 @@
     ansible.builtin.assert:
       that:
       - result is changed
+
+  - name: Create db with fake engine
+    community.clickhouse.clickhouse_db:
+      state: present
+      name: test_db
+      engine: Fake
+    ignore_errors: true
+    register: result
+
+  - name: Check ret values
+    ansible.builtin.assert:
+      that:
+      - result is failed
+      - result.msg == "Passed engine Fake is not supported by current version."

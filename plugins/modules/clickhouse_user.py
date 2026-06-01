@@ -505,6 +505,11 @@ class ClickHouseUser():
 
         if settings or profiles:
             if isinstance(settings, list):
+                self.module.deprecate(
+                    msg="List based settings are deprecated. Use dictionary instead.",
+                    version="3.0.0",
+                    collection_name="community.clickhouse",
+                )
                 query += " SETTINGS"
                 for index, value in enumerate(settings):
                     query += " %s" % value
@@ -750,6 +755,11 @@ class ClickHouseUser():
         """Update user settings idempotently by comparing with current settings"""
 
         if isinstance(settings, list):
+            self.module.deprecate(
+                msg="List based settings are deprecated. Use dictionary instead.",
+                version="3.0.0",
+                collection_name="community.clickhouse",
+            )
             # Parse desired settings into a comparable format
             desired_settings = {}
             desired_profiles = []
