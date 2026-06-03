@@ -131,6 +131,8 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
     connect_to_db_via_client,
     execute_query,
     get_main_conn_kwargs,
+    validate_identifier,
+    get_on_cluster_clause,
 )
 from ansible_collections.community.clickhouse.plugins.module_utils.entity_settings import EntitySettings
 executed_statements = []
@@ -140,13 +142,15 @@ class ClickHouseRole:
     def __init__(self, module, client, name):
         self.module = module
         self.client = client
+        validate_identifier(self.module, name)
         self.name = name
         self.settings = EntitySettings(self.module, self.client, self.name, 'role')
         self.exists = self.check_exists()
 
     def check_exists(self):
-        query = "SELECT 1 FROM system.roles WHERE name = '%s' LIMIT 1" % self.name
-        result = execute_query(self.module, self.client, query)
+        query = "SELECT 1 FROM system.roles WHERE name = %(name)s LIMIT 1"
+        exec_kwargs = {'params': {'name': self.name}}
+        result = execute_query(self.module, self.client, query, exec_kwargs)
         return bool(result)
 
     def get_current_role_definition(self):
@@ -154,7 +158,7 @@ class ClickHouseRole:
         if not self.exists:
             return None
 
-        query = "SHOW CREATE ROLE %s" % self.name
+        query = "SHOW CREATE ROLE `%s`" % self.name
         result = execute_query(self.module, self.client, query)
         if result:
             return result[0][0]  # SHOW CREATE ROLE returns single row with CREATE statement
@@ -248,10 +252,9 @@ class ClickHouseRole:
 
     def create(self, cluster):
         if not self.exists:
-            query = "CREATE ROLE %s" % self.name
+            query = "CREATE ROLE `%s`" % self.name
 
-            if cluster:
-                query += " ON CLUSTER %s" % cluster
+            query += get_on_cluster_clause(self.module, cluster)
 
             if isinstance(self.module.params['settings'], list):
                 list_settings = self.module.params['settings']
@@ -280,10 +283,9 @@ class ClickHouseRole:
         if not self.exists:
             return False
 
-        query = "ALTER ROLE %s" % self.name
+        query = "ALTER ROLE `%s`" % self.name
 
-        if cluster:
-            query += " ON CLUSTER %s" % cluster
+        query += get_on_cluster_clause(self.module, cluster)
 
         if isinstance(settings, list):
             # Handle settings updates
@@ -309,9 +311,8 @@ class ClickHouseRole:
 
     def drop(self, cluster):
         if self.exists:
-            query = "DROP ROLE %s" % self.name
-            if cluster:
-                query += " ON CLUSTER %s" % cluster
+            query = "DROP ROLE `%s`" % self.name
+            query += get_on_cluster_clause(self.module, cluster)
 
             executed_statements.append(query)
 
