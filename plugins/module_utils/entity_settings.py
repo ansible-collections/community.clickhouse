@@ -5,8 +5,23 @@ __metaclass__ = type
 from ansible.module_utils.basic import AnsibleModule
 
 from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse import (
-    execute_query
+    execute_query,
 )
+
+
+def get_settings_argument_spec():
+    """
+    Return a dictionary with connection options.
+
+    The options are commonly used by many modules.
+    """
+    return dict(
+        settings=dict(
+            type='dict',
+            required=False,
+        ),
+        profiles=dict(type='list', elements='str'),
+    )
 
 
 class EntitySettings():
@@ -16,11 +31,15 @@ class EntitySettings():
         self.name = entity_name
         self.entity_type = entity_type.lower()
 
-        if self.entity_type not in ("user", "role"):
-            self.module.fail_json(msg=f"entity_type must be 'user' or 'role', got {entity_type}")
-
     def _get_where_column(self):
-        return "user_name" if self.entity_type == "user" else "role_name"
+        if self.entity_type == "user":
+            return "user_name"
+        elif self.entity_type == "role":
+            return "role_name"
+        elif self.entity_type == "profile":
+            return "profile_name"
+        else:
+            self.module.fail_json(msg=f"entity_type must be 'user', 'role', or 'profile' got {self.entity_type}")
 
     def fetch(self):
         """Fetch current settings from system.settings_profile_elements."""
@@ -78,7 +97,10 @@ class EntitySettings():
 
         # PROFILE 'name'
         for profile in desired_profiles:
-            parts.append(f"PROFILE '{profile}'")
+            if self.entity_type in ('role', 'user'):
+                parts.append(f"PROFILE '{profile}'")
+            else:
+                parts.append(f"INHERIT `{profile}`")
 
         # SETTINGS key='val' [MIN 'min_val'] [MAX 'max_val'] [WRITABLE|CONST|CHANGEABLE_IN_READONLY]
         for key, setting in desired_settings.items():
@@ -104,6 +126,27 @@ class EntitySettings():
 
         return changed, clause, diff
 
+    def _validate_setting_fields(self, name, setting):
+        """
+        Hard to validate nested objects in module.
+        """
+        if not isinstance(setting, dict):
+            self.module.fail_json(
+                msg=f"Setting {name} is not dictionary type."
+            )
+        required_one_of = ['value', 'min', 'max']
+        if not any(k in setting for k in required_one_of):
+            self.module.fail_json(
+                msg=f"Setting '{name}' missing required field. Must have at least one of: {', '.join(required_one_of)}. Got: {setting}"
+            )
+        # Filter out unexpected keys
+        allowed = set(required_one_of + ['writability'])
+        extra = set(setting.keys()) - allowed
+        if extra:
+            self.module.fail_json(
+                msg=f"Setting '{name}' has invalid keys: {', '.join(extra)}. Allowed: {', '.join(allowed)}"
+            )
+
     def _normalize_settings(self, settings):
         if not settings:
             return {}
@@ -115,6 +158,7 @@ class EntitySettings():
         normalized = {}
 
         for setting_name, setting_config in settings.items():
+            self._validate_setting_fields(setting_name, setting_config)
             normalized_config = setting_config.copy()
 
             # Convert numbers to strings (for all fields)
