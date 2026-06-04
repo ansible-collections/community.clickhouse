@@ -44,6 +44,12 @@ def client_common_argument_spec():
     )
 
 
+def cluster_argument_spec():
+    return dict(
+        cluster=dict(type='str', default=None),
+    )
+
+
 def get_main_conn_kwargs(module):
     """Retrieves main connection arguments values and translates
     them into corresponding clickhouse_driver.Client() arguments.

@@ -1,0 +1,2 @@
+# Initial CI tests of clickhouse_db module
+- import_tasks: initial.yml

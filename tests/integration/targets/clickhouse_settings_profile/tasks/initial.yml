@@ -1,0 +1,550 @@
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+- name: Create settings profile in check mode
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+  check_mode: true
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["CREATE SETTINGS PROFILE `test_profile`"]
+
+- name: Check the row policy is not created
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.settings_profiles WHERE name = %(name)s"
+    execute_kwargs:
+      params:
+        name: test_profile
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.result == []
+
+- name: Create settings profile in real mode
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["CREATE SETTINGS PROFILE `test_profile`"]
+
+- name: Create settings profile in real mode - idempotency
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+  register: result
+
+- name: Check the return values - idempotency
+  ansible.builtin.assert:
+    that:
+      - result.changed == false
+
+- name: Check the settings profile is created
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.settings_profiles WHERE name = %(name)s"
+    execute_kwargs:
+      params:
+        name: test_profile
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.result == [[1]]
+
+- name: Alter settings profile in check mode
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    settings:
+      max_threads:
+        value: 1
+  register: result
+  check_mode: true
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["ALTER SETTINGS PROFILE `test_profile` SETTINGS max_threads='1'"]
+
+- name: Check the settings profile is not altered
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.settings_profile_elements WHERE profile_name = %(name)s and setting_name = %(setting)s"
+    execute_kwargs:
+      params:
+        name: test_profile
+        setting: max_threads
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.result == []
+
+- name: Alter settings profile in real mode
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    settings:
+      max_threads:
+        value: 1
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["ALTER SETTINGS PROFILE `test_profile` SETTINGS max_threads='1'"]
+
+- name: Check the settings profile is altered
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.settings_profile_elements WHERE profile_name = %(name)s and setting_name = %(setting)s"
+    execute_kwargs:
+      params:
+        name: test_profile
+        setting: max_threads
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.result == [[1]]
+
+- name: Alter settings profile in real mode - idempotency
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    settings:
+      max_threads:
+        value: 1
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == false
+
+- name: Drop settings profile in check mode
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    state: absent
+  check_mode: true
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["DROP SETTINGS PROFILE `test_profile`"]
+
+- name: Check the settings profile is not dropped
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.settings_profiles WHERE name = %(name)s"
+    execute_kwargs:
+      params:
+        name: test_profile
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.result == [[1]]
+
+- name: Drop settings profile in real mode
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    state: absent
+  register: result
+
+- name: Check the settings profile is dropped
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.settings_profiles WHERE name = %(name)s"
+    execute_kwargs:
+      params:
+        name: test_profile
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.result == []
+
+- name: Drop settings profile in real mode - idempotency
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    state: absent
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == false
+
+- name: Create settings profile on cluster
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    cluster: default
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["CREATE SETTINGS PROFILE `test_profile` ON CLUSTER `default`"]
+
+- name: ALTER settings profile on cluster
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    cluster: default
+    settings:
+      max_threads:
+        value: 1
+      
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["ALTER SETTINGS PROFILE `test_profile` ON CLUSTER `default` SETTINGS max_threads='1'"]
+
+- name: Drop settings profile on cluster
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    cluster: default
+    state: absent
+      
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["DROP SETTINGS PROFILE `test_profile` ON CLUSTER `default`"]
+
+- name: Create settings profiles for inherince tests
+  community.clickhouse.clickhouse_settings_profile:
+    name: "{{ __set.name }}"
+    settings: "{{ __set.settings | default(omit) }}"
+    profiles: "{{ __set.profiles | default(omit) }}"
+    state: present
+  loop:
+    - name: inh_1
+      settings:
+        max_threads:
+          value: 1
+    - name: inh_2
+      profiles:
+        - inh_1
+    - name: inh_3
+      settings:
+        enable_lightweight_delete:
+          value: 0
+  loop_control:
+    loop_var: __set
+    label: "{{ __set.name }}"
+
+- name: Create setting profile with setting
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    settings:
+      max_threads:
+        value: 1
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["CREATE SETTINGS PROFILE `test_profile` SETTINGS max_threads='1'"]
+
+- name: Create setting profile with setting - idempotency
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    settings:
+      max_threads:
+        value: 1
+  register: result
+
+- name: Drop settings profile
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    state: absent
+  register: result
+
+- name: Create setting profile with settings
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    settings:
+      max_threads:
+        value: 1
+      enable_positional_arguments:
+        value: 0
+      max_memory_usage:
+        value: '10G'
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["CREATE SETTINGS PROFILE `test_profile` SETTINGS max_threads='1', enable_positional_arguments='0', max_memory_usage='10G'"]
+
+- name: Create setting profile with settings - idempotency
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    settings:
+      max_threads:
+        value: 1
+      enable_positional_arguments:
+        value: 0
+      max_memory_usage:
+        value: '10G'
+  register: result
+
+- name: Drop settings profile
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    state: absent
+  register: result
+
+- name: Create setting profile with profile
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    profiles:
+      - inh_1
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["CREATE SETTINGS PROFILE `test_profile` SETTINGS INHERIT `inh_1`"]
+
+- name: Create setting profile with profile - idempotency
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    profiles:
+      - inh_1
+  register: result
+
+- name: Drop settings profile
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    state: absent
+  register: result
+
+- name: Create setting profile with profiles
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    profiles:
+      - inh_1
+      - inh_2
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["CREATE SETTINGS PROFILE `test_profile` SETTINGS INHERIT `inh_1`, INHERIT `inh_2`"]
+
+- name: Drop settings profile
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    state: absent
+  register: result
+
+- name: Create setting profile with profiles and settings
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    profiles:
+      - inh_1
+      - inh_2
+    settings:
+      max_threads:
+        value: 1
+      enable_positional_arguments:
+        value: 0
+      max_memory_usage:
+        value: 10000000000
+        min: 100000000
+        writability: writable
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["CREATE SETTINGS PROFILE `test_profile` SETTINGS INHERIT `inh_1`, INHERIT `inh_2`, max_threads='1', enable_positional_arguments='0', max_memory_usage='10000000000' MIN '100000000' WRITABLE"]
+
+- name: Create setting profile with profiles and settings - idempotency
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    profiles:
+      - inh_1
+      - inh_2
+    settings:
+      max_threads:
+        value: 1
+      enable_positional_arguments:
+        value: 0
+      max_memory_usage:
+        value: 10000000000
+        min: 100000000
+        writability: writable
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == false
+
+- name: Drop settings profile
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    state: absent
+  register: result
+
+# ALTERS
+
+- name: Create setting profile with setting
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+
+- name: Alter setting profile with settings
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    settings:
+      max_threads:
+        value: 1
+      enable_positional_arguments:
+        value: 0
+      max_memory_usage:
+        value: 10000000000
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["ALTER SETTINGS PROFILE `test_profile` SETTINGS max_threads='1', enable_positional_arguments='0', max_memory_usage='10000000000'"]
+
+- name: Alter setting profile with settings - idempotency
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    settings:
+      max_threads:
+        value: 1
+      enable_positional_arguments:
+        value: 0
+      max_memory_usage:
+        value: 10000000000
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == false
+
+- name: Alter setting profile with profile
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    profiles:
+      - inh_1
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["ALTER SETTINGS PROFILE `test_profile` SETTINGS INHERIT `inh_1`"]
+
+- name: Alter setting profile with profile - idempotency
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    profiles:
+      - inh_1
+  register: result
+
+- name: ALTER setting profile with profiles
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    profiles:
+      - inh_1
+      - inh_2
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["ALTER SETTINGS PROFILE `test_profile` SETTINGS INHERIT `inh_1`, INHERIT `inh_2`"]
+
+- name: ALTER setting profile with profiles and settings
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    profiles:
+      - inh_1
+      - inh_2
+    settings:
+      max_threads:
+        value: 1
+      enable_positional_arguments:
+        value: 0
+      max_memory_usage:
+        value: 10000000000
+        min: 100000000
+        writability: writable
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["ALTER SETTINGS PROFILE `test_profile` SETTINGS INHERIT `inh_1`, INHERIT `inh_2`, max_threads='1', enable_positional_arguments='0', max_memory_usage='10000000000' MIN '100000000' WRITABLE"]
+
+- name: ALTER setting profile with profiles and settings - idempotency
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    profiles:
+      - inh_1
+      - inh_2
+    settings:
+      max_threads:
+        value: 1
+      enable_positional_arguments:
+        value: 0
+      max_memory_usage:
+        value: 10000000000
+        min: 100000000
+        writability: writable
+  register: result
+
+- name: Check the return values
+  ansible.builtin.assert:
+    that:
+      - result.changed == false
+
+- name: Drop settings profile
+  community.clickhouse.clickhouse_settings_profile:
+    name: test_profile
+    state: absent
+  register: result
+
+- name: Drop settings profiles
+  community.clickhouse.clickhouse_settings_profile:
+    name: "{{ item }}"
+    state: absent
+  loop:
+    - test_profile
+    - inh_1
+    - inh_2
+    - inh_3
