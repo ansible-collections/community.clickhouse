@@ -45,21 +45,39 @@ def test_user_not_exists(user):
     assert user.user_exists is False
 
 
+@pytest.mark.parametrize(
+    "auth,leg_type,leg_pass,expected,param",
+    [
+        (None, 'sha256_password', 'test_pass', " IDENTIFIED WITH sha256_password BY 'test_pass'", None),
+        ({'type': 'sha256_password', 'password': 'test_pass'}, None, None, " IDENTIFIED WITH sha256_password BY %(password)s", {'password': 'test_pass'}),
+        ({'type': 'sha256_hash', 'password': 'test_hash'}, None, None, " IDENTIFIED WITH sha256_hash BY %(password)s", {'password': 'test_hash'}),
+        ({'type': 'not_identified'}, None, None, " NOT IDENTIFIED", None),
+        ({'type': 'no_password'}, None, None, " IDENTIFIED WITH NO_PASSWORD", None),
+        ({'type': 'ldap', 'server': 'ad'}, None, None, " IDENTIFIED WITH ldap SERVER %(server)s", {'server': 'ad'}),
+    ]
+)
+def test_build_ident_clause_correct(user, auth, leg_type, leg_pass, expected, param):
+    result, result_param = user._build_identified_clause(auth, leg_type, leg_pass)
+
+    user.module.fail_json.assert_not_called()
+    assert result == expected
+    assert param == result_param
+
+
+@pytest.mark.parametrize("auth", [{'type': 'ldap'},])
+def test_build_ident_clause_incorrect(user, auth):
+    user._build_identified_clause(auth)
+
+    user.module.fail_json.assert_called_once()
+
+
 def test_create_ldap_user(user, mock_execute):
     user.create(
         None, None, None, None, None, None,
         'listed_only', None, 'listed_only',
         {'type': 'ldap', 'server': 'ad'}, [])
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "CREATE USER 'alice' IDENTIFIED WITH ldap SERVER 'ad'"
-
-
-def test_create_ldap_user_without_server(user, mock_execute):
-    user.create(
-        None, None, None, None, None, None,
-        'listed_only', None, 'listed_only',
-        {'type': 'ldap'}, [])
-    user.module.fail_json.assert_called_once()
+    assert actual_query == "CREATE USER `alice` IDENTIFIED WITH ldap SERVER %(server)s"
 
 
 def test_create_sha256_pass_user(user, mock_execute):
@@ -68,7 +86,7 @@ def test_create_sha256_pass_user(user, mock_execute):
         'listed_only', None, 'listed_only',
         {'type': 'sha256_password', 'password': 'password1'}, [])
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "CREATE USER 'alice' IDENTIFIED WITH sha256_password BY 'password1'"
+    assert actual_query == "CREATE USER `alice` IDENTIFIED WITH sha256_password BY %(password)s"
 
 
 def test_create_sha256_hash_user(user, mock_execute):
@@ -79,7 +97,7 @@ def test_create_sha256_hash_user(user, mock_execute):
         []
     )
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "CREATE USER 'alice' IDENTIFIED WITH sha256_hash BY '0b14d501a594442a01c6859541bcb3e8164d183d32937b851835442f69d5c94e'"
+    assert actual_query == "CREATE USER `alice` IDENTIFIED WITH sha256_hash BY %(password)s"
 
 
 def test_create_sha256_hash_user_old_way(user, mock_execute):
@@ -88,7 +106,7 @@ def test_create_sha256_hash_user_old_way(user, mock_execute):
         None, [], None, None, 'listed_only',
         None, 'listed_only', None, [])
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "CREATE USER 'alice' IDENTIFIED WITH sha256_hash BY '0b14d501a594442a01c6859541bcb3e8164d183d32937b851835442f69d5c94e'"
+    assert actual_query == "CREATE USER `alice` IDENTIFIED WITH sha256_hash BY '0b14d501a594442a01c6859541bcb3e8164d183d32937b851835442f69d5c94e'"
 
 
 def test_create_sha256_pass_user_old_way(user, mock_execute):
@@ -97,7 +115,7 @@ def test_create_sha256_pass_user_old_way(user, mock_execute):
         None, None, None, None,
         'listed_only', None, 'listed_only', None, [])
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "CREATE USER 'alice' IDENTIFIED WITH sha256_password BY 'password1'"
+    assert actual_query == "CREATE USER `alice` IDENTIFIED WITH sha256_password BY 'password1'"
 
 
 def test_create_not_identified_user(user, mock_execute):
@@ -106,7 +124,7 @@ def test_create_not_identified_user(user, mock_execute):
         'listed_only', None, 'listed_only',
         {'type': 'not_identified'}, [])
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "CREATE USER 'alice' NOT IDENTIFIED"
+    assert actual_query == "CREATE USER `alice` NOT IDENTIFIED"
 
 
 def test_create_no_password_user(user, mock_execute):
@@ -115,7 +133,7 @@ def test_create_no_password_user(user, mock_execute):
         'listed_only', None, 'listed_only',
         {'type': 'no_password'}, [])
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "CREATE USER 'alice' IDENTIFIED WITH NO_PASSWORD"
+    assert actual_query == "CREATE USER `alice` IDENTIFIED WITH NO_PASSWORD"
 
 
 def test_create_user_with_settings(user, mock_execute):
@@ -125,7 +143,7 @@ def test_create_user_with_settings(user, mock_execute):
         None, 'listed_only', None, 'listed_only',
         {'type': 'sha256_password', 'password': 'password1'}, [])
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "CREATE USER 'alice' IDENTIFIED WITH sha256_password BY 'password1' SETTINGS max_concurrent_queries=3, max_threads=8"
+    assert actual_query == "CREATE USER `alice` IDENTIFIED WITH sha256_password BY %(password)s SETTINGS max_concurrent_queries=3, max_threads=8"
 
 
 def test_create_user_with_host_name_passed(user, mock_execute):
@@ -136,7 +154,7 @@ def test_create_user_with_host_name_passed(user, mock_execute):
         None, 'listed_only',
         {'type': 'sha256_password', 'password': 'password1'}, [])
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "CREATE USER 'alice' IDENTIFIED WITH sha256_password BY 'password1' HOST NAME 'host1'"
+    assert actual_query == "CREATE USER `alice` IDENTIFIED WITH sha256_password BY %(password)s HOST NAME 'host1'"
 
 
 def test_create_user_with_host_ip_passed(user, mock_execute):
@@ -147,7 +165,7 @@ def test_create_user_with_host_ip_passed(user, mock_execute):
         'listed_only', None, 'listed_only',
         {'type': 'sha256_password', 'password': 'password1'}, [])
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "CREATE USER 'alice' IDENTIFIED WITH sha256_password BY 'password1' HOST IP '127.0.0.1'"
+    assert actual_query == "CREATE USER `alice` IDENTIFIED WITH sha256_password BY %(password)s HOST IP '127.0.0.1'"
 
 
 def test_create_user_with_host_cidr_passed(user, mock_execute):
@@ -158,7 +176,7 @@ def test_create_user_with_host_cidr_passed(user, mock_execute):
         'listed_only', None,
         'listed_only', {'type': 'sha256_password', 'password': 'password1'}, [])
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "CREATE USER 'alice' IDENTIFIED WITH sha256_password BY 'password1' HOST IP '10.0.0.0/8'"
+    assert actual_query == "CREATE USER `alice` IDENTIFIED WITH sha256_password BY %(password)s HOST IP '10.0.0.0/8'"
 
 
 def test_create_user_with_host_complex_passed(user, mock_execute):
@@ -169,7 +187,7 @@ def test_create_user_with_host_complex_passed(user, mock_execute):
         'listed_only', None, 'listed_only',
         {'type': 'sha256_password', 'password': 'password1'}, [])
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "CREATE USER 'alice' IDENTIFIED WITH sha256_password BY 'password1' HOST IP '10.0.0.0/8' HOST NAME 'host1'"
+    assert actual_query == "CREATE USER `alice` IDENTIFIED WITH sha256_password BY %(password)s HOST IP '10.0.0.0/8' HOST NAME 'host1'"
 
 
 def test_create_user_using_dict_settings(user, mock_execute):
@@ -179,7 +197,7 @@ def test_create_user_using_dict_settings(user, mock_execute):
         'listed_only', None, 'listed_only',
         None, [])
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "CREATE USER 'alice' SETTINGS max_memory_usage='10G'"
+    assert actual_query == "CREATE USER `alice` SETTINGS max_memory_usage='10G'"
 
 
 def test_create_user_using_profiles_prameter(user, mock_execute):
@@ -189,7 +207,7 @@ def test_create_user_using_profiles_prameter(user, mock_execute):
         'listed_only', None, 'listed_only',
         None, ['app', 'web'])
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "CREATE USER 'alice' SETTINGS PROFILE 'app', PROFILE 'web'"
+    assert actual_query == "CREATE USER `alice` SETTINGS PROFILE 'app', PROFILE 'web'"
 
 
 def test_create_user_using_profiles_parameter_and_settings(user, mock_execute):
@@ -199,7 +217,7 @@ def test_create_user_using_profiles_parameter_and_settings(user, mock_execute):
         'listed_only', None, 'listed_only',
         None, ['app', 'web'])
     actual_query = get_executed_query(mock_execute)
-    assert actual_query == "CREATE USER 'alice' SETTINGS PROFILE 'app', PROFILE 'web', max_memory_usage='10G'"
+    assert actual_query == "CREATE USER `alice` SETTINGS PROFILE 'app', PROFILE 'web', max_memory_usage='10G'"
 
 
 def test_create_user_using_profiles_parameter_and_settings_complex(user, mock_execute):
@@ -214,7 +232,7 @@ def test_create_user_using_profiles_parameter_and_settings_complex(user, mock_ex
     )
     actual_query = get_executed_query(mock_execute)
     assert actual_query == (
-        "CREATE USER 'alice' SETTINGS PROFILE 'app', "
+        "CREATE USER `alice` SETTINGS PROFILE 'app', "
         "PROFILE 'web', PROFILE 'test_profile', "
         "PROFILE 'web2', "
         "max_memory_usage='10G' MIN '1G' MAX '100G' CONST, "
@@ -242,7 +260,7 @@ def test_alter_user_profile_added(user_exist, mock_execute):
     )
     actual_query = get_executed_query(mock_execute)
     assert changed is True
-    assert actual_query == "ALTER USER 'alice' SETTINGS PROFILE 'web'"
+    assert actual_query == "ALTER USER `alice` SETTINGS PROFILE 'web'"
 
 
 def test_alter_user_setting_added(user_exist, mock_execute):
@@ -255,7 +273,7 @@ def test_alter_user_setting_added(user_exist, mock_execute):
     actual_query = get_executed_query(mock_execute)
     assert changed is True
     assert actual_query == (
-        "ALTER USER 'alice' SETTINGS "
+        "ALTER USER `alice` SETTINGS "
         "max_memory_usage='10G' MIN '1G' MAX '100G' CONST")
 
 
@@ -268,7 +286,7 @@ def test_alter_user_old_setting_added(user_exist, mock_execute):
     )
     actual_query = get_executed_query(mock_execute)
     assert changed is True
-    assert actual_query == "ALTER USER 'alice' SETTINGS max_memory_usage='10G' MIN = '1G' MAX = '100G' CONST"
+    assert actual_query == "ALTER USER `alice` SETTINGS max_memory_usage='10G' MIN = '1G' MAX = '100G' CONST"
 
 
 def test_alter_user_old_setting_with_profile_added(user_exist, mock_execute):
@@ -280,11 +298,11 @@ def test_alter_user_old_setting_with_profile_added(user_exist, mock_execute):
     )
     actual_query = get_executed_query(mock_execute)
     assert changed is True
-    assert actual_query == "ALTER USER 'alice' SETTINGS max_memory_usage='10G' MIN = '1G' MAX = '100G' CONST, PROFILE web"
+    assert actual_query == "ALTER USER `alice` SETTINGS max_memory_usage='10G' MIN = '1G' MAX = '100G' CONST, PROFILE web"
 
 
 def test_drop(user_exist, mock_execute):
     changed = user_exist.drop(None)
     actual_query = get_executed_query(mock_execute)
     assert changed is True
-    assert actual_query == "DROP USER 'alice'"
+    assert actual_query == "DROP USER `alice`"
