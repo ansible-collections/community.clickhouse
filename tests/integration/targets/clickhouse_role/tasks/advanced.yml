@@ -17,7 +17,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['CREATE ROLE simple_role']
+    - result.executed_statements == ['CREATE ROLE `simple_role`']
 
 - name: Advanced Test 1 - Create role without settings in real mode
   register: result
@@ -29,7 +29,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['CREATE ROLE simple_role']
+    - result.executed_statements == ['CREATE ROLE `simple_role`']
 
 - name: Advanced Test 1 - Verify role exists
   register: result
@@ -65,7 +65,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['ALTER ROLE simple_role SETTINGS max_memory_usage = 10000 READONLY']
+    - result.executed_statements == ['ALTER ROLE `simple_role` SETTINGS max_memory_usage = 10000 READONLY']
 
 - name: Advanced Test 2 - Verify settings not applied in check mode
   register: result
@@ -89,7 +89,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['ALTER ROLE simple_role SETTINGS max_memory_usage = 10000 READONLY']
+    - result.executed_statements == ['ALTER ROLE `simple_role` SETTINGS max_memory_usage = 10000 READONLY']
 
 - name: Advanced Test 2 - Verify settings were applied
   register: result

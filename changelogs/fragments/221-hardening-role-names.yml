@@ -1,0 +1,2 @@
+minor_changes:
+  - clickhouse_role - close names in backticks. Now names for roles and cluster will be validated. Those containing ` or \ will be rejected. Other will eb safe passed without risk of breaking query.

@@ -15,7 +15,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['CREATE ROLE test_role']
+    - result.executed_statements == ['CREATE ROLE `test_role`']
 
 - name: Test 1 - Check the role was not created in check mode
   register: result
@@ -41,7 +41,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['CREATE ROLE test_role SETTINGS max_memory_usage = 15000 READONLY, max_memory_usage_for_all_queries = 15000 MIN 15000 MAX 16000 WRITABLE']
+    - result.executed_statements == ['CREATE ROLE `test_role` SETTINGS max_memory_usage = 15000 READONLY, max_memory_usage_for_all_queries = 15000 MIN 15000 MAX 16000 WRITABLE']
 
 - name: Test 2 - Check the role was created
   register: result
@@ -97,7 +97,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['ALTER ROLE test_role SETTINGS max_memory_usage = 20000 READONLY, max_threads = 8']
+    - result.executed_statements == ['ALTER ROLE `test_role` SETTINGS max_memory_usage = 20000 READONLY, max_threads = 8']
 
 - name: Test 4 - Verify settings were not changed in check mode
   register: result
@@ -124,7 +124,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['ALTER ROLE test_role SETTINGS max_memory_usage = 20000 READONLY, max_threads = 8']
+    - result.executed_statements == ['ALTER ROLE `test_role` SETTINGS max_memory_usage = 20000 READONLY, max_threads = 8']
 
 - name: Test 5 - Verify settings were updated in database
   register: result
@@ -193,7 +193,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['ALTER ROLE test_role SETTINGS max_memory_usage = 25000 READONLY, max_threads = 16, PROFILE \'default\'']
+    - result.executed_statements == ['ALTER ROLE `test_role` SETTINGS max_memory_usage = 25000 READONLY, max_threads = 16, PROFILE \'default\'']
 
 - name: Test 8 - Verify multiple settings in database
   register: result
@@ -220,7 +220,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['DROP ROLE test_role']
+    - result.executed_statements == ['DROP ROLE `test_role`']
 
 - name: Test 9 - Check the role was not removed in check mode
   register: result
@@ -243,7 +243,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['DROP ROLE test_role']
+    - result.executed_statements == ['DROP ROLE `test_role`']
 
 - name: Test 10 - Check the role was removed in real mode
   register: result
@@ -288,7 +288,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["CREATE ROLE test_role SETTINGS max_memory_usage='15000' CONST, max_memory_usage_for_all_queries='15000' MIN '15000' MAX '16000' WRITABLE"]
+    - result.executed_statements == ["CREATE ROLE `test_role` SETTINGS max_memory_usage='15000' CONST, max_memory_usage_for_all_queries='15000' MIN '15000' MAX '16000' WRITABLE"]
 
 - name: Test 12 - Check the role was created
   register: result
@@ -349,7 +349,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["CREATE ROLE test_role SETTINGS PROFILE 'web', PROFILE 'app'"]
+    - result.executed_statements == ["CREATE ROLE `test_role` SETTINGS PROFILE 'web', PROFILE 'app'"]
 
 - name: Test 13 - Check the role was created
   register: result
@@ -388,7 +388,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["ALTER ROLE test_role SETTINGS PROFILE 'web'"]
+    - result.executed_statements == ["ALTER ROLE `test_role` SETTINGS PROFILE 'web'"]
 
 - name: Test 13 - Alter role removing settings with settings as dictionary - workaround 
   register: result
@@ -401,7 +401,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["ALTER ROLE test_role SETTINGS NONE"]
+    - result.executed_statements == ["ALTER ROLE `test_role` SETTINGS NONE"]
 
 - name: Test 13 - Alter role removing settings with settings as dictionary - idempotency
   register: result
@@ -447,7 +447,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["CREATE ROLE test_role ON CLUSTER default"]
+    - result.executed_statements == ["CREATE ROLE `test_role` ON CLUSTER `default`"]
 
 - name: Test 14 - Alter role on cluster
   register: result
@@ -463,7 +463,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["ALTER ROLE test_role ON CLUSTER default SETTINGS max_threads='1'"]
+    - result.executed_statements == ["ALTER ROLE `test_role` ON CLUSTER `default` SETTINGS max_threads='1'"]
 
 - name: Test 14 - Drop role on cluster
   register: result
@@ -476,4 +476,4 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["DROP ROLE test_role ON CLUSTER default"]
+    - result.executed_statements == ["DROP ROLE `test_role` ON CLUSTER `default`"]
