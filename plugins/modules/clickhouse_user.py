@@ -375,6 +375,7 @@ query_parameters:
   returned: on succes
   type: list
   sample: [{"password": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"}]
+  version_added: '2.3.0'
 '''
 
 from ansible.module_utils.basic import AnsibleModule
