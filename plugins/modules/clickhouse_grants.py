@@ -31,6 +31,7 @@ author:
 
 extends_documentation_fragment:
   - community.clickhouse.client_inst_opts
+  - community.clickhouse.cluster_inst_opts
 
 version_added: '0.9.0'
 
@@ -84,12 +85,6 @@ options:
           - A boolean that applies to all privileges in this set.
           - If specified, it overrides any individual grant option settings within C(privs).
         type: bool
-  cluster:
-    description:
-      - Run the grant/revoke commands on all cluster hosts.
-      - If the cluster is not configured, the command will fail with an error.
-    type: str
-    version_added: '0.11.0'
 '''
 
 EXAMPLES = r'''
@@ -193,6 +188,8 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
     connect_to_db_via_client,
     execute_query,
     get_main_conn_kwargs,
+    get_on_cluster_clause,
+    cluster_argument_spec,
 )
 
 executed_statements = []
@@ -223,7 +220,7 @@ class ClickHouseGrants():
             self.module.fail_json(msg="Grantee %s does not exist" % self.grantee)
 
     def get(self):
-        query = "SHOW GRANTS FOR '%s'" % self.grantee
+        query = "SHOW GRANTS FOR `%s`" % self.grantee
         result = execute_query(self.module, self.client, query)
 
         grants = {}
@@ -297,8 +294,7 @@ class ClickHouseGrants():
         for obj, privs in revokes_by_obj.items():
             privs_str = ', '.join(sorted(privs))
             query = "REVOKE {0} ON {1} FROM '{2}'".format(privs_str, obj, self.grantee)
-            if self.cluster:
-                query += " ON CLUSTER {0}".format(self.cluster)
+            query += get_on_cluster_clause(self.module, self.cluster)
             queries.append(query)
 
         grants_go_by_obj = defaultdict(list)
@@ -313,15 +309,13 @@ class ClickHouseGrants():
         for obj, privs in grants_go_by_obj.items():
             privs_str = ', '.join(sorted(privs))
             query = "GRANT {0} ON {1} TO '{2}' WITH GRANT OPTION".format(privs_str, obj, self.grantee)
-            if self.cluster:
-                query += " ON CLUSTER {0}".format(self.cluster)
+            query += get_on_cluster_clause(self.module, self.cluster)
             queries.append(query)
 
         for obj, privs in grants_no_go_by_obj.items():
             privs_str = ', '.join(sorted(privs))
             query = "GRANT {0} ON {1} TO '{2}'".format(privs_str, obj, self.grantee)
-            if self.cluster:
-                query += " ON CLUSTER {0}".format(self.cluster)
+            query += get_on_cluster_clause(self.module, self.cluster)
             queries.append(query)
 
         executed_statements.extend(queries)
@@ -348,8 +342,7 @@ class ClickHouseGrants():
         for obj, privs in current.items():
             privs_str = ', '.join(sorted(privs))
             query = "REVOKE {0} ON {1} FROM '{2}'".format(privs_str, obj, self.grantee)
-            if self.cluster:
-                query += " ON CLUSTER {0}".format(self.cluster)
+            query += get_on_cluster_clause(self.module, self.cluster)
             queries.append(query)
 
         executed_statements.extend(queries)
@@ -370,8 +363,9 @@ def main():
         grantee=dict(type='str', required=True),
         exclusive=dict(type='bool', default=False),
         privileges=dict(type='list', elements='dict'),
-        cluster=dict(type='str', default=None),
     )
+
+    argument_spec.update(cluster_argument_spec())
 
     # Instantiate an object of module class
     module = AnsibleModule(
