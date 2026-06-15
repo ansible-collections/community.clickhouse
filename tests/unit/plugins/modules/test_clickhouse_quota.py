@@ -6,36 +6,11 @@ from ansible_collections.community.clickhouse.plugins.modules.clickhouse_quota i
     _APPLY_TO_REGEX,
     _CREATE_QUOTA_REGEX,
     _LIMITS_REGEX,
-    _VALID_NAME_REGEX,
     ClickHouseQuota,
 )
 from ansible_collections.community.clickhouse.plugins.modules.clickhouse_quota import (
     _DEFAULT_PARAMS as DEFAULT_NORMALIZE_PARAMS,
 )
-
-
-@pytest.mark.parametrize(
-    argnames="name,is_valid",
-    argvalues=[
-        ("", False),
-        ("test_quota", True),
-        ("test quota", True),
-        ("test-quota", True),
-        ("test.quota", True),
-        ("tést quota", True),
-        ("'test quota'", False),
-        ('"test quota"', False),
-        ("`test quota`", False),
-        ("test;quota", False),
-        ("test\0quota", False),
-    ],
-)
-def test_valid_name_regex(name, is_valid):
-    match = _VALID_NAME_REGEX.match(name)
-    if is_valid:
-        assert match is not None
-    else:
-        assert match is None
 
 
 @pytest.mark.parametrize(
@@ -473,7 +448,7 @@ DEFAULT_PARAMS = dict(
     argnames="name,params,existing_quota,expected_executed",
     argvalues=[
         # create queries
-        ("tést_quota", {}, None, ["CREATE QUOTA 'tést_quota'"]),
+        ("tést_quota", {}, None, ["CREATE QUOTA `tést_quota`"]),
         ("tést_quota", {}, "CREATE QUOTA `tést_quota`", []),
         (
             "test_quota",
@@ -492,7 +467,7 @@ DEFAULT_PARAMS = dict(
             },
             None,
             [
-                "CREATE QUOTA 'test_quota' ON CLUSTER 'test_cluster' KEYED BY user_name FOR INTERVAL 5 minute MAX queries = 100 TO CURRENT_USER"
+                "CREATE QUOTA `test_quota` ON CLUSTER `test_cluster` KEYED BY user_name FOR INTERVAL 5 minute MAX queries = 100 TO CURRENT_USER"
             ],
         ),
         # drop queries
@@ -501,7 +476,7 @@ DEFAULT_PARAMS = dict(
             "test_quota",
             dict(state="absent"),
             "CREATE QUOTA 'test_quota'",
-            ["DROP QUOTA 'test_quota'"],
+            ["DROP QUOTA `test_quota`"],
         ),
         # alter queries
         (
@@ -521,7 +496,7 @@ DEFAULT_PARAMS = dict(
             },
             "CREATE QUOTA test_quota",
             [
-                "ALTER QUOTA 'test_quota' ON CLUSTER 'test_cluster' KEYED BY user_name FOR INTERVAL 5 minute MAX queries = 100 TO CURRENT_USER"
+                "ALTER QUOTA `test_quota` ON CLUSTER `test_cluster` KEYED BY user_name FOR INTERVAL 5 minute MAX queries = 100 TO CURRENT_USER"
             ],
         ),
         (
@@ -565,7 +540,7 @@ DEFAULT_PARAMS = dict(
             "CREATE QUOTA `tést quota` KEYED BY client_key, user_name FOR INTERVAL 1 minute MAX errors = 10, "
             "FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100, execution_time = 1.1 TO default",
             [
-                "ALTER QUOTA 'tést quota' KEYED BY client_key FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100, execution_time = 1.1, "
+                "ALTER QUOTA `tést quota` KEYED BY client_key FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100, execution_time = 1.1, "
                 "FOR INTERVAL 1 minute MAX errors = 10 TO default"
             ],
         ),
@@ -640,21 +615,26 @@ def test_ensure_state(mocker, name, params, existing_quota, expected_executed):
         will_run_show_create = existing_quota and module.params["state"] == "present"
         quota = ClickHouseQuota(module, client, name)
         client.execute.assert_called_once_with(
-            f"SELECT 1 FROM system.quotas WHERE name = '{name}' LIMIT 1"
+            "SELECT 1 FROM system.quotas WHERE name = %(name)s LIMIT 1", params={'name': name}
         )
         client.execute.reset_mock()
         client.execute.return_value = [[existing_quota]] if will_run_show_create else []
+        executed_statements = []
+        mocker.patch("ansible_collections.community.clickhouse.plugins.modules.clickhouse_quota.executed_statements",
+                     executed_statements)
         changed = quota.ensure_state()
         if check_mode:
             if will_run_show_create:
-                client.execute.assert_called_once_with(f"SHOW CREATE QUOTA '{name}'")
+                client.execute.assert_called_once_with(f"SHOW CREATE QUOTA `{name}`")
             else:
                 client.execute.assert_not_called()
         else:
             expected_call_args_list = []
             if will_run_show_create:
-                expected_call_args_list.append(((f"SHOW CREATE QUOTA '{name}'",),))
+                expected_call_args_list.append(((f"SHOW CREATE QUOTA `{name}`",),))
             expected_call_args_list.extend(((sql,),) for sql in expected_executed)
             assert client.execute.call_args_list == expected_call_args_list
-        assert quota.executed_statements == expected_executed
+        # actual_calls = [call[0][0] for call in client.execute.call_args_list]
+        # executed_statements = get_executed_query(mock_execute)
+        assert executed_statements == expected_executed
         assert changed is bool(expected_executed)

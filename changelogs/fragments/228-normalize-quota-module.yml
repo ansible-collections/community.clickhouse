@@ -1,0 +1,5 @@
+minor_changes:
+  - clickhouse_quota - pass quota and cluster name in backticks in queries.
+  - clickhouse_quota - inherit cluster documentation and spec option.
+bugfixes:
+  - clickhouse_quota - add missing on cluster for drop
