@@ -26,7 +26,7 @@
     - result_cluster_check is changed
     - result_cluster_check.diff is defined
     - result_cluster_check.executed_statements | length == 1
-    - "'ON CLUSTER test_cluster' in result_cluster_check.executed_statements[0]"
+    - "'ON CLUSTER `test_cluster`' in result_cluster_check.executed_statements[0]"
 
 # Test: actually grant with cluster - ensure the module includes ON CLUSTER in executed statements
 - name: Actually grant privileges with cluster
@@ -45,7 +45,7 @@
     that:
     - result_cluster_apply is changed
     - result_cluster_apply.executed_statements | length > 0
-    - "'ON CLUSTER test_cluster' in result_cluster_apply.executed_statements[0]"
+    - "'ON CLUSTER `test_cluster`' in result_cluster_apply.executed_statements[0]"
 
 # Test: idempotency with cluster
 - name: Run same grant with cluster again for idempotency
@@ -79,7 +79,7 @@
     that:
     - result_cluster_revoke_check is changed
     - result_cluster_revoke_check.executed_statements | length > 0
-    - "'ON CLUSTER test_cluster' in result_cluster_revoke_check.executed_statements[0]"
+    - "'ON CLUSTER `test_cluster`' in result_cluster_revoke_check.executed_statements[0]"
 
 # Test: actually revoke with cluster
 - name: Actually revoke all privileges with cluster
@@ -94,4 +94,4 @@
     that:
     - result_cluster_revoke is changed
     - result_cluster_revoke.executed_statements | length > 0
-    - "'ON CLUSTER test_cluster' in result_cluster_revoke.executed_statements[0]"
+    - "'ON CLUSTER `test_cluster`' in result_cluster_revoke.executed_statements[0]"
