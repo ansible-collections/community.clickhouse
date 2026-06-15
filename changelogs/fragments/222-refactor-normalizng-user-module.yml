@@ -1,0 +1,4 @@
+minor_changes:
+  - clickhouse_user - normalize generating query. Now identifiers like user names will be closed in backticks.
+  - clickhouse_user - pass password to ClickHouse using query parameters. Prevent breaking query when containing soem special characters.
+  - clickhouse_user - module on success returns query_parameters with password used for query.

@@ -18,7 +18,9 @@
       ansible.builtin.assert:
         that:
         - result is changed
-        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH sha256_password BY '********'"]
+        - result.executed_statements == ["CREATE USER `test_user` IDENTIFIED WITH sha256_password BY %(password)s"]
+        - >
+          result.query_parameters == [{"password": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"}]
 
     - name: Check the actual state
       register: result
@@ -95,7 +97,7 @@
       ansible.builtin.assert:
         that:
         - result is changed
-        - result.executed_statements == ["CREATE USER 'test_user' NOT IDENTIFIED"]
+        - result.executed_statements == ["CREATE USER `test_user` NOT IDENTIFIED"]
 
     - name: Check the actual state
       register: result
@@ -171,7 +173,7 @@
       ansible.builtin.assert:
         that:
         - result is changed
-        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH NO_PASSWORD"]
+        - result.executed_statements == ["CREATE USER `test_user` IDENTIFIED WITH NO_PASSWORD"]
 
     - name: Check the actual state
       register: result
@@ -248,7 +250,9 @@
       ansible.builtin.assert:
         that:
         - result is changed
-        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH sha256_password BY '********'"]
+        - result.executed_statements == ["CREATE USER `test_user` IDENTIFIED WITH sha256_password BY %(password)s"]
+        - >
+          result.query_parameters == [{"password": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"}]
 
     - name: Check the actual state
       register: result
@@ -327,7 +331,9 @@
       ansible.builtin.assert:
         that:
         - result is changed
-        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH sha256_hash BY '********'"]
+        - result.executed_statements == ["CREATE USER `test_user` IDENTIFIED WITH sha256_hash BY %(password)s"]
+        - >
+          result.query_parameters == [{"password": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"}]
 
     - name: Check the actual state
       register: result
@@ -406,7 +412,9 @@
       ansible.builtin.assert:
         that:
         - result is changed
-        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH double_sha1_password BY '********'"]
+        - result.executed_statements == ["CREATE USER `test_user` IDENTIFIED WITH double_sha1_password BY %(password)s"]
+        - >
+          result.query_parameters == [{"password": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"}]
 
     - name: Check the actual state
       register: result
@@ -485,7 +493,9 @@
       ansible.builtin.assert:
         that:
         - result is changed
-        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH double_sha1_hash BY '********'"]
+        - result.executed_statements == ["CREATE USER `test_user` IDENTIFIED WITH double_sha1_hash BY %(password)s"]
+        - >
+          result.query_parameters == [{"password": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"}]
 
     - name: Check the actual state
       register: result
@@ -564,7 +574,9 @@
       ansible.builtin.assert:
         that:
         - result is changed
-        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH bcrypt_password BY '********'"]
+        - result.executed_statements == ["CREATE USER `test_user` IDENTIFIED WITH bcrypt_password BY %(password)s"]
+        - >
+          result.query_parameters == [{"password": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"}]
 
     - name: Check the actual state
       register: result
@@ -643,7 +655,9 @@
       ansible.builtin.assert:
         that:
         - result is changed
-        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH bcrypt_hash BY '********'"]
+        - result.executed_statements == ["CREATE USER `test_user` IDENTIFIED WITH bcrypt_hash BY %(password)s"]
+        - >
+          result.query_parameters == [{"password": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"}]
 
     - name: Check the actual state
       register: result
@@ -660,14 +674,14 @@
         - result is not changed
         - result["users"]["test_user"] is not defined
 
-    - name: Create test_user with authentication bcrypt password in real mode
+    - name: Create test_user with authentication bcrypt hash in real mode
       register: result
       community.clickhouse.clickhouse_user:
         state: present
         name: test_user
         authentication:
           type: bcrypt_hash
-          password: $2a$12$4fjXRdyPxLWNiZ2fAWTsIezG87Nzb0oyr7BZlNqm2p4HtfyvNsff2\0\0\0\0
+          password: $2a$12$4fjXRdyPxLWNiZ2fAWTsIezG87Nzb0oyr7BZlNqm2p4HtfyvNsff2
 
     - name: Check the actual state
       register: result
@@ -694,7 +708,7 @@
         name: test_user
         authentication:
           type: bcrypt_hash
-          password: $2a$12$4fjXRdyPxLWNiZ2fAWTsIezG87Nzb0oyr7BZlNqm2p4HtfyvNsff2\0\0\0\0
+          password: $2a$12$4fjXRdyPxLWNiZ2fAWTsIezG87Nzb0oyr7BZlNqm2p4HtfyvNsff2
 
     - name: Check result
       ansible.builtin.assert:
@@ -722,7 +736,9 @@
       ansible.builtin.assert:
         that:
         - result is changed
-        - result.executed_statements == ["CREATE USER 'test_user' IDENTIFIED WITH ldap SERVER 'ad'"]
+        - result.executed_statements == ["CREATE USER `test_user` IDENTIFIED WITH ldap SERVER %(server)s"]
+        - >
+          result.query_parameters == [{'server': 'ad'}]
 
     - name: Check the actual state
       register: result
@@ -880,7 +896,9 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["ALTER USER 'test_user' IDENTIFIED WITH sha256_password BY '********'"]
+    - result.executed_statements == ["ALTER USER `test_user` IDENTIFIED WITH sha256_password BY '********'"]
+    - result.query_parameters == []
+
 
 - name: Drop test_user
   community.clickhouse.clickhouse_user:
@@ -916,7 +934,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "ALTER USER 'test_user' SETTINGS max_memory_usage = 20000 READONLY"
+    - result.executed_statements[0] == "ALTER USER `test_user` SETTINGS max_memory_usage = 20000 READONLY"
 
 - name: Update user settings in real mode
   register: result
@@ -930,7 +948,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "ALTER USER 'test_user' SETTINGS max_memory_usage = 20000 READONLY"
+    - result.executed_statements[0] == "ALTER USER `test_user` SETTINGS max_memory_usage = 20000 READONLY"
 
 - name: Verify settings in database using clickhouse_client
   register: result
@@ -988,7 +1006,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "ALTER USER 'test_user' SETTINGS max_memory_usage = 25000 READONLY, max_threads = 8, PROFILE 'readonly'"
+    - result.executed_statements[0] == "ALTER USER `test_user` SETTINGS max_memory_usage = 25000 READONLY, max_threads = 8, PROFILE 'readonly'"
 
 - name: Verify multiple settings in database using clickhouse_client
   register: result
@@ -1032,8 +1050,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "GRANT accountant, manager TO 'test_user'" or result.executed_statements[0] == "GRANT manager, accountant TO 'test_user'"
-    - result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE accountant, manager" or result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE manager, accountant"
+    - result.executed_statements[0] == "GRANT `accountant`, `manager` TO `test_user`" or result.executed_statements[0] == "GRANT `manager`, `accountant` TO `test_user`"
+    - result.executed_statements[1] == "ALTER USER `test_user` DEFAULT ROLE `accountant`, `manager`" or result.executed_statements[1] == "ALTER USER `test_user` DEFAULT ROLE `manager`, `accountant`"
 
 - name: Check the actual state
   register: result
@@ -1065,8 +1083,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "GRANT accountant, manager TO 'test_user'" or result.executed_statements[0] == "GRANT manager, accountant TO 'test_user'"
-    - result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE accountant, manager" or result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE manager, accountant"
+    - result.executed_statements[0] == "GRANT `accountant`, `manager` TO `test_user`" or result.executed_statements[0] == "GRANT `manager`, `accountant` TO `test_user`"
+    - result.executed_statements[1] == "ALTER USER `test_user` DEFAULT ROLE `accountant`, `manager`" or result.executed_statements[1] == "ALTER USER `test_user` DEFAULT ROLE `manager`, `accountant`"
 
 - name: Check the actual state
   register: result
@@ -1097,9 +1115,9 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "GRANT sales TO 'test_user'"
-    - result.executed_statements[1] == "REVOKE accountant, manager FROM 'test_user'" or result.executed_statements[1] == "REVOKE manager, accountant FROM 'test_user'"
-    - result.executed_statements[2] == "ALTER USER 'test_user' DEFAULT ROLE sales"
+    - result.executed_statements[0] == "GRANT `sales` TO `test_user`"
+    - result.executed_statements[1] == "REVOKE `accountant`, `manager` FROM `test_user`" or result.executed_statements[1] == "REVOKE `manager`, `accountant` FROM `test_user`"
+    - result.executed_statements[2] == "ALTER USER `test_user` DEFAULT ROLE `sales`"
 
 - name: Check the actual state
   register: result
@@ -1127,9 +1145,9 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "GRANT sales TO 'test_user'"
-    - result.executed_statements[1] == "REVOKE accountant, manager FROM 'test_user'" or result.executed_statements[1] == "REVOKE manager, accountant FROM 'test_user'"
-    - result.executed_statements[2] == "ALTER USER 'test_user' DEFAULT ROLE sales"
+    - result.executed_statements[0] == "GRANT `sales` TO `test_user`"
+    - result.executed_statements[1] == "REVOKE `accountant`, `manager` FROM `test_user`" or result.executed_statements[1] == "REVOKE `manager`, `accountant` FROM `test_user`"
+    - result.executed_statements[2] == "ALTER USER `test_user` DEFAULT ROLE `sales`"
 
 - name: Check the actual state
   register: result
@@ -1194,8 +1212,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "GRANT accountant TO 'test_user'"
-    - result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE sales, accountant" or result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE accountant, sales"
+    - result.executed_statements[0] == "GRANT `accountant` TO `test_user`"
+    - result.executed_statements[1] == "ALTER USER `test_user` DEFAULT ROLE `sales`, `accountant`" or result.executed_statements[1] == "ALTER USER `test_user` DEFAULT ROLE `accountant`, `sales`"
 
 - name: Check the actual state
   register: result
@@ -1223,7 +1241,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "SET DEFAULT ROLE NONE TO 'test_user'"
+    - result.executed_statements[0] == "ALTER USER `test_user` DEFAULT ROLE NONE"
 
 - name: Check the actual state
   register: result
@@ -1250,7 +1268,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "SET DEFAULT ROLE NONE TO 'test_user'"
+    - result.executed_statements[0] == "ALTER USER `test_user` DEFAULT ROLE NONE"
 
 - name: Check the actual state
   register: result
@@ -1278,7 +1296,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "REVOKE accountant, sales FROM 'test_user'" or result.executed_statements[0] == "REVOKE sales, accountant FROM 'test_user'"
+    - result.executed_statements[0] == "REVOKE `accountant`, `sales` FROM `test_user`" or result.executed_statements[0] == "REVOKE `sales`, `accountant` FROM `test_user`"
 
 - name: Check the actual state
   register: result
@@ -1305,7 +1323,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "REVOKE accountant, sales FROM 'test_user'" or result.executed_statements[0] == "REVOKE sales, accountant FROM 'test_user'"
+    - result.executed_statements[0] == "REVOKE `accountant`, `sales` FROM `test_user`" or result.executed_statements[0] == "REVOKE `sales`, `accountant` FROM `test_user`"
 
 - name: Check the actual state
   register: result
@@ -1407,8 +1425,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "REVOKE manager FROM 'test_user'"
-    - result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE accountant"
+    - result.executed_statements[0] == "REVOKE `manager` FROM `test_user`"
+    - result.executed_statements[1] == "ALTER USER `test_user` DEFAULT ROLE `accountant`"
 
 - name: Check the actual state
   register: result
@@ -1440,8 +1458,8 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "REVOKE manager FROM 'test_user'"
-    - result.executed_statements[1] == "ALTER USER 'test_user' DEFAULT ROLE accountant"
+    - result.executed_statements[0] == "REVOKE `manager` FROM `test_user`"
+    - result.executed_statements[1] == "ALTER USER `test_user` DEFAULT ROLE `accountant`"
 
 - name: Check the actual state
   register: result
@@ -1506,9 +1524,9 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements[0] == "CREATE USER 'test_user_1'"
-    - result.executed_statements[1] == "GRANT test_listed_only TO 'test_user_1'"
-    - result.executed_statements[2] == "ALTER USER 'test_user_1' DEFAULT ROLE test_listed_only"
+    - result.executed_statements[0] == "CREATE USER `test_user_1`"
+    - result.executed_statements[1] == "GRANT `test_listed_only` TO `test_user_1`"
+    - result.executed_statements[2] == "ALTER USER `test_user_1` DEFAULT ROLE `test_listed_only`"
 
 - name: Check the actual state
   register: result
@@ -1654,7 +1672,7 @@
   ansible.builtin.assert:
     that:
       - result is changed
-      - result.executed_statements == ["CREATE USER 'test_user' HOST NAME 'host1', 'host2'"]
+      - result.executed_statements == ["CREATE USER `test_user` HOST NAME 'host1', 'host2'"]
 
 - name: Check the actual state
   register: result
@@ -1684,7 +1702,7 @@
   ansible.builtin.assert:
     that:
       - result is changed
-      - result.executed_statements == ["CREATE USER 'test_user' HOST NAME 'host1', 'host2'"]
+      - result.executed_statements == ["CREATE USER `test_user` HOST NAME 'host1', 'host2'"]
 
 - name: Check the actual state
   register: result
@@ -1778,7 +1796,7 @@
   ansible.builtin.assert:
     that:
       - result is changed
-      - result.executed_statements == ["ALTER USER 'test_user' HOST ANY"]
+      - result.executed_statements == ["ALTER USER `test_user` HOST ANY"]
 
 - name: Check the actual state
   register: result
@@ -1865,7 +1883,7 @@
   ansible.builtin.assert:
     that:
       - result is changed
-      - result.executed_statements == ["ALTER USER 'test_user' HOST NAME 'host3'"]
+      - result.executed_statements == ["ALTER USER `test_user` HOST NAME 'host3'"]
 
 - name: Update user host restrictions in real mode
   register: result
@@ -1881,7 +1899,7 @@
   ansible.builtin.assert:
     that:
       - result is changed
-      - result.executed_statements == ["ALTER USER 'test_user' HOST NAME 'host3'"]
+      - result.executed_statements == ["ALTER USER `test_user` HOST NAME 'host3'"]
 
 - name: Check the actual state
   register: result
@@ -1911,7 +1929,7 @@
   ansible.builtin.assert:
     that:
       - result is changed
-      - result.executed_statements == ["ALTER USER 'test_user' HOST LIKE '%.mysite.com'"]
+      - result.executed_statements == ["ALTER USER `test_user` HOST LIKE '%.mysite.com'"]
 
 - name: Update user host restrictions to another host_type in real mode (should replace previous host restrictions)
   register: result
@@ -1927,7 +1945,7 @@
   ansible.builtin.assert:
     that:
       - result is changed
-      - result.executed_statements == ["ALTER USER 'test_user' HOST LIKE '%.mysite.com'"]
+      - result.executed_statements == ["ALTER USER `test_user` HOST LIKE '%.mysite.com'"]
 
 - name: Check the actual state
   register: result
@@ -1972,7 +1990,7 @@
   ansible.builtin.assert:
     that:
       - result is changed
-      - result.executed_statements == ["CREATE USER 'test_user' HOST LIKE '%.mysite1.com' HOST REGEXP '.*\\.mysite2\\.com' HOST NAME 'hostA' HOST IP '192.168.0.0/16'"]
+      - result.executed_statements == ["CREATE USER `test_user` HOST LIKE '%.mysite1.com' HOST REGEXP '.*\\.mysite2\\.com' HOST NAME 'hostA' HOST IP '192.168.0.0/16'"]
 
 - name: Create test_user with multiple host restriction types in real mode
   community.clickhouse.clickhouse_user:
@@ -1996,7 +2014,7 @@
   ansible.builtin.assert:
     that:
       - result is changed
-      - result.executed_statements == ["CREATE USER 'test_user' HOST LIKE '%.mysite1.com' HOST REGEXP '.*\\.mysite2\\.com' HOST NAME 'hostA' HOST IP '192.168.0.0/16'"]
+      - result.executed_statements == ["CREATE USER `test_user` HOST LIKE '%.mysite1.com' HOST REGEXP '.*\\.mysite2\\.com' HOST NAME 'hostA' HOST IP '192.168.0.0/16'"]
 
 - name: Check the actual state
   register: result
@@ -2032,7 +2050,7 @@
   ansible.builtin.assert:
     that:
       - result is changed
-      - result.executed_statements == ["CREATE USER 'test_user' HOST LOCAL"]
+      - result.executed_statements == ["CREATE USER `test_user` HOST LOCAL"]
 
 - name: Create test_user with type hosts that don't require hosts in real mode
   register: result
@@ -2046,7 +2064,7 @@
   ansible.builtin.assert:
     that:
       - result is changed
-      - result.executed_statements == ["CREATE USER 'test_user' HOST LOCAL"]
+      - result.executed_statements == ["CREATE USER `test_user` HOST LOCAL"]
 
 - name: Check the actual state
   register: result
@@ -2082,7 +2100,7 @@
   ansible.builtin.assert:
     that:
       - result is changed
-      - result.executed_statements == ["CREATE USER 'test_user' HOST NAME 'host-name', 'host.name'"]
+      - result.executed_statements == ["CREATE USER `test_user` HOST NAME 'host-name', 'host.name'"]
 
 - name: Create test_user with hosts containing special characters in real mode
   register: result
@@ -2099,7 +2117,7 @@
   ansible.builtin.assert:
     that:
       - result is changed
-      - result.executed_statements == ["CREATE USER 'test_user' HOST NAME 'host-name', 'host.name'"]
+      - result.executed_statements == ["CREATE USER `test_user` HOST NAME 'host-name', 'host.name'"]
 
 - name: Check the actual state
   register: result
@@ -2160,7 +2178,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["CREATE USER 'test_user' SETTINGS max_memory_usage='15000' CONST, max_memory_usage_for_all_queries='15000' MIN '15000' MAX '16000' WRITABLE"]
+    - result.executed_statements == ["CREATE USER `test_user` SETTINGS max_memory_usage='15000' CONST, max_memory_usage_for_all_queries='15000' MIN '15000' MAX '16000' WRITABLE"]
 
 - name: Check user has settings
   register: result
@@ -2215,7 +2233,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["ALTER USER 'test_user' SETTINGS PROFILE 'web'"]
+    - result.executed_statements == ["ALTER USER `test_user` SETTINGS PROFILE 'web'"]
 
 - name: Alter user removing settings with settings as dictionary - workaround 
   register: result
@@ -2228,7 +2246,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["ALTER USER 'test_user' SETTINGS NONE"]
+    - result.executed_statements == ["ALTER USER `test_user` SETTINGS NONE"]
 
 - name: Alter user removing settings with settings as dictionary - idempotency
   register: result
@@ -2259,7 +2277,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["CREATE USER 'test_user' ON CLUSTER default"]
+    - result.executed_statements == ["CREATE USER `test_user` ON CLUSTER `default`"]
 
 - name: Test 14 - Alter user on cluster
   register: result
@@ -2276,7 +2294,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["ALTER USER 'test_user' SETTINGS max_memory_usage='15000' CONST ON CLUSTER default"]
+    - result.executed_statements == ["ALTER USER `test_user` SETTINGS max_memory_usage='15000' CONST ON CLUSTER `default`"]
 
 - name: Test 14 - Drop user on cluster
   register: result
@@ -2289,7 +2307,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["DROP USER 'test_user' ON CLUSTER default"]
+    - result.executed_statements == ["DROP USER `test_user` ON CLUSTER `default`"]
 
 - name: Drop test_role
   community.clickhouse.clickhouse_role:
