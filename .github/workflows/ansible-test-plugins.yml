@@ -28,7 +28,12 @@ jobs:
           - stable-2.18
           - stable-2.19
           - stable-2.20
+          - stable-2.21
           - devel
+        include:
+        - python: "3.13"
+        - ansible: stable-2.17
+          python: "3.12"
     steps:
 
       - name: Check out code
@@ -39,13 +44,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python}}
 
       - name: Install ansible-base (${{ matrix.ansible }})
         run: pip install https://github.com/ansible/ansible/archive/${{ matrix.ansible }}.tar.gz --disable-pip-version-check
 
       - name: Run sanity tests
-        run: ansible-test sanity --docker -v --color
+        run: ansible-test sanity --docker -v --color --python ${{ matrix.python }}
         working-directory: ./ansible_collections/community/clickhouse
 
   units:
@@ -61,7 +66,12 @@ jobs:
           - stable-2.18
           - stable-2.19
           - stable-2.20
+          - stable-2.21
           - devel
+        include:
+        - python: "3.13"
+        - ansible: stable-2.17
+          python: "3.12"
 
     steps:
       - name: Check out code
@@ -72,7 +82,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python}}
 
       - name: Install ansible-base (${{ matrix.ansible }})
         run: pip install https://github.com/ansible/ansible/archive/${{ matrix.ansible }}.tar.gz --disable-pip-version-check
@@ -82,7 +92,7 @@ jobs:
 
       # Run the unit tests
       - name: Run unit test
-        run: ansible-test units -v --color --python 3.10 --docker --coverage
+        run: ansible-test units -v --color --python ${{ matrix.python }} --docker --coverage
         working-directory: ./ansible_collections/community/clickhouse
 
       # ansible-test support producing code coverage date
@@ -105,6 +115,7 @@ jobs:
           - stable-2.18
           - stable-2.19
           - stable-2.20
+          - stable-2.21
           - devel
         clickhouse:
           - 24.8.14.39
@@ -112,7 +123,7 @@ jobs:
           - 25.8.22.28
           - 26.3.9.8
         python:
-          - "3.12"
+          - "3.13"
     steps:
 
       - name: Check out code
@@ -123,7 +134,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python}}
 
       - name: Install ansible-base (${{ matrix.ansible }})
         run: pip install https://github.com/ansible/ansible/archive/${{ matrix.ansible }}.tar.gz --disable-pip-version-check
@@ -132,7 +143,7 @@ jobs:
         run: "sed -i 's/^clickhouse_version:.*/clickhouse_version: \"${{ matrix.clickhouse }}\"/g' ${{ env.clickhouse_version_file }}"
 
       - name: Run integration tests
-        run: ansible-test integration --docker ubuntu2404 -v --color --retry-on-error --continue-on-error --python ${{ matrix.python }} --diff --coverage
+        run: ansible-test integration --docker -v --color --retry-on-error --continue-on-error --python ${{ matrix.python }} --diff --coverage
         working-directory: ./ansible_collections/community/clickhouse
 
       - name: Generate coverage report.
