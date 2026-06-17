@@ -1,2 +1,2 @@
-minor_changes:
-  - remove support for ansible-core-2.17 and add for 2.21.
+deprecated_features:
+  - mark ansible-core-2.17 as deprecated. Support will be removed in future.
