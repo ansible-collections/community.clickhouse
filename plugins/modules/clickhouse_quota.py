@@ -32,6 +32,7 @@ author:
 
 extends_documentation_fragment:
   - community.clickhouse.client_inst_opts
+  - community.clickhouse.cluster_inst_opts
 
 options:
   state:
@@ -47,11 +48,6 @@ options:
       - Quota name to add or remove.
     type: str
     required: true
-  cluster:
-    description:
-      - Run the command on all cluster hosts.
-      - If the cluster is not configured, the command will crash with an error.
-    type: str
   keyed_by:
     description:
       - Keys the quota by the specified key (default is to not key).
@@ -205,9 +201,12 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
     connect_to_db_via_client,
     execute_query,
     get_main_conn_kwargs,
+    validate_identifier,
+    get_on_cluster_clause,
+    cluster_argument_spec,
 )
 
-_VALID_NAME_REGEX = re.compile(r"^[^'\"`;\0]+$")
+
 _POSSIBLY_ESCAPED_NAME_REGEX = r"(?:`(?:[^`]+)`)|(?:\w+)"
 _KEYED_BY_VALUES = [
     "user_name",
@@ -293,22 +292,22 @@ _DEFAULT_PARAMS = {
     "apply_to_mode": "listed_only",
 }
 
+executed_statements = []
+
 
 class ClickHouseQuota:
-    _type = "QUOTA"
-
     def __init__(self, module, client, name):
-        if not _VALID_NAME_REGEX.match(name):
-            raise ValueError(f"'{name}' is not a valid quota name")
+        validate_identifier(module, name, "quota name")
         self.module = module
         self.client = client
         self.name = name
-        self.executed_statements = []
+
         self.exists = self._check_exists()
 
     def _check_exists(self):
-        query = f"SELECT 1 FROM system.{self._type.lower()}s WHERE name = '{self.name}' LIMIT 1"
-        result = execute_query(self.module, self.client, query)
+        query = "SELECT 1 FROM system.quotas WHERE name = %(name)s LIMIT 1"
+        query_parameters = {'params': {'name': self.name}}
+        result = execute_query(self.module, self.client, query, query_parameters)
         return bool(result)
 
     def _get_create_statement(self):
@@ -316,7 +315,7 @@ class ClickHouseQuota:
         if not self.exists:
             return None
 
-        query = f"SHOW CREATE {self._type} '{self.name}'"
+        query = f"SHOW CREATE QUOTA `{self.name}`"
         result = execute_query(self.module, self.client, query)
         if result:
             # SHOW CREATE X returns single row with CREATE statement
@@ -346,7 +345,7 @@ class ClickHouseQuota:
 
         query = " ".join(self._create_sql_clauses(action))
 
-        self.executed_statements.append(query)
+        executed_statements.append(query)
 
         if not self.module.check_mode:
             execute_query(self.module, self.client, query)
@@ -378,9 +377,10 @@ class ClickHouseQuota:
         """Drop entity using DROP X"""
         if not self.exists:
             return False
-
-        query = f"DROP {self._type} '{self.name}'"
-        self.executed_statements.append(query)
+        cluster = self.module.params['cluster']
+        query = f"DROP QUOTA `{self.name}`"
+        query += get_on_cluster_clause(self.module, cluster)
+        executed_statements.append(query)
 
         if not self.module.check_mode:
             execute_query(self.module, self.client, query)
@@ -496,11 +496,11 @@ class ClickHouseQuota:
         return normalized
 
     def _create_sql_clauses(self, action):
-        sql_clauses = [f"{action} {self._type} '{self.name}'"]
+        sql_clauses = [f"{action} QUOTA `{self.name}`"]
 
         cluster = self.module.params["cluster"]
         if cluster:
-            sql_clauses.append(f"ON CLUSTER '{cluster}'")
+            sql_clauses.append(get_on_cluster_clause(self.module, cluster).lstrip())
 
         keyed_by = self.module.params.get("keyed_by")
         if keyed_by:
@@ -562,7 +562,6 @@ def main():
     argument_spec.update(
         state=dict(type="str", choices=["present", "absent"], default="present"),
         name=dict(type="str", required=True),
-        cluster=dict(type="str", default=None),
         keyed_by=dict(
             type="str",
             choices=[
@@ -624,6 +623,8 @@ def main():
         ),
     )
 
+    argument_spec.update(cluster_argument_spec())
+
     # Instantiate an object of module class
     module = AnsibleModule(
         argument_spec=argument_spec,
@@ -653,7 +654,7 @@ def main():
     client.disconnect_connection()
 
     # Users will get this in JSON output after execution
-    module.exit_json(changed=changed, executed_statements=quota.executed_statements)
+    module.exit_json(changed=changed, executed_statements=executed_statements)
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['CREATE QUOTA \'test_quota\'']
+    - result.executed_statements == ['CREATE QUOTA `test_quota`']
 
 - name: Check the quota was not created in check mode
   register: result
@@ -43,7 +43,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['CREATE QUOTA \'test_quota\' FOR INTERVAL 5 minute MAX queries = 10']
+    - result.executed_statements == ['CREATE QUOTA `test_quota` FOR INTERVAL 5 minute MAX queries = 10']
 
 - name: Check the quota was not created in check mode
   register: result
@@ -74,7 +74,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['CREATE QUOTA \'test_quota\' FOR INTERVAL 5 minute MAX queries = 100, execution_time = 600.0 TO default']
+    - result.executed_statements == ['CREATE QUOTA `test_quota` FOR INTERVAL 5 minute MAX queries = 100, execution_time = 600.0 TO default']
 
 - name: Check the quota was not created in check mode
   register: result
@@ -102,7 +102,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['CREATE QUOTA \'test_quota\' FOR INTERVAL 5 minute TRACKING ONLY TO ALL']
+    - result.executed_statements == ['CREATE QUOTA `test_quota` FOR INTERVAL 5 minute TRACKING ONLY TO ALL']
 
 - name: Check the quota was not created in check mode
   register: result
@@ -130,7 +130,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['CREATE QUOTA \'test_quota\' FOR INTERVAL 5 minute NO LIMITS TO ALL']
+    - result.executed_statements == ['CREATE QUOTA `test_quota` FOR INTERVAL 5 minute NO LIMITS TO ALL']
 
 - name: Check the quota was not created in check mode
   register: result
@@ -162,7 +162,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['CREATE QUOTA \'test_quota\' FOR INTERVAL 5 minute MAX failed_sequential_authentications = 5 TO ALL EXCEPT admin, CURRENT_USER']
+    - result.executed_statements == ['CREATE QUOTA `test_quota` FOR INTERVAL 5 minute MAX failed_sequential_authentications = 5 TO ALL EXCEPT admin, CURRENT_USER']
 
 - name: Check the quota was not created in check mode
   register: result
@@ -194,7 +194,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['CREATE QUOTA \'test_quota\' KEYED BY user_name FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100, execution_time = 300.5 TO ALL']
+    - result.executed_statements == ['CREATE QUOTA `test_quota` KEYED BY user_name FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100, execution_time = 300.5 TO ALL']
 
 - name: Check the quota was not created in check mode
   register: result
@@ -230,7 +230,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['CREATE QUOTA \'test_quota\' ON CLUSTER \'test_cluster\' KEYED BY user_name FOR RANDOMIZED INTERVAL 5 minute MAX execution_time = 10.2, FOR INTERVAL 1 day MAX query_selects = 10, query_inserts = 10 TO CURRENT_USER']
+    - result.executed_statements == ['CREATE QUOTA `test_quota` ON CLUSTER `test_cluster` KEYED BY user_name FOR RANDOMIZED INTERVAL 5 minute MAX execution_time = 10.2, FOR INTERVAL 1 day MAX query_selects = 10, query_inserts = 10 TO CURRENT_USER']
 
 - name: Check the quota was not created in check mode
   register: result
@@ -275,7 +275,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['CREATE QUOTA \'test_quota\' KEYED BY user_name FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100 TO default']
+    - result.executed_statements == ['CREATE QUOTA `test_quota` KEYED BY user_name FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100 TO default']
 
 - name: Check the quota was actually created with the correct parameters
   register: result
@@ -298,7 +298,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["DROP QUOTA 'test_quota'"]
+    - result.executed_statements == ["DROP QUOTA `test_quota`"]
 
 - name: Check the quota was not actually deleted
   register: result
@@ -320,7 +320,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['DROP QUOTA \'test_quota\'']
+    - result.executed_statements == ['DROP QUOTA `test_quota`']
 
 - name: Check the quota was actually deleted
   register: result
@@ -350,7 +350,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['CREATE QUOTA \'tést quota\' KEYED BY client_key,user_name FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100, execution_time = 1.1 TO default']
+    - result.executed_statements == ['CREATE QUOTA `tést quota` KEYED BY client_key,user_name FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100, execution_time = 1.1 TO default']
 
 - name: Check the quota was actually created with the correct parameters
   register: result
@@ -383,7 +383,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['ALTER QUOTA \'tést quota\' KEYED BY client_key,user_name FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100, execution_time = 1.1, FOR INTERVAL 1 minute MAX errors = 10 TO default']
+    - result.executed_statements == ['ALTER QUOTA `tést quota` KEYED BY client_key,user_name FOR RANDOMIZED INTERVAL 5 minute MAX queries = 100, execution_time = 1.1, FOR INTERVAL 1 minute MAX errors = 10 TO default']
 
 - name: Check the quota was not actually altered
   register: result
@@ -463,7 +463,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ['DROP QUOTA \'tést quota\'']
+    - result.executed_statements == ['DROP QUOTA `tést quota`']
 
 - name: Check the quota was actually deleted
   register: result
@@ -489,7 +489,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["CREATE QUOTA 'test_quota' FOR INTERVAL 1 day MAX errors = 1000 TO ALL"]
+    - result.executed_statements == ["CREATE QUOTA `test_quota` FOR INTERVAL 1 day MAX errors = 1000 TO ALL"]
 
 - name: Check the quota was actually created with the correct parameters
   register: result
@@ -565,7 +565,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["DROP QUOTA 'test_quota'"]
+    - result.executed_statements == ["DROP QUOTA `test_quota`"]
 
 - name: Check the quota was not actually deleted
   register: result
@@ -587,7 +587,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["DROP QUOTA 'test_quota'"]
+    - result.executed_statements == ["DROP QUOTA `test_quota`"]
 
 - name: Check the quota was actually deleted
   register: result
@@ -612,7 +612,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["CREATE QUOTA 'test_quota' FOR INTERVAL 15 minute TRACKING ONLY TO ALL"]
+    - result.executed_statements == ["CREATE QUOTA `test_quota` FOR INTERVAL 15 minute TRACKING ONLY TO ALL"]
 
 - name: Check the quota was actually created with the correct parameters
   register: result
@@ -686,7 +686,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["DROP QUOTA 'test_quota'"]
+    - result.executed_statements == ["DROP QUOTA `test_quota`"]
 
 - name: Check the quota was not actually deleted
   register: result
@@ -708,7 +708,7 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["DROP QUOTA 'test_quota'"]
+    - result.executed_statements == ["DROP QUOTA `test_quota`"]
 
 - name: Check the quota was actually deleted
   register: result
