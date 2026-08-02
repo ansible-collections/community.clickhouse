@@ -209,12 +209,13 @@ class ClickHouseGrants():
 
     def __check_grantee_exists(self):
         # Check if grantee exists as either a user or a role
-        query = ("SELECT 1 FROM system.users WHERE name = '%s' "
+        exec_kwargs = {'params': {'name': self.grantee}}
+        query = ("SELECT 1 FROM system.users WHERE name = %(name)s "
                  "UNION ALL "
-                 "SELECT 1 FROM system.roles WHERE name = '%s' "
-                 "LIMIT 1" % (self.grantee, self.grantee))
+                 "SELECT 1 FROM system.roles WHERE name = %(name)s "
+                 "LIMIT 1")
 
-        result = execute_query(self.module, self.client, query)
+        result = execute_query(self.module, self.client, query, exec_kwargs)
 
         if not result:
             self.module.fail_json(msg="Grantee %s does not exist" % self.grantee)
