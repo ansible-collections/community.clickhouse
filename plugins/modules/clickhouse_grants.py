@@ -196,6 +196,8 @@ executed_statements = []
 
 # Compile regex pattern once for performance
 GRANT_REGEX = re.compile(r'GRANT (.+?) ON (.+?) TO .+?( WITH GRANT OPTION)?(?: ON CLUSTER .+)?$')
+# Columns for system.grants and keys for dictionaries in _grants
+grants_columns = ['access_type', 'access_object', 'database', 'table', 'column', 'is_partial_revoke', 'grant_option']
 
 
 class ClickHouseGrants():
@@ -206,6 +208,7 @@ class ClickHouseGrants():
         self.grantee = grantee
         self.cluster = cluster
         self.__check_grantee_exists()
+        self._grants = None
 
     def __check_grantee_exists(self):
         # Check if grantee exists as either a user or a role
@@ -218,6 +221,19 @@ class ClickHouseGrants():
 
         if not result:
             self.module.fail_json(msg="Grantee %s does not exist" % self.grantee)
+
+    @property
+    def grants(self):
+        """This function is currently not used."""
+        if self._grants is None:
+            query_parameters = {'params': {'name': self.grantee}}
+            query = f"""SELECT
+                        {', '.join(grants_columns)}
+                    FROM system.grants WHERE user_name = %(name)s
+                    OR role_name = %(name)s"""
+            result = execute_query(self.module, self.client, query, query_parameters)
+            self._grants = [dict(zip(grants_columns, row)) for row in result]
+        return self._grants
 
     def get(self):
         query = "SHOW GRANTS FOR `%s`" % self.grantee
