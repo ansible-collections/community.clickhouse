@@ -198,6 +198,11 @@ executed_statements = []
 GRANT_REGEX = re.compile(r'GRANT (.+?) ON (.+?) TO .+?( WITH GRANT OPTION)?(?: ON CLUSTER .+)?$')
 
 
+def _normalize_privilege(privilege):
+    privilege_name, separator, column_names = privilege.partition('(')
+    return privilege_name.upper() + separator + column_names
+
+
 class ClickHouseGrants():
     def __init__(self, module, client, grantee, cluster=None):
         self.changed = False
@@ -240,7 +245,7 @@ class ClickHouseGrants():
             if obj not in grants:
                 grants[obj] = {}
 
-            privs = [p.strip().upper() for p in privs_str.split(',')]
+            privs = [_normalize_privilege(p.strip()) for p in privs_str.split(',')]
             for priv in privs:
                 grants[obj][priv] = grant_option
 
@@ -260,7 +265,7 @@ class ClickHouseGrants():
             grant_option_override = p.get('grant_option')
             for priv, grant_option in p['privs'].items():
                 final_grant_option = grant_option_override if grant_option_override is not None else grant_option
-                desired_grants[obj][priv.upper()] = bool(final_grant_option)
+                desired_grants[obj][_normalize_privilege(priv)] = bool(final_grant_option)
 
         return desired_grants
 

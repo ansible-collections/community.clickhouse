@@ -13,7 +13,7 @@
     login_host: localhost
     execute: >
       CREATE TABLE IF NOT EXISTS foo.test_table1
-      (x String) ENGINE = Memory
+      (x String, camelCase String) ENGINE = Memory
     execute_kwargs:
       types_check: false
 
@@ -221,6 +221,51 @@
           "SELECT(x)": false
 
 - name: Check exclusive grant idempotency
+  ansible.builtin.assert:
+    that:
+    - result is not changed
+    - result.executed_statements | length == 0
+
+- name: Grant a column privilege without changing identifier case
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: true
+    privileges:
+      - object: 'foo.test_table1'
+        privs:
+          "select(camelCase)": false
+
+- name: Check column privilege statement preserves identifier case
+  ansible.builtin.assert:
+    that:
+    - result is changed
+    - result.executed_statements == ["GRANT SELECT(camelCase) ON foo.test_table1 TO 'alice'"]
+
+- name: Query database to verify column privilege
+  register: db_grants_column_case
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR alice"
+
+- name: Verify column identifier case is preserved in database
+  ansible.builtin.assert:
+    that:
+    - db_grants_column_case.result | length == 1
+    - "'SELECT(camelCase)' in db_grants_column_case.result[0][0]"
+
+- name: Run the same column privilege again for idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: alice
+    exclusive: true
+    privileges:
+      - object: 'foo.test_table1'
+        privs:
+          "select(camelCase)": false
+
+- name: Check column privilege idempotency
   ansible.builtin.assert:
     that:
     - result is not changed

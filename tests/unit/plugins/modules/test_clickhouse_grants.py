@@ -152,7 +152,7 @@ class TestClickHouseGrantsGet:
     def test_get_column_level_privileges(self, mock_execute):
         """Test parsing column-level privileges"""
         mock_execute.return_value = [
-            ('GRANT SELECT(x) ON foo.test_table TO alice',),
+            ('GRANT SELECT(camelCase) ON foo.test_table TO alice',),
         ]
 
         grants_obj = ClickHouseGrants(self.mock_module, self.mock_client, 'alice')
@@ -162,7 +162,7 @@ class TestClickHouseGrantsGet:
 
         assert result == {
             'foo.test_table': {
-                'SELECT(X)': False,  # Note: uppercase conversion
+                'SELECT(camelCase)': False,
             }
         }
 
@@ -355,6 +355,32 @@ class TestClickHouseGrantsGetDesiredGrants:
             'foo.*': {
                 'SELECT': True,  # Uppercase
                 'INSERT': False,  # Uppercase
+            }
+        }
+
+    @patch('ansible_collections.community.clickhouse.plugins.modules.clickhouse_grants.execute_query')
+    def test_get_desired_grants_preserves_column_identifier_case(self, mock_execute):
+        """Test that only the privilege keyword is normalized."""
+        self.mock_module.params = {
+            'login_user': 'default',
+            'privileges': [
+                {
+                    'object': 'foo.test_table',
+                    'privs': {
+                        'select(camelCase)': False,
+                    }
+                }
+            ]
+        }
+
+        mock_execute.return_value = [('1',)]
+        grants_obj = ClickHouseGrants(self.mock_module, self.mock_client, 'alice')
+
+        result = grants_obj._get_desired_grants()
+
+        assert result == {
+            'foo.test_table': {
+                'SELECT(camelCase)': False,
             }
         }
 

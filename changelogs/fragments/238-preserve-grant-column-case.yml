@@ -1,0 +1,2 @@
+bugfixes:
+  - clickhouse_grants - preserve column identifier case in column-level privileges. (https://github.com/ansible-collections/community.clickhouse/issues/238)
