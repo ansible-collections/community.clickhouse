@@ -241,7 +241,9 @@
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["GRANT SELECT(camelCase) ON foo.test_table1 TO 'alice'"]
+    - result.executed_statements | length == 2
+    - '"REVOKE SELECT(x) ON foo.test_table1 FROM ''alice''" in result.executed_statements'
+    - '"GRANT SELECT(camelCase) ON foo.test_table1 TO ''alice''" in result.executed_statements'
 
 - name: Query database to verify column privilege
   register: db_grants_column_case
