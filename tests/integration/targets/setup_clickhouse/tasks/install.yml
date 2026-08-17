@@ -19,7 +19,6 @@
   retries: 10
   delay: 5
 
-
 - name: Add repository
   ansible.builtin.deb822_repository:
     name: clickhouse
