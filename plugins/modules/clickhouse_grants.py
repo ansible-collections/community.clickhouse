@@ -281,6 +281,17 @@ class ClickHouseGrants():
 
         return desired_grants
 
+    def _parse_priv_object(self, priv):
+        '''Unpack values passed in module. Support only single statement.'''
+        PRIV_REGEX = re.compile(r'(?P<statement>\w+)(\((?P<col>[^)]*)\))?')
+        matched = PRIV_REGEX.match(priv)
+        if matched.group('col'):
+            result_cols = matched.group('col').split(',')
+        else:
+            result_cols = []
+
+        return matched.group('statement'), result_cols
+
     def update(self):
         desired = self._get_desired_grants()
         current = self.get()

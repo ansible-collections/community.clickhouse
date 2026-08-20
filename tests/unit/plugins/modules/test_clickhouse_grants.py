@@ -372,3 +372,26 @@ class TestClickHouseGrantsGetDesiredGrants:
         result = grants_obj._get_desired_grants()
 
         assert result == {}
+
+
+class TestClickHouseGrantsParse:
+    """Test the get() method that parses SHOW GRANTS output"""
+
+    def setup_method(self):
+        self.mock_module = MagicMock()
+        self.mock_module.check_mode = False
+        self.mock_client = MagicMock()
+        self.mock_client.execute_query.return_value = [1]
+        self.obj = ClickHouseGrants(module=self.mock_module, client=self.mock_client, grantee="test")
+
+    @pytest.mark.parametrize(
+        'priv,expected',
+        [
+            ("SELECT", ("SELECT", [])),
+            ("SELECT(a)", ("SELECT", ['a'])),
+            ("dictGet", ("dictGet", [])),
+        ]
+    )
+    def test_parse_privs(self, priv, expected):
+        result = self.obj._parse_priv_object(priv)
+        assert result == expected
