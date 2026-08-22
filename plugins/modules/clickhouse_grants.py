@@ -282,15 +282,104 @@ class ClickHouseGrants():
         return desired_grants
 
     def _parse_priv_object(self, priv):
-        '''Unpack values passed in module. Support only single statement.'''
-        PRIV_REGEX = re.compile(r'(?P<statement>\w+)(\((?P<col>[^)]*)\))?')
-        matched = PRIV_REGEX.match(priv)
-        if matched.group('col'):
-            result_cols = matched.group('col').split(',')
-        else:
-            result_cols = []
+        '''Unpack values passed in module. Returns list of dicts where key is statement and value list of columns.'''
+        PRIV_REGEX = re.compile(r'(?P<statement>[\w\s]+)(\((?P<col>[^)]*)\))?')
+        result = defaultdict(list)
 
-        return matched.group('statement'), result_cols
+        for match in PRIV_REGEX.finditer(priv):
+            stmt = match.group('statement').strip()
+            col_str = match.group('col')
+            if col_str is not None:
+                cols = [c.strip() for c in col_str.split(',') if c.strip()]
+                result[stmt] = cols
+            else:
+                result[stmt] = []
+        return result
+
+    def _priv_already_present(self, obj, privs, revoke=0):
+        '''Check passed privs if already present'''
+        '''Unpack db and table. In system.grants *.* is displayed as None.'''
+        '''If passed single element like * access_object will be used.'''
+        '''Cases like POSTGRES ON *, CLUSTER ON *. From grants point of view it will be READ WRITE access_type'''
+        if '.' in obj:
+            db, table = obj.split('.', 1)
+            database = None if db == '*' else db
+            table = None if table == '*' else table
+            is_table_object = True
+        else:
+            access_object = None if obj == '*' else obj
+            is_table_object = False
+
+        for stmt, required_cols in privs.items():
+            required_cols = set(required_cols)
+
+            # For privileges without column restrictions
+            found_priv = False
+
+            # Columns covered by existing grants
+            found_cols = set()
+
+            for grant in self.grants:
+                if (
+                    grant['access_type'].upper() != stmt.upper()
+                    or grant['is_partial_revoke'] != revoke
+                ):
+                    continue
+
+                if is_table_object:
+                    # Check whether this grant applies to the requested object
+                    object_matches = (
+                        (
+                            grant['database'] == database
+                            and grant['table'] == table
+                        )
+                        or (
+                            # *.* in system.grants
+                            grant['database'] is None
+                            and grant['table'] is None
+                        )
+                    )
+
+                    if not object_matches:
+                        continue
+
+                    # No requested columns means privilege itself is enough
+                    if not required_cols:
+                        found_priv = True
+                        break
+
+                    # Grant without columns covers all columns
+                    if not grant['column']:
+                        found_priv = True
+                        break
+
+                    # Add covered columns
+                    found_cols.add(grant['column'])
+
+                else:
+                    # Non-table privilege, e.g. POSTGRES ON *
+                    object_matches = (
+                        grant['access_object'] == access_object
+                        or grant['access_object'] is None
+                    )
+
+                    if object_matches:
+                        found_priv = True
+                        break
+
+            # All columns covered by an unrestricted grant
+            if found_priv:
+                continue
+
+            # Otherwise every requested column must be present
+            if required_cols and required_cols.issubset(found_cols):
+                continue
+
+            # This privilege is not fully covered
+            return False
+
+        # Every requested privilege was found
+        return True
 
     def update(self):
         desired = self._get_desired_grants()
