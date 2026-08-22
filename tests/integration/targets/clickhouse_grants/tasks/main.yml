@@ -8,3 +8,5 @@
 
 # CI tests for `cluster` parameter
 - import_tasks: cluster.yml
+
+- import_tasks: partial_revokes.yml

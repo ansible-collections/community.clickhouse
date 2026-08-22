@@ -1,0 +1,215 @@
+---
+- name: Create test user
+  clickhouse_user:
+    name: test_user
+    password: test_password
+    state: present
+
+- name: Grant initial privileges to user
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": false
+
+- name: Revoke privileges from user
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    revokes:
+      - object: 'foo.bar'
+        privs:
+          - "SELECT"
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["REVOKE SELECT ON foo.bar FROM 'test_user'"]
+
+- name: Revoke privileges from user - idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    revokes:
+      - object: 'foo.bar'
+        privs:
+          - "SELECT"
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == false
+
+- name: Get grants for test_user
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_user"
+
+- name: Assert user privileges after revocation
+  assert:
+    that:
+      - "['REVOKE SELECT ON foo.bar FROM test_user'] in result.result"
+
+- name: Revoke privileges from user - column level
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    revokes:
+      - object: 'foo.bar2'
+        privs:
+          - "SELECT(a)"
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["REVOKE SELECT(a) ON foo.bar2 FROM 'test_user'"]
+
+- name: Revoke privileges from user - column level - idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    revokes:
+      - object: 'foo.bar2'
+        privs:
+          - "SELECT(a)"
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == false
+
+- name: Revoke privileges from user - another column level
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    revokes:
+      - object: 'foo.bar2'
+        privs:
+          - "SELECT(a, b)"
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["REVOKE SELECT(a, b) ON foo.bar2 FROM 'test_user'"]
+
+- name: Revoke privileges from user - another column level - idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    revokes:
+      - object: 'foo.bar2'
+        privs:
+          - "SELECT(a, b)"
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == false
+
+- name: Grant new statemnt for user
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "INSERT": false
+
+- name: Revoke privileges from user - with different stmt
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    revokes:
+      - object: 'foo.bar'
+        privs:
+          - "INSERT"
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["REVOKE INSERT ON foo.bar FROM 'test_user'"]
+
+- name: Revoke privileges from user - with different stmt - idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    revokes:
+      - object: 'foo.bar'
+        privs:
+          - "INSERT"
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == false
+
+- name: Revoke privileges from user - with different stmt same columns
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    revokes:
+      - object: 'foo.bar2'
+        privs:
+          - "INSERT(a, b)"
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["REVOKE INSERT(a, b) ON foo.bar2 FROM 'test_user'"]
+
+- name: Revoke privileges from user - with different stmt same columns - idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    revokes:
+      - object: 'foo.bar2'
+        privs:
+          - "INSERT(a, b)"
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == false
+
+- name: Get grants for test_user
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_user"
+
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - |
+          result.result == [[
+              "GRANT SELECT, INSERT ON foo.* TO test_user"
+          ],
+          [
+              "REVOKE SELECT, INSERT ON foo.bar FROM test_user"
+          ],
+          [
+              "REVOKE SELECT(a, b), INSERT(a, b) ON foo.bar2 FROM test_user"
+          ]]
+
+- name: Drop test user
+  clickhouse_user:
+    name: test_user
+    state: absent

@@ -407,78 +407,94 @@ class TestClickHouseGrantsParse:
         ]
     )
     def test_parse_privs(self, priv, expected):
-        result = self.obj._parse_priv_object(priv)
+        result = self.obj._parse_priv_entries(priv)
         assert result == expected
 
     def test_priv_empty(self):
         self.obj._grants = []
-        result = self.obj._priv_already_present('foo.*', {'SELECT': []})
+        result = self.obj._privilege_fully_present('foo.*', {'SELECT': []})
         assert result is False
 
-    def test_priv_already_present_db_table_glob(self):
+    def test_privilege_fully_present_db_table_glob(self):
         self.obj._grants = [
             {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': None,
              'column': None, 'is_partial_revoke': False, 'grant_option': False}
         ]
-        result = self.obj._priv_already_present('foo.*', {'SELECT': []})
+        result = self.obj._privilege_fully_present('foo.*', {'SELECT': []})
         assert result is True
 
-    def test_priv_already_present_db_table_column(self):
+    def test_privilege_fully_present_db_table_column(self):
         self.obj._grants = [
             {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
              'column': None, 'is_partial_revoke': False, 'grant_option': False}
         ]
-        result = self.obj._priv_already_present('foo.bar', {'SELECT': []})
+        result = self.obj._privilege_fully_present('foo.bar', {'SELECT': []})
         assert result is True
 
-    def test_priv_already_present_db_table_column_different(self):
+    def test_privilege_fully_present_db_table_column_different(self):
         self.obj._grants = [
             {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar1',
              'column': None, 'is_partial_revoke': False, 'grant_option': False}
         ]
-        result = self.obj._priv_already_present('foo.bar', {'SELECT': []})
+        result = self.obj._privilege_fully_present('foo.bar', {'SELECT': []})
         assert result is False
 
-    def test_priv_already_present_db_table_column_with_column(self):
+    def test_privilege_fully_present_db_table_column_with_column(self):
         self.obj._grants = [
             {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
              'column': 'col1', 'is_partial_revoke': False, 'grant_option': False}
         ]
-        result = self.obj._priv_already_present('foo.bar', {'SELECT': ['col1']})
+        result = self.obj._privilege_fully_present('foo.bar', {'SELECT': ['col1']})
         assert result is True
 
-    def test_priv_already_present_db_table_column_with_column_different(self):
+    def test_privilege_fully_present_db_table_column_with_column_different(self):
         self.obj._grants = [
             {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
              'column': 'col1', 'is_partial_revoke': False, 'grant_option': False}
         ]
-        result = self.obj._priv_already_present('foo.bar', {'SELECT': ['col2']})
+        result = self.obj._privilege_fully_present('foo.bar', {'SELECT': ['col2']})
         assert result is False
 
-    def test_priv_already_present_db_table_column_with_column_multiple(self):
+    def test_privilege_fully_present_db_table_column_with_column_multiple(self):
         self.obj._grants = [
             {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
              'column': 'col1', 'is_partial_revoke': False, 'grant_option': False}
         ]
-        result = self.obj._priv_already_present('foo.bar', {'SELECT': ['col1', 'col2']})
+        result = self.obj._privilege_fully_present('foo.bar', {'SELECT': ['col1', 'col2']})
         assert result is False
 
-    def test_priv_already_present_db_table_column_with_column_multiple_all_present(self):
+    def test_privilege_fully_present_db_table_column_with_column_multiple_all_present(self):
         self.obj._grants = [
             {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
              'column': 'col1', 'is_partial_revoke': False, 'grant_option': False},
             {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
              'column': 'col2', 'is_partial_revoke': False, 'grant_option': False}
         ]
-        result = self.obj._priv_already_present('foo.bar', {'SELECT': ['col1', 'col2']})
+        result = self.obj._privilege_fully_present('foo.bar', {'SELECT': ['col1', 'col2']})
         assert result is True
 
-    def test_priv_already_present_db_table_column_with_column_multiple_some_present(self):
+    def test_privilege_fully_present_db_table_column_with_column_multiple_some_present(self):
         self.obj._grants = [
             {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
              'column': 'col1', 'is_partial_revoke': False, 'grant_option': False}
         ]
-        result = self.obj._priv_already_present('foo.bar', {'SELECT': ['col1', 'col2']})
+        result = self.obj._privilege_fully_present('foo.bar', {'SELECT': ['col1', 'col2']})
+        assert result is False
+
+    def test_privilege_fully_present_overlap(self):
+        self.obj._grants = [
+            {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': None,
+             'column': None, 'is_partial_revoke': False, 'grant_option': False}
+        ]
+        result = self.obj._privilege_fully_present('foo.bar', {'SELECT': []})
+        assert result is True
+
+    def test_privilege_fully_present_overlap_partial_revoke(self):
+        self.obj._grants = [
+            {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': None,
+             'column': None, 'is_partial_revoke': False, 'grant_option': False}
+        ]
+        result = self.obj._privilege_fully_present('foo.bar', {'SELECT': []}, revoke=1)
         assert result is False
 
     def test_priv_already_revoke_not_present(self):
@@ -486,23 +502,23 @@ class TestClickHouseGrantsParse:
             {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': None,
              'column': None, 'is_partial_revoke': False, 'grant_option': False}
         ]
-        result = self.obj._priv_already_present('foo.bar', {'SELECT': []}, revoke=1)
+        result = self.obj._privilege_fully_present('foo.bar', {'SELECT': []}, revoke=1)
         assert result is False
 
-    def test_priv_already_present_revoke_not_present(self):
+    def test_privilege_fully_present_revoke_not_present(self):
         self.obj._grants = [
             {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': None,
              'column': None, 'is_partial_revoke': False, 'grant_option': False}
         ]
-        result = self.obj._priv_already_present('foo.bar', {'INSERT': []}, revoke=1)
-        assert result is False
+        result = self.obj._privilege_fully_present('foo.bar', {'INSERT': []}, revoke=1)
+        assert result is True
 
-    def test_priv_already_present_revoke_column(self):
+    def test_privilege_fully_present_revoke_column(self):
         self.obj._grants = [
             {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
              'column': 'col1', 'is_partial_revoke': True, 'grant_option': False}
         ]
-        result = self.obj._priv_already_present('foo.bar', {'SELECT': ['col1']}, revoke=1)
+        result = self.obj._privilege_fully_present('foo.bar', {'SELECT': ['col1']}, revoke=1)
         assert result is True
 
     def test_priv_already_absent_revoke_column(self):
@@ -510,37 +526,37 @@ class TestClickHouseGrantsParse:
             {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
              'column': 'col1', 'is_partial_revoke': False, 'grant_option': False}
         ]
-        result = self.obj._priv_already_present('foo.bar', {'SELECT': ['col1']}, revoke=1)
+        result = self.obj._privilege_fully_present('foo.bar', {'SELECT': ['col1']}, revoke=1)
         assert result is False
 
-    def test_priv_already_present_object_type_empty(self):
+    def test_privilege_fully_present_object_type_empty(self):
         self.obj._grants = [
             {'access_type': 'READ', 'access_object': None, 'database': None, 'table': None, 'column': None, 'is_partial_revoke': False, 'grant_option': False}
         ]
-        result = self.obj._priv_already_present('*', {'READ': []})
+        result = self.obj._privilege_fully_present('*', {'READ': []})
         assert result is True
 
-    def test_priv_already_present_object_type_filled(self):
+    def test_privilege_fully_present_object_type_filled(self):
         self.obj._grants = []
-        result = self.obj._priv_already_present('POSTGRES', {'READ': []})
+        result = self.obj._privilege_fully_present('POSTGRES', {'READ': []})
         assert result is False
 
-    def test_priv_already_present_object_type_filled(self):
+    def test_privilege_fully_present_object_type_filled(self):
         self.obj._grants = []
-        result = self.obj._priv_already_present('*', {'READ': []})
+        result = self.obj._privilege_fully_present('*', {'READ': []})
         assert result is False
 
-    def test_priv_already_present_object_type_subpart(self):
+    def test_privilege_fully_present_object_type_subpart(self):
         self.obj._grants = [
             {'access_type': 'READ', 'access_object': None, 'database': None, 'table': None, 'column': None, 'is_partial_revoke': False, 'grant_option': False}
         ]
-        result = self.obj._priv_already_present('POSTGRES', {'READ': []})
+        result = self.obj._privilege_fully_present('POSTGRES', {'READ': []})
         assert result is True
 
-    def test_priv_already_present_object_type_expand(self):
+    def test_privilege_fully_present_object_type_expand(self):
         self.obj._grants = [
             {'access_type': 'READ', 'access_object': 'POSTGRES', 'database': None, 'table': None,
              'column': None, 'is_partial_revoke': False, 'grant_option': False}
         ]
-        result = self.obj._priv_already_present('*', {'READ': []})
+        result = self.obj._privilege_fully_present('*', {'READ': []})
         assert result is False
