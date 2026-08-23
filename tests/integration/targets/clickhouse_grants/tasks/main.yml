@@ -9,12 +9,21 @@
 # CI tests for `cluster` parameter
 - import_tasks: cluster.yml
 
-# CI tests for `partial_revokes` parameter
+# CI tests for `revokes` parameter
 - name: Get server version
   register: server_info
   community.clickhouse.clickhouse_info:
     limit: version
 
-- name: Test comment
+- name: Set whether partial revokes are supported
+  set_fact:
+    partial_revokes_supported: "{{ (server_info['version']['year'] | int == 25 and server_info['version']['feature'] | int >= 8)
+                                   or server_info['version']['year'] | int > 25 }}"
+
+- name: Test partial revokes
   import_tasks: partial_revokes.yml
-  when: (server_info['version']['year'] >= 25 and server_info['version']['feature'] >= 8) or server_info['version']['year'] >= 26
+  when: partial_revokes_supported
+
+- name: Test partial revokes on unsupported versions
+  import_tasks: partial_revokes_unsupported.yml
+  when: not partial_revokes_supported

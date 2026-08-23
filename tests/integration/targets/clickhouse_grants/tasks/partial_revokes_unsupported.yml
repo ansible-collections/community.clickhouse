@@ -1,0 +1,54 @@
+---
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# Partial revokes rely on system.grants, available since ClickHouse 25.8
+
+- name: Create test user
+  community.clickhouse.clickhouse_user:
+    name: test_user
+    password: test_password
+    state: present
+
+- name: Grant initial privileges to user
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": false
+
+- name: Try to partially revoke on an unsupported version
+  register: result
+  ignore_errors: true
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    revokes:
+      - object: 'foo.bar'
+        privs:
+          - SELECT
+
+- name: Assert that the module failed with a descriptive message
+  assert:
+    that:
+      - result is failed
+      - "'Partial revokes not supported' in result.msg"
+
+- name: Get grants for test_user
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_user"
+
+- name: Assert that privileges are untouched
+  assert:
+    that:
+      - "'GRANT SELECT ON foo.* TO test_user' in result.result | flatten"
+
+- name: Drop test user
+  community.clickhouse.clickhouse_user:
+    name: test_user
+    state: absent
