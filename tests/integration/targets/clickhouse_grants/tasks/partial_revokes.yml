@@ -213,3 +213,211 @@
   clickhouse_user:
     name: test_user
     state: absent
+
+- name: Create test user
+  clickhouse_user:
+    name: test_user
+    password: test_password
+    state: present
+
+- name: Grant initial privileges to user
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": false
+          "INSERT": false
+
+- name: Revoke privileges from user - two statement
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    revokes:
+      - object: 'foo.bar'
+        privs:
+          - "SELECT"
+          - INSERT
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["REVOKE SELECT, INSERT ON foo.bar FROM 'test_user'"]
+
+- name: Get grants for test_user
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_user"
+
+- name: Assert user privileges after revocation
+  assert:
+    that:
+      - "['REVOKE SELECT, INSERT ON foo.bar FROM test_user'] in result.result"
+
+- name: Revoke privileges from user - two statement - idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    revokes:
+      - object: 'foo.bar'
+        privs:
+          - "SELECT"
+          - INSERT
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == false
+
+- name: Revoke privileges from user - two statement other way - idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    revokes:
+      - object: 'foo.bar'
+        privs:
+          - SELECT, INSERT
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == false
+
+- name: Revoke privileges from user - one statement - idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    revokes:
+      - object: 'foo.bar'
+        privs:
+          - SELECT
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == false
+
+- name: Revoke privileges from user - already covered - idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    revokes:
+      - object: 'foo.bar'
+        privs:
+          - SELECT(a)
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == false
+
+- name: Revoke privileges from user - test cluster 
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    cluster: test_cluster
+    revokes:
+      - object: 'foo.bar2'
+        privs:
+          - SELECT
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["REVOKE SELECT ON foo.bar2 FROM 'test_user' ON CLUSTER `test_cluster`"]
+
+- name: Grant privileges to user
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    privileges:
+      - object: '*'
+        privs:
+          "READ": false
+
+- name: Revoke object from user
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    revokes:
+      - object: 'POSTGRES'
+        privs:
+          - READ
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["REVOKE READ ON POSTGRES FROM 'test_user'"]
+
+- name: Drop test user
+  community.clickhouse.clickhouse_user:
+    name: test_user
+    state: absent
+
+- name: Create test role
+  community.clickhouse.clickhouse_role:
+    name: test_role
+
+- name: Grant privileges to role
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_role
+    privileges:
+      - object: '*.*'
+        privs:
+          "ALL": false
+
+- name: Get grants for test_user
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "select * from system.grants where role_name = 'test_role'"
+
+- name: Revoke privs from role
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_role
+    revokes:
+      - object: 'system.*'
+        privs:
+          - SELECT
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["REVOKE SELECT ON system.* FROM 'test_role'"]
+
+- name: Revoke privs from role - idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_role
+    revokes:
+      - object: 'system.*'
+        privs:
+          - SELECT
+
+- name: Assert that privileges were revoked
+  assert:
+    that:
+      - result.changed == false
+
+- name: Drop test role
+  community.clickhouse.clickhouse_role:
+    name: test_role
+    state: absent

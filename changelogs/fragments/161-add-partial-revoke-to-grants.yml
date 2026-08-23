@@ -1,0 +1,2 @@
+minor_changes:
+  - clickhouse_grants - Add support for partial revokes in grants module. Supported on ClickHouse version 25.8 and later.(https://github.com/ansible-collections/community.clickhouse/issues/161)

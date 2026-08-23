@@ -28,6 +28,7 @@ attributes:
 author:
   - Andrew Klychkov (@Andersson007)
   - Fabian Kohn (@fako1024)
+  - Rafal Kozlowski (@rkozlo)
 
 extends_documentation_fragment:
   - community.clickhouse.client_inst_opts
@@ -88,8 +89,13 @@ options:
   revokes:
     description:
       - A list of privileges to partial revoke from the O(grantee).
+      - At this moment this works only with state C(present). State C(absent) will not grant any privileges.
+      - At this moment this option only revokes privileges that C(grantee) already have.
+        So when privileges passed in C(privileges) are not granted yet, they will not be revoked.
+        This may require running twice task at this moment. This will be fixed in future releases.
     type: list
     elements: dict
+    version_added: '2.4.0'
     suboptions:
       object:
         description:
@@ -159,6 +165,43 @@ EXAMPLES = r'''
   community.clickhouse.clickhouse_grants:
     grantee: eve
     state: absent
+
+- name: Partialy revoke single table
+  community.clickhouse.clickhouse_grants:
+    grantee: david
+    exclusive: true
+    revokes:
+      - object: 'bar.foo'
+        privs:
+          - SELECT
+
+- name: Partialy revoke single columns
+  community.clickhouse.clickhouse_grants:
+    grantee: david
+    exclusive: true
+    revokes:
+      - object: 'bar.foo'
+        privs:
+          - SELECT(a,b)
+
+- name: Partialy revoke more than one statement
+  community.clickhouse.clickhouse_grants:
+    grantee: david
+    exclusive: true
+    revokes:
+      - object: 'bar.foo'
+        privs:
+          - SELECT, INSERT
+
+- name: Partialy revoke more than one statement in two objects
+  community.clickhouse.clickhouse_grants:
+    grantee: david
+    exclusive: true
+    revokes:
+      - object: 'bar.foo'
+        privs:
+          - SELECT
+          - INSERT
 '''
 
 RETURN = r'''
@@ -211,6 +254,7 @@ from ansible_collections.community.clickhouse.plugins.module_utils.clickhouse im
     get_main_conn_kwargs,
     get_on_cluster_clause,
     cluster_argument_spec,
+    get_server_version,
 )
 
 executed_statements = []
@@ -246,7 +290,9 @@ class ClickHouseGrants():
 
     @property
     def grants(self):
-        """This function is currently not used."""
+        """Fetch grantee privileges."""
+        """This method works only on ClickHouse 25.8 and later, as it relies on the system.grants table."""
+        """At this moment it is only used for checking the presence of partial revokes, so it is not called on older versions."""
         if self._grants is None:
             query_parameters = {'params': {'name': self.grantee}}
             query = f"""SELECT
@@ -319,87 +365,127 @@ class ClickHouseGrants():
 
     def _privilege_fully_present(self, obj, privs, revoke=0):
         """
-        Check whether privileges described by `privs` on `obj` are already in the current grants
-        considering revoke (partial_revoke flag) semantics.
+        Check whether privileges described by `privs` on `obj` are already
+        represented in current grants.
 
-        Returns True if no change is needed, False if change required.
+        Returns True if no change is needed, False if change is required.
         """
         is_table_object = '.' in obj
-        if is_table_object:
-            db, tbl = obj.split('.', 1)
-            database = None if db == '*' else db
-            table = None if tbl == '*' else tbl
-        else:
-            access_object = None if obj == '*' else obj
+
+        object_grants = [
+            grant for grant in self.grants
+            if self._grant_matches_object(grant, obj)
+        ]
+
+        requested_partial_flag = int(bool(revoke))
 
         for stmt, cols in privs.items():
-            required_cols = set(cols)
-            any_relevant_grant = False
-            covered_cols = set()
-            has_unrestricted = False
-
-            for grant in self.grants:
-                if grant['access_type'].upper() != stmt.upper():
-                    continue
-
-                # object match (ignoring partial_revoke flag)
-                if is_table_object:
-                    object_matches = (
-                        (grant['database'] == database and grant['table'] == table)
-                        or (grant['database'] is None and grant['table'] is None)
-                        or (grant['database'] == database and grant['table'] is None)
-                    )
-                else:
-                    object_matches = (grant['access_object'] == access_object or grant['access_object'] is None)
-
-                if not object_matches:
-                    continue
-
-                any_relevant_grant = True
-
-                # consider only grants that have the same partial_revoke flag as requested
-                grant_partial_flag = int(grant.get('is_partial_revoke') or 0)
-                requested_partial_flag = int(bool(revoke))
-                if grant_partial_flag != requested_partial_flag:
-                    continue
-
-                # coverage checks
-                if is_table_object:
-                    if not cols:
-                        # requesting full privilege: any matching grant with same flag and no column restriction
-                        if not grant['column']:
-                            has_unrestricted = True
-                            break
-                    else:
-                        if not grant['column']:
-                            has_unrestricted = True
-                            break
-                        covered_cols.add(grant['column'])
-                else:
-                    # non-table privileges are not column-scoped
-                    has_unrestricted = True
-                    break
-
-            # If we're trying to revoke and there is no relevant grant at all -> nothing to do for this stmt
-            if revoke and not any_relevant_grant:
+            # For a partial revoke, there must be an underlying privilege
+            # to revoke. If there isn't one, there is nothing to do.
+            if revoke and not self._has_source_privilege(object_grants, stmt):
                 continue
 
-            # If an unrestricted grant covers the stmt -> it's already present
-            if has_unrestricted:
-                continue
-
-            # If specific columns requested, ensure they are all covered
-            if required_cols:
-                if required_cols.issubset(covered_cols):
-                    continue
-                else:
-                    return False
-
-            # No columns requested and no matching unrestricted grant -> not present
-            if not cols and not has_unrestricted:
+            if not self._privilege_covered(
+                object_grants,
+                stmt,
+                cols,
+                requested_partial_flag,
+                is_table_object,
+            ):
                 return False
 
         return True
+
+    def _grant_matches_object(self, grant, obj):
+        """Return True if grant applies to the requested object."""
+        if '.' in obj:
+            db, tbl = obj.split('.', 1)
+            database = None if db == '*' else db
+            table = None if tbl == '*' else tbl
+
+            return (
+                # Exact object
+                (
+                    grant['database'] == database
+                    and grant['table'] == table
+                )
+                # *.*
+                or (
+                    grant['database'] is None
+                    and grant['table'] is None
+                )
+                # db.*
+                or (
+                    grant['database'] == database
+                    and grant['table'] is None
+                )
+            )
+
+        # ClickHouse represents wildcard access_object as an empty string.
+        access_object = '' if obj == '*' else obj
+
+        return (
+            grant['access_object'] == access_object
+            or grant['access_object'] == ''
+        )
+
+    def _has_source_privilege(self, grants, stmt):
+        """
+        Return True if an underlying privilege exists for a partial revoke.
+
+        ALL is considered a source for any specific privilege.
+        """
+        stmt = stmt.upper()
+
+        return any(
+            grant['access_type'].upper() in (stmt, 'ALL')
+            and not int(grant.get('is_partial_revoke') or 0)
+            for grant in grants
+        )
+
+    def _privilege_covered(
+        self,
+        grants,
+        stmt,
+        cols,
+        partial_revoke,
+        is_table_object,
+    ):
+        """Return True if grants fully cover the requested privilege."""
+        stmt = stmt.upper()
+        required_cols = set(cols)
+        covered_cols = set()
+
+        for grant in grants:
+            grant_type = grant['access_type'].upper()
+
+            # For normal grants, ALL covers any specific privilege.
+            # For partial revokes, only the exact privilege counts.
+            if grant_type != stmt and not (
+                not partial_revoke and grant_type == 'ALL'
+            ):
+                continue
+
+            grant_partial_flag = int(grant.get('is_partial_revoke') or 0)
+
+            if grant_partial_flag != partial_revoke:
+                continue
+
+            if not is_table_object:
+                return True
+
+            # Unrestricted grant covers all columns.
+            if not grant['column']:
+                return True
+
+            covered_cols.add(grant['column'])
+
+        # No columns requested means the whole privilege is requested.
+        # It therefore requires an unrestricted grant.
+        if not required_cols:
+            return False
+
+        return required_cols.issubset(covered_cols)
 
     def update(self):
         desired = self._get_desired_grants()
@@ -456,6 +542,10 @@ class ClickHouseGrants():
 
         # Handle partial revokes if specified
         if partial_revokes:
+            server_version = get_server_version(self.module, self.client)
+
+            if server_version['year'] < 25 or (server_version['year'] == 25 and server_version['feature'] < 8):
+                self.module.fail_json(msg="Partial revokes not supported. Required 25.8 or later.")
             for revoke in partial_revokes:
                 parsed_privs = {}
                 for entry in revoke.get('privs', []):

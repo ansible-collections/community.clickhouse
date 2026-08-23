@@ -9,4 +9,12 @@
 # CI tests for `cluster` parameter
 - import_tasks: cluster.yml
 
-- import_tasks: partial_revokes.yml
+# CI tests for `partial_revokes` parameter
+- name: Get server version
+  register: server_info
+  community.clickhouse.clickhouse_info:
+    limit: version
+
+- name: Test comment
+  import_tasks: partial_revokes.yml
+  when: (server_info['version']['year'] >= 25 and server_info['version']['feature'] >= 8) or server_info['version']['year'] >= 26

@@ -410,6 +410,63 @@ class TestClickHouseGrantsParse:
         result = self.obj._parse_priv_entries(priv)
         assert result == expected
 
+    @pytest.mark.parametrize(
+        'grant,obj,expected',
+        [
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': None, 'table': None,
+                 'column': None, 'is_partial_revoke': False, 'grant_option': False},
+                "foo.*",
+                True,
+            ),
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
+                 'column': None, 'is_partial_revoke': False, 'grant_option': False},
+                "foo.*",
+                True,
+            ),
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
+                 'column': None, 'is_partial_revoke': False, 'grant_option': False},
+                "foo2.*",
+                False,
+            ),
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': 'foo2', 'table': None,
+                 'column': None, 'is_partial_revoke': False, 'grant_option': False},
+                "foo.*",
+                False,
+            ),
+            (
+                {'access_type': 'SELECT', 'access_object': 'POSTGRES', 'database': None, 'table': None,
+                 'column': None, 'is_partial_revoke': False, 'grant_option': False},
+                "*",
+                False,
+            ),
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': None, 'table': None,
+                 'column': None, 'is_partial_revoke': False, 'grant_option': False},
+                "*",
+                True,
+            ),
+            (
+                {'access_type': 'SELECT', 'access_object': 'POSTGRES', 'database': None, 'table': None,
+                 'column': None, 'is_partial_revoke': False, 'grant_option': False},
+                "POSTGRES",
+                True,
+            ),
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': None, 'table': None,
+                 'column': None, 'is_partial_revoke': False, 'grant_option': False},
+                "POSTGRES",
+                True,
+            ),
+        ]
+    )
+    def test_grant_matches_object(self, grant, obj, expected):
+        result = self.obj._grant_matches_object(grant, obj)
+        assert result == expected
+
     def test_priv_empty(self):
         self.obj._grants = []
         result = self.obj._privilege_fully_present('foo.*', {'SELECT': []})
@@ -417,7 +474,7 @@ class TestClickHouseGrantsParse:
 
     def test_privilege_fully_present_db_table_glob(self):
         self.obj._grants = [
-            {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': None,
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
              'column': None, 'is_partial_revoke': False, 'grant_option': False}
         ]
         result = self.obj._privilege_fully_present('foo.*', {'SELECT': []})
@@ -425,7 +482,7 @@ class TestClickHouseGrantsParse:
 
     def test_privilege_fully_present_db_table_column(self):
         self.obj._grants = [
-            {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
              'column': None, 'is_partial_revoke': False, 'grant_option': False}
         ]
         result = self.obj._privilege_fully_present('foo.bar', {'SELECT': []})
@@ -433,7 +490,7 @@ class TestClickHouseGrantsParse:
 
     def test_privilege_fully_present_db_table_column_different(self):
         self.obj._grants = [
-            {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar1',
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar1',
              'column': None, 'is_partial_revoke': False, 'grant_option': False}
         ]
         result = self.obj._privilege_fully_present('foo.bar', {'SELECT': []})
@@ -441,7 +498,7 @@ class TestClickHouseGrantsParse:
 
     def test_privilege_fully_present_db_table_column_with_column(self):
         self.obj._grants = [
-            {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
              'column': 'col1', 'is_partial_revoke': False, 'grant_option': False}
         ]
         result = self.obj._privilege_fully_present('foo.bar', {'SELECT': ['col1']})
@@ -449,7 +506,7 @@ class TestClickHouseGrantsParse:
 
     def test_privilege_fully_present_db_table_column_with_column_different(self):
         self.obj._grants = [
-            {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
              'column': 'col1', 'is_partial_revoke': False, 'grant_option': False}
         ]
         result = self.obj._privilege_fully_present('foo.bar', {'SELECT': ['col2']})
@@ -457,7 +514,7 @@ class TestClickHouseGrantsParse:
 
     def test_privilege_fully_present_db_table_column_with_column_multiple(self):
         self.obj._grants = [
-            {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
              'column': 'col1', 'is_partial_revoke': False, 'grant_option': False}
         ]
         result = self.obj._privilege_fully_present('foo.bar', {'SELECT': ['col1', 'col2']})
@@ -465,9 +522,9 @@ class TestClickHouseGrantsParse:
 
     def test_privilege_fully_present_db_table_column_with_column_multiple_all_present(self):
         self.obj._grants = [
-            {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
              'column': 'col1', 'is_partial_revoke': False, 'grant_option': False},
-            {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
              'column': 'col2', 'is_partial_revoke': False, 'grant_option': False}
         ]
         result = self.obj._privilege_fully_present('foo.bar', {'SELECT': ['col1', 'col2']})
@@ -475,7 +532,7 @@ class TestClickHouseGrantsParse:
 
     def test_privilege_fully_present_db_table_column_with_column_multiple_some_present(self):
         self.obj._grants = [
-            {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
              'column': 'col1', 'is_partial_revoke': False, 'grant_option': False}
         ]
         result = self.obj._privilege_fully_present('foo.bar', {'SELECT': ['col1', 'col2']})
@@ -483,7 +540,7 @@ class TestClickHouseGrantsParse:
 
     def test_privilege_fully_present_overlap(self):
         self.obj._grants = [
-            {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': None,
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
              'column': None, 'is_partial_revoke': False, 'grant_option': False}
         ]
         result = self.obj._privilege_fully_present('foo.bar', {'SELECT': []})
@@ -491,7 +548,7 @@ class TestClickHouseGrantsParse:
 
     def test_privilege_fully_present_overlap_partial_revoke(self):
         self.obj._grants = [
-            {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': None,
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
              'column': None, 'is_partial_revoke': False, 'grant_option': False}
         ]
         result = self.obj._privilege_fully_present('foo.bar', {'SELECT': []}, revoke=1)
@@ -499,7 +556,7 @@ class TestClickHouseGrantsParse:
 
     def test_priv_already_revoke_not_present(self):
         self.obj._grants = [
-            {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': None,
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
              'column': None, 'is_partial_revoke': False, 'grant_option': False}
         ]
         result = self.obj._privilege_fully_present('foo.bar', {'SELECT': []}, revoke=1)
@@ -507,7 +564,7 @@ class TestClickHouseGrantsParse:
 
     def test_privilege_fully_present_revoke_not_present(self):
         self.obj._grants = [
-            {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': None,
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
              'column': None, 'is_partial_revoke': False, 'grant_option': False}
         ]
         result = self.obj._privilege_fully_present('foo.bar', {'INSERT': []}, revoke=1)
@@ -515,7 +572,7 @@ class TestClickHouseGrantsParse:
 
     def test_privilege_fully_present_revoke_column(self):
         self.obj._grants = [
-            {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
              'column': 'col1', 'is_partial_revoke': True, 'grant_option': False}
         ]
         result = self.obj._privilege_fully_present('foo.bar', {'SELECT': ['col1']}, revoke=1)
@@ -523,7 +580,7 @@ class TestClickHouseGrantsParse:
 
     def test_priv_already_absent_revoke_column(self):
         self.obj._grants = [
-            {'access_type': 'SELECT', 'access_object': None, 'database': 'foo', 'table': 'bar',
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
              'column': 'col1', 'is_partial_revoke': False, 'grant_option': False}
         ]
         result = self.obj._privilege_fully_present('foo.bar', {'SELECT': ['col1']}, revoke=1)
@@ -531,7 +588,7 @@ class TestClickHouseGrantsParse:
 
     def test_privilege_fully_present_object_type_empty(self):
         self.obj._grants = [
-            {'access_type': 'READ', 'access_object': None, 'database': None, 'table': None, 'column': None, 'is_partial_revoke': False, 'grant_option': False}
+            {'access_type': 'READ', 'access_object': '', 'database': None, 'table': None, 'column': None, 'is_partial_revoke': False, 'grant_option': False}
         ]
         result = self.obj._privilege_fully_present('*', {'READ': []})
         assert result is True
@@ -548,7 +605,7 @@ class TestClickHouseGrantsParse:
 
     def test_privilege_fully_present_object_type_subpart(self):
         self.obj._grants = [
-            {'access_type': 'READ', 'access_object': None, 'database': None, 'table': None, 'column': None, 'is_partial_revoke': False, 'grant_option': False}
+            {'access_type': 'READ', 'access_object': '', 'database': None, 'table': None, 'column': None, 'is_partial_revoke': False, 'grant_option': False}
         ]
         result = self.obj._privilege_fully_present('POSTGRES', {'READ': []})
         assert result is True
@@ -560,3 +617,34 @@ class TestClickHouseGrantsParse:
         ]
         result = self.obj._privilege_fully_present('*', {'READ': []})
         assert result is False
+
+    def test_privilege_fully_present_object_type_partial_revoke(self):
+        self.obj._grants = [
+            {'access_type': 'READ', 'access_object': '', 'database': None, 'table': None, 'column': None, 'is_partial_revoke': False, 'grant_option': False}
+        ]
+        result = self.obj._privilege_fully_present('POSTGRES', {'READ': []}, revoke=1)
+        assert result is False
+
+    def test_privilege_partial_revoke_from_all(self):
+        self.obj._grants = [
+            {'access_type': 'ALL', 'access_object': '', 'database': None, 'table': None,
+             'column': None, 'is_partial_revoke': False, 'grant_option': False}
+        ]
+        result = self.obj._privilege_fully_present('system.*', {'SELECT': []}, revoke=1)
+        assert result is False
+
+    def test_privilege_grant_all_already_cover_by_asterix(self):
+        self.obj._grants = [
+            {'access_type': 'ALL', 'access_object': '', 'database': None, 'table': None,
+             'column': None, 'is_partial_revoke': False, 'grant_option': False}
+        ]
+        result = self.obj._privilege_fully_present('system.*', {'SELECT': []})
+        assert result is True
+
+    def test_privilege_all_already_cover_by_database(self):
+        self.obj._grants = [
+            {'access_type': 'ALL', 'access_object': '', 'database': 'system', 'table': None,
+             'column': None, 'is_partial_revoke': False, 'grant_option': False}
+        ]
+        result = self.obj._privilege_fully_present('system.*', {'SELECT': []})
+        assert result is True
