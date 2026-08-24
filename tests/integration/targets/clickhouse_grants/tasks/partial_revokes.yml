@@ -24,7 +24,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar'
         privs:
           - "SELECT"
@@ -40,7 +40,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar'
         privs:
           - "SELECT"
@@ -65,7 +65,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar2'
         privs:
           - "SELECT(a)"
@@ -81,7 +81,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar2'
         privs:
           - "SELECT(a)"
@@ -96,7 +96,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar2'
         privs:
           - "SELECT(a, b)"
@@ -112,7 +112,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar2'
         privs:
           - "SELECT(a, b)"
@@ -136,7 +136,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar'
         privs:
           - "INSERT"
@@ -152,7 +152,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar'
         privs:
           - "INSERT"
@@ -167,7 +167,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar2'
         privs:
           - "INSERT(a, b)"
@@ -183,7 +183,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar2'
         privs:
           - "INSERT(a, b)"
@@ -236,7 +236,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar'
         privs:
           - "SELECT"
@@ -263,7 +263,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar'
         privs:
           - "SELECT"
@@ -279,7 +279,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar'
         privs:
           - SELECT, INSERT
@@ -294,7 +294,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar'
         privs:
           - SELECT
@@ -309,7 +309,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar'
         privs:
           - SELECT(a)
@@ -325,7 +325,7 @@
     state: present
     grantee: test_user
     cluster: test_cluster
-    revokes:
+    partial_revokes:
       - object: 'foo.bar2'
         privs:
           - SELECT
@@ -342,7 +342,7 @@
     state: present
     grantee: test_user
     cluster: test_cluster
-    revokes:
+    partial_revokes:
       - object: 'foo.bar2'
         privs:
           - SELECT
@@ -367,7 +367,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'POSTGRES'
         privs:
           - READ
@@ -383,7 +383,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'POSTGRES'
         privs:
           - READ
@@ -422,7 +422,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_role
-    revokes:
+    partial_revokes:
       - object: 'system.*'
         privs:
           - SELECT
@@ -438,7 +438,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_role
-    revokes:
+    partial_revokes:
       - object: 'system.*'
         privs:
           - SELECT
@@ -468,7 +468,7 @@
       - object: 'foo.*'
         privs:
           "SELECT": false
-    revokes:
+    partial_revokes:
       - object: 'foo.bar'
         privs:
           - SELECT
@@ -499,7 +499,7 @@
       - object: 'foo.*'
         privs:
           "SELECT": false
-    revokes:
+    partial_revokes:
       - object: 'foo.bar'
         privs:
           - SELECT
@@ -516,7 +516,7 @@
     state: present
     grantee: test_user
     exclusive: true
-    revokes:
+    partial_revokes:
       - object: 'foo.bar'
         privs:
           - SELECT
@@ -563,7 +563,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar'
         privs:
           - SELECT
@@ -589,7 +589,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar'
         privs:
           - SELECT
@@ -630,7 +630,7 @@
   community.clickhouse.clickhouse_grants:
     state: absent
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar'
         privs:
           - SELECT

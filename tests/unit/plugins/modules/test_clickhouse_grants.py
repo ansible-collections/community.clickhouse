@@ -746,7 +746,7 @@ class TestClickHouseGrantsUpdateRevokes:
             'state': 'present',
             'exclusive': False,
             'privileges': None,
-            'revokes': None,
+            'partial_revokes': None,
             'cluster': None,
         }
         self.mock_client = MagicMock()
@@ -769,7 +769,7 @@ class TestClickHouseGrantsUpdateRevokes:
         executed_statements.clear()
 
     def test_revoke_statement_quotes_object(self):
-        self.mock_module.params['revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
+        self.mock_module.params['partial_revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
         # SHOW GRANTS output consumed by get()
         self.mock_execute_query.return_value = [('GRANT SELECT ON foo.* TO alice',)]
         self.obj._grants = [
@@ -783,7 +783,7 @@ class TestClickHouseGrantsUpdateRevokes:
         assert executed_statements == ["REVOKE SELECT ON `foo`.`bar` FROM 'alice'"]
 
     def test_revoke_statement_quotes_columns(self):
-        self.mock_module.params['revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT(a, b)']}]
+        self.mock_module.params['partial_revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT(a, b)']}]
         self.mock_execute_query.return_value = [('GRANT SELECT ON foo.* TO alice',)]
         self.obj._grants = [
             {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
@@ -796,7 +796,7 @@ class TestClickHouseGrantsUpdateRevokes:
 
     def test_grant_and_revoke_in_one_run_are_ordered(self):
         self.mock_module.params['privileges'] = [{'object': 'foo.*', 'privs': {'SELECT': False}}]
-        self.mock_module.params['revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
+        self.mock_module.params['partial_revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
         # Nothing granted yet
         self.mock_execute_query.return_value = []
         self.obj._grants = []
@@ -810,7 +810,7 @@ class TestClickHouseGrantsUpdateRevokes:
         ]
 
     def test_no_statement_when_revoke_already_in_place(self):
-        self.mock_module.params['revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
+        self.mock_module.params['partial_revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
         self.mock_execute_query.return_value = [('GRANT SELECT ON foo.* TO alice',)]
         self.obj._grants = [
             {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
@@ -825,7 +825,7 @@ class TestClickHouseGrantsUpdateRevokes:
         assert executed_statements == []
 
     def test_unsupported_server_version_fails(self):
-        self.mock_module.params['revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
+        self.mock_module.params['partial_revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
         self.mock_execute_query.return_value = []
         self.mock_version.return_value = {'year': 25, 'feature': 3, 'maintenance': 0}
         self.obj._grants = []
@@ -837,7 +837,7 @@ class TestClickHouseGrantsUpdateRevokes:
 
     def test_check_mode_builds_but_does_not_execute(self):
         self.mock_module.check_mode = True
-        self.mock_module.params['revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
+        self.mock_module.params['partial_revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
         self.mock_execute_query.return_value = [('GRANT SELECT ON foo.* TO alice',)]
         self.obj._grants = [
             {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,

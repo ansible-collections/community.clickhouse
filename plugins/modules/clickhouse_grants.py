@@ -57,13 +57,13 @@ options:
       - If set to C(true), the module will revoke all
         current privileges from the O(grantee) before granting the new ones.
       - It only applies to O(privileges), so O(privileges) must be set when this is C(true).
-        It has no effect on O(revokes). To remove all privileges, use C(state=absent) instead.
+        It has no effect on O(partial_revokes). To remove all privileges, use C(state=absent) instead.
     type: bool
     default: false
   privileges:
     description:
       - Privileges to grant. This option is required when C(state) is C(present),
-        unless O(revokes) is specified.
+        unless O(partial_revokes) is specified.
       - It's a list of dictionaries, where each dictionary specifies a set of privileges on a database object.
     type: list
     elements: dict
@@ -89,7 +89,7 @@ options:
           - A boolean that applies to all privileges in this set.
           - If specified, it overrides any individual grant option settings within C(privs).
         type: bool
-  revokes:
+  partial_revokes:
     description:
       - A list of privileges to partial revoke from the O(grantee).
       - At this moment this works only with state C(present). State C(absent) will not grant any privileges.
@@ -174,7 +174,7 @@ EXAMPLES = r'''
 - name: Partially revoke a single table from a database-wide grant
   community.clickhouse.clickhouse_grants:
     grantee: david
-    revokes:
+    partial_revokes:
       - object: 'bar.foo'
         privs:
           - SELECT
@@ -182,7 +182,7 @@ EXAMPLES = r'''
 - name: Partially revoke single columns
   community.clickhouse.clickhouse_grants:
     grantee: david
-    revokes:
+    partial_revokes:
       - object: 'bar.foo'
         privs:
           - SELECT(a,b)
@@ -190,7 +190,7 @@ EXAMPLES = r'''
 - name: Partially revoke more than one statement
   community.clickhouse.clickhouse_grants:
     grantee: david
-    revokes:
+    partial_revokes:
       - object: 'bar.foo'
         privs:
           - SELECT, INSERT
@@ -198,7 +198,7 @@ EXAMPLES = r'''
 - name: Partially revoke more than one statement passed as separate entries
   community.clickhouse.clickhouse_grants:
     grantee: david
-    revokes:
+    partial_revokes:
       - object: 'bar.foo'
         privs:
           - SELECT
@@ -211,7 +211,7 @@ EXAMPLES = r'''
       - object: 'bar.*'
         privs:
           "SELECT": false
-    revokes:
+    partial_revokes:
       - object: 'bar.foo'
         privs:
           - SELECT
@@ -229,7 +229,7 @@ diff:
   - Differences between the previous and current state.
   - Only returned when diff mode is enabled (with C(--diff) or in C(check_mode)).
   - Reflects the O(privileges) option only. Partial revokes made through
-    O(revokes) are not represented, so a run that only changes them
+    O(partial_revokes) are not represented, so a run that only changes them
     reports the same before and after state.
   returned: when diff mode is enabled or check_mode is true
   type: dict
@@ -581,7 +581,7 @@ class ClickHouseGrants():
     def update(self):
         desired = self._get_desired_grants()
         current = self.get()
-        partial_revokes = self.module.params.get('revokes', [])
+        partial_revokes = self.module.params.get('partial_revokes', [])
         exclusive = self.module.params['exclusive']
 
         # Use set comprehensions for better performance
@@ -728,11 +728,14 @@ def main():
         grantee=dict(type='str', required=True),
         exclusive=dict(type='bool', default=False),
         privileges=dict(type='list', elements='dict'),
-        revokes=dict(type='list', elements='dict',
-                     options=dict(
-                         object=dict(type='str', required=True),
-                         privs=dict(type='list', elements='str', required=True),
-                     )),
+        partial_revokes=dict(
+            type='list',
+            elements='dict',
+            options=dict(
+                object=dict(type='str', required=True),
+                privs=dict(type='list', elements='str', required=True),
+            )
+        ),
     )
 
     argument_spec.update(cluster_argument_spec())
@@ -742,7 +745,7 @@ def main():
         argument_spec=argument_spec,
         supports_check_mode=True,
         required_if=[
-            ('state', 'present', ('privileges', 'revokes'), True),
+            ('state', 'present', ('privileges', 'partial_revokes'), True),
         ],
     )
 
@@ -763,7 +766,7 @@ def main():
         module.fail_json(msg="exclusive=true requires privileges to be set. "
                              "Use state=absent to revoke all privileges.")
 
-    if state == 'absent' and module.params['revokes']:
+    if state == 'absent' and module.params['partial_revokes']:
         module.warn("The revokes option is ignored when state=absent, "
                     "as all privileges are revoked anyway.")
 

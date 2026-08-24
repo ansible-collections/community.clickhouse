@@ -27,7 +27,7 @@
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
-    revokes:
+    partial_revokes:
       - object: 'foo.bar'
         privs:
           - SELECT
