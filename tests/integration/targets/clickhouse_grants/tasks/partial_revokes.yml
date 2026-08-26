@@ -736,7 +736,7 @@
     that:
       - result.changed == true
       - result.warnings is defined
-      - "'The revokes option is ignored when state=absent' in result.warnings | join(' ')"
+      - "'The partial_revokes option is ignored when state=absent' in result.warnings | join(' ')"
 
 - name: Get grants for test_user
   register: result
@@ -782,7 +782,7 @@
         privs:
           - SELECT(b)
 
-- name: Assert that revokes was ignored with a warning
+- name: Assert that revokes was not executed
   assert:
     that:
       - result.changed != true
