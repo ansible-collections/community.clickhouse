@@ -7,6 +7,8 @@
     - dirmngr
     - python3-debian
     state: present
+  retries: 10
+  delay: 5
 
 - name: GPG part
   ansible.builtin.shell: >
@@ -14,6 +16,8 @@
     --keyring /usr/share/keyrings/clickhouse-keyring.gpg
     --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 8919F6BD2B48D754 &&
     chmod +r /usr/share/keyrings/clickhouse-keyring.gpg
+  retries: 10
+  delay: 5
 
 - name: Add repository
   ansible.builtin.deb822_repository:
@@ -30,6 +34,8 @@
 - name: Update apt cache
   ansible.builtin.apt:
     update_cache: yes
+  retries: 10
+  delay: 5
 
 - name: Install clickhouse
   ansible.builtin.apt:
@@ -38,6 +44,8 @@
     - "clickhouse-client={{ clickhouse_version }}"
     - "clickhouse-common-static={{ clickhouse_version }}"
     state: present
+  retries: 10
+  delay: 5
 
 - name: Copy settings for default user
   ansible.builtin.copy:
