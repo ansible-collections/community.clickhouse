@@ -381,8 +381,7 @@ class ClickHouseGrants():
                 result[stmt] = []
         return result
 
-    @staticmethod
-    def _pending_grant_rows(to_grant):
+    def _pending_grant_rows(self, to_grant):
         """Represent privileges granted by the current run as system.grants-like rows.
 
         Only the fields needed to detect the source privilege of a partial
@@ -390,7 +389,7 @@ class ClickHouseGrants():
         a partial revoke itself is already in place.
         """
         rows = []
-        for priv, obj, dummy in to_grant:
+        for priv, obj, is_grant_option in to_grant:
             if '.' in obj:
                 db, tbl = obj.split('.', 1)
                 database = None if db == '*' else db
@@ -400,16 +399,19 @@ class ClickHouseGrants():
                 database = None
                 table = None
                 access_object = '' if obj == '*' else obj
-
-            rows.append({
-                'access_type': priv.split('(', 1)[0].strip(),
-                'access_object': access_object,
-                'database': database,
-                'table': table,
-                'column': None,
-                'is_partial_revoke': 0,
-                'grant_option': 0,
-            })
+            priv_extracted = self._parse_priv_entries(priv)
+            for stmt, cols in priv_extracted.items():
+                # Iterate over granted columns or fill single entry for all column grant.
+                for col in cols or [None]:
+                    rows.append({
+                        'access_type': stmt,
+                        'access_object': access_object,
+                        'database': database,
+                        'table': table,
+                        'column': col,
+                        'is_partial_revoke': 0,
+                        'grant_option': is_grant_option,
+                    })
 
         return rows
 
@@ -468,7 +470,7 @@ class ClickHouseGrants():
         for stmt, cols in privs.items():
             # For a partial revoke, there must be an underlying privilege
             # to revoke. If there isn't one, there is nothing to do.
-            if revoke and not self._has_source_privilege(object_grants, stmt):
+            if revoke and not self._has_source_privilege(object_grants, stmt, cols):
                 continue
 
             if not self._privilege_covered(
@@ -520,19 +522,31 @@ class ClickHouseGrants():
             or grant['access_object'] == ''
         )
 
-    def _has_source_privilege(self, grants, stmt):
+    def _has_source_privilege(self, grants, stmt, cols=None):
         """
         Return True if an underlying privilege exists for a partial revoke.
 
         ALL is considered a source for any specific privilege.
         """
-        stmt = stmt.upper()
 
-        return any(
-            grant['access_type'].upper() in (stmt, 'ALL')
-            and not int(grant.get('is_partial_revoke') or 0)
-            for grant in grants
-        )
+        stmt = stmt.upper()
+        cols = set(cols or [])
+
+        for grant in grants:
+            if grant['access_type'].upper() not in (stmt, 'ALL'):
+                continue
+            if int(grant.get('is_partial_revoke') or 0):
+                continue
+
+            # unrestricted grant is a valid source for any columns
+            if not grant['column']:
+                return True
+
+            # column-specific source must be compatible with requested columns
+            if cols and grant['column'] in cols:
+                return True
+
+        return False
 
     def _privilege_covered(
         self,

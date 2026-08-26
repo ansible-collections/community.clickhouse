@@ -666,13 +666,15 @@ class TestClickHouseGrantsPartialRevokes:
         ])
         assert result == [
             {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
-             'column': None, 'is_partial_revoke': 0, 'grant_option': 0},
+             'column': 'a', 'is_partial_revoke': 0, 'grant_option': False},
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
+             'column': 'b', 'is_partial_revoke': 0, 'grant_option': False},
             {'access_type': 'CREATE USER', 'access_object': '', 'database': None, 'table': None,
-             'column': None, 'is_partial_revoke': 0, 'grant_option': 0},
+             'column': None, 'is_partial_revoke': 0, 'grant_option': True},
             {'access_type': 'READ', 'access_object': 'POSTGRES', 'database': None, 'table': None,
-             'column': None, 'is_partial_revoke': 0, 'grant_option': 0},
+             'column': None, 'is_partial_revoke': 0, 'grant_option': False},
             {'access_type': 'READ', 'access_object': '', 'database': None, 'table': None,
-             'column': None, 'is_partial_revoke': 0, 'grant_option': 0},
+             'column': None, 'is_partial_revoke': 0, 'grant_option': False},
         ]
 
     def test_privilege_fully_present_revoke_source_granted_in_same_run(self):
@@ -705,6 +707,31 @@ class TestClickHouseGrantsPartialRevokes:
         result = self.obj._privilege_fully_present('foo.bar', {'SELECT': []}, revoke=1,
                                                    extra_grants=pending)
         assert result is True
+
+    def test_privilege_fully_present_revoke_and_grant_same_table_diff_column(self):
+        self.obj._grants = []
+        pending = self.obj._pending_grant_rows({('SELECT(A)', 'foo.bar', False)})
+        result = self.obj._privilege_fully_present('foo.bar', {'SELECT': ['B']}, revoke=1,
+                                                   extra_grants=pending)
+        assert result is True
+
+    def test_privilege_covered_access_object_grant_short_circuits(self):
+        grants = [
+            {'access_type': 'READ', 'column': None, 'is_partial_revoke': 0},
+        ]
+        assert self.obj._privilege_covered(grants, 'READ', [], 0, False) is True
+
+    def test_privilege_covered_table_grant_with_unrestricted_row_covers_all_columns(self):
+        grants = [
+            {'access_type': 'SELECT', 'column': None, 'is_partial_revoke': 0},
+        ]
+        assert self.obj._privilege_covered(grants, 'SELECT', ['name'], 0, True) is True
+
+    def test_privilege_covered_rejects_all_grant_for_partial_revoke(self):
+        grants = [
+            {'access_type': 'ALL', 'column': None, 'is_partial_revoke': 0},
+        ]
+        assert self.obj._privilege_covered(grants, 'SELECT', [], 1, True) is False
 
     @pytest.mark.parametrize(
         'obj,expected',

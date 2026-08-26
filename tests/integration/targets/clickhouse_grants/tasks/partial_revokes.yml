@@ -752,3 +752,42 @@
   community.clickhouse.clickhouse_user:
     name: test_user
     state: absent
+
+- name: Create test user
+  community.clickhouse.clickhouse_user:
+    name: test_user
+    state: present
+
+- name: Grant test privilege to user
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    privileges:
+      - object: 'foo.bar'
+        privs:
+          'SELECT(a)': false
+
+- name: Grant test privilege to user - should not change
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    privileges:
+      - object: 'foo.bar'
+        privs:
+          'SELECT(a)': false
+    partial_revokes:
+      - object: 'foo.bar'
+        privs:
+          - SELECT(b)
+
+- name: Assert that revokes was ignored with a warning
+  assert:
+    that:
+      - result.changed != true
+
+- name: Drop test user
+  community.clickhouse.clickhouse_user:
+    name: test_user
+    state: absent
