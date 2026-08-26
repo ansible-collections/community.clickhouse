@@ -781,7 +781,7 @@ def main():
                              "Use state=absent to revoke all privileges.")
 
     if state == 'absent' and module.params['partial_revokes']:
-        module.warn("The revokes option is ignored when state=absent, "
+        module.warn("The partial_revokes option is ignored when state=absent, "
                     "as all privileges are revoked anyway.")
 
     # Will fail if no driver informing the user
