@@ -83,7 +83,7 @@ See [Ansible Using collections](https://docs.ansible.com/projects/ansible/latest
     login_db: foo
     login_password: my_password
 
-- name: Print returned server version
+- name: Print returned table result
   ansible.builtin.debug:
     var: result.result
 ```
