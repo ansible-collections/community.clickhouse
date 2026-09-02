@@ -446,6 +446,55 @@ class ClickHouseGrants():
 
         return normalize_db_table(self.module, self.client, database, table)
 
+    def _pending_grant_clears_revoke(self, grant, revoke):
+        """When GRANT expands to glob: foo.bar → foo.*
+        It will produce GRANT which will remove existing partial revoke, since
+        it already exists.
+        Return True if executing `grant` drops the partial revoke.
+        """
+        grant_type = grant['access_type'].upper()
+
+        # Different statemnt skip. For now hardcoded ALL as parent
+        # In future worth discovering parent privilege for passed priv if it already covers.
+        if grant_type not in (revoke['access_type'].upper(), 'ALL'):
+            return False
+
+        if grant['access_object']:
+            return (revoke['database'] is None
+                    and revoke['access_object'] == grant['access_object'])
+
+        # None means *. Check if grant covers revoke.
+        for level in ('database', 'table', 'column'):
+            if grant[level] is not None and grant[level] != revoke[level]:
+                return False
+
+        return True
+
+    def _grants_after_pending(self, pending_grants):
+        """Model grants after applying pending grants.
+
+        Check if pending grants affect exisitng partial.
+        If pending grants would drop partial revokes remove it from current privileges.
+        Same partial revoke is passed in module and will be reapplied in different method.
+        """
+        current = []
+        for grant in self.grants:
+            is_partial_revoke = bool(int(grant.get('is_partial_revoke') or 0))
+            if not is_partial_revoke:
+                current.append(grant)
+                continue
+
+            cleared_by_pending = False
+            for pending in pending_grants:
+                if self._pending_grant_clears_revoke(pending, grant):
+                    cleared_by_pending = True
+                    break
+
+            if not cleared_by_pending:
+                current.append(grant)
+
+        return current + pending_grants
+
     def _privilege_fully_present(self, obj, privs, revoke=0, extra_grants=None):
         """
         Check whether privileges described by `privs` on `obj` are already
@@ -458,7 +507,7 @@ class ClickHouseGrants():
         """
         is_table_object = '.' in obj
 
-        all_grants = self.grants + extra_grants if extra_grants else self.grants
+        all_grants = self._grants_after_pending(extra_grants) if extra_grants else self.grants
 
         object_grants = [
             grant for grant in all_grants
@@ -470,7 +519,7 @@ class ClickHouseGrants():
         for stmt, cols in privs.items():
             # For a partial revoke, there must be an underlying privilege
             # to revoke. If there isn't one, there is nothing to do.
-            if revoke and not self._has_source_privilege(object_grants, stmt, cols):
+            if revoke and not self._has_source_privilege(object_grants, stmt, cols, extra_grants):
                 continue
 
             if not self._privilege_covered(
@@ -522,7 +571,7 @@ class ClickHouseGrants():
             or grant['access_object'] == ''
         )
 
-    def _has_source_privilege(self, grants, stmt, cols=None):
+    def _has_source_privilege(self, grants, stmt, cols=None, extra_grants=None):
         """
         Return True if an underlying privilege exists for a partial revoke.
 

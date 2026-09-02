@@ -836,6 +836,26 @@ class TestClickHouseGrantsUpdateRevokes:
             "REVOKE SELECT ON `foo`.`bar` FROM 'alice'",
         ]
 
+    def test_expand_grant_and_revoke_stays_in_place(self):
+        self.mock_module.params['privileges'] = [{'object': 'foo.*', 'privs': {'SELECT': False}}]
+        self.mock_module.params['partial_revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT(a)']}]
+        # Nothing granted yet
+        self.mock_execute_query.return_value = []
+        self.obj._grants = [
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
+             'column': None, 'is_partial_revoke': 0, 'grant_option': 0},
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
+             'column': 'a', 'is_partial_revoke': 1, 'grant_option': 0}
+        ]
+
+        changed = self.obj.update()
+
+        assert changed is True
+        assert executed_statements == [
+            "GRANT SELECT ON foo.* TO 'alice'",
+            "REVOKE SELECT(`a`) ON `foo`.`bar` FROM 'alice'",
+        ]
+
     def test_no_statement_when_revoke_already_in_place(self):
         self.mock_module.params['partial_revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
         self.mock_execute_query.return_value = [('GRANT SELECT ON foo.* TO alice',)]

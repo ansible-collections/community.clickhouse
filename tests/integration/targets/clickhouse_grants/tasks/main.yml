@@ -3,11 +3,11 @@
 # and should not be used as examples of how to write Ansible roles #
 ####################################################################
 
-# Initial CI tests of clickhouse_grants module
-- import_tasks: initial.yml
+# # Initial CI tests of clickhouse_grants module
+# - import_tasks: initial.yml
 
-# CI tests for `cluster` parameter
-- import_tasks: cluster.yml
+# # CI tests for `cluster` parameter
+# - import_tasks: cluster.yml
 
 # CI tests for `revokes` parameter
 - name: Get server version

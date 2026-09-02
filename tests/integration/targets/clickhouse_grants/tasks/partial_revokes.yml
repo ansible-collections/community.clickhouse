@@ -766,7 +766,7 @@
     privileges:
       - object: 'foo.bar'
         privs:
-          'SELECT(a)': false
+          'SELECT(A)': false
 
 - name: Grant test privilege to user - should not change
   register: result
@@ -776,7 +776,7 @@
     privileges:
       - object: 'foo.bar'
         privs:
-          'SELECT(a)': false
+          'SELECT(A)': false
     partial_revokes:
       - object: 'foo.bar'
         privs:
@@ -786,6 +786,82 @@
   assert:
     that:
       - result.changed != true
+
+- name: Drop test user
+  community.clickhouse.clickhouse_user:
+    name: test_user
+    state: absent
+
+- name: Create test user
+  community.clickhouse.clickhouse_user:
+    name: test_user
+    state: present
+
+- name: Grant test privilege to user
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    privileges:
+      - object: 'foo.bar'
+        privs:
+          'SELECT': false
+    partial_revokes:
+      - object: 'foo.bar'
+        privs:
+          - "SELECT(a)"
+
+- name: Expand grant but partial revokes stays in palce
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    privileges:
+      - object: 'foo.*'
+        privs:
+          'SELECT': false
+    partial_revokes:
+      - object: 'foo.bar'
+        privs:
+          - "SELECT(a)"
+
+- name: Check return
+  assert:
+    that:
+      - |
+        "REVOKE SELECT(`a`) ON `foo`.`bar` FROM 'test_user'" in result.executed_statements | flatten
+      - |
+        "GRANT SELECT ON foo.* TO 'test_user'" in result.executed_statements | flatten
+
+- name: Get grants for test_user
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SELECT 1 FROM system.grants where user_name = 'test_user' AND is_partial_revoke"
+
+- name: Assert that revokes is still there
+  assert:
+    that:
+      - result.changed == true
+      - result.result == [[1]]
+
+- name: Expand grant but partial revokes stays in palce - idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    privileges:
+      - object: 'foo.*'
+        privs:
+          'SELECT': false
+    partial_revokes:
+      - object: 'foo.bar'
+        privs:
+          - "SELECT(a)"
+
+- name: Assert that revokes is still there
+  assert:
+    that:
+      - result.changed == false
 
 - name: Drop test user
   community.clickhouse.clickhouse_user:
