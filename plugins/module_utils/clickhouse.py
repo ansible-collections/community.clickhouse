@@ -102,7 +102,7 @@ def connect_to_db_via_client(module, main_conn_kwargs, client_kwargs):
 
     # Display warning about using unsuporrted server version.
     server_version = get_server_version(module, client)
-    if server_version['year'] < 24 or server_version['year'] == 24 and server_version['feature'] < 8:
+    if server_version['year'] < 25 or server_version['year'] == 25 and server_version['feature'] < 3:
         module.warn("Used server version is not activately maintained with this collection. Some features may not work properly.")
     return client
 
