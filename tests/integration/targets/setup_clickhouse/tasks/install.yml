@@ -10,10 +10,17 @@
   retries: 10
   delay: 5
 
+- name: Fetch ClickHouse key
+  ansible.builtin.get_url:
+    dest: /tmp/clickhouse-repomd.xml.key
+    url: https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key
+  retries: 10
+  delay: 5
+
 - name: GPG part
-  ansible.builtin.shell: >
-    curl -fsSL 'https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key' \
-    | gpg --batch --yes --dearmor -o /usr/share/keyrings/clickhouse-keyring.gpg
+  ansible.builtin.shell: gpg --batch --yes --dearmor \
+    -o /usr/share/keyrings/clickhouse-keyring.gpg \
+    /tmp/clickhouse-repomd.xml.key
 
 - name: Add repository
   ansible.builtin.deb822_repository:
