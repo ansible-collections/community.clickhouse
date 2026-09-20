@@ -16,6 +16,7 @@ on:
 env:
   clickhouse_version_file: "./ansible_collections/community/clickhouse/tests/integration/targets/setup_clickhouse/vars/main.yml"
   clickhouse_test_info_file: "./ansible_collections/community/clickhouse/tests/integration/targets/clickhouse_info/tasks/initial.yml"
+  clickhouse_secret_vars_file: "./ansible_collections/community/clickhouse/tests/integration/targets/setup_clickhouse/vars/secrets.yml"
 
 jobs:
   sanity:
@@ -124,6 +125,17 @@ jobs:
           - 26.8.2.7
         python:
           - "3.13"
+        include:
+        - ansible: stable-2.18
+          secret_hidden: true
+        - ansible: stable-2.19
+          secret_hidden: true
+        - ansible: stable-2.20
+          secret_hidden: true
+        - ansible: stable-2.21
+          secret_hidden: true
+        - ansible: devel
+          secret_hidden: false
     steps:
 
       - name: Check out code
@@ -141,6 +153,9 @@ jobs:
 
       - name: Set Clickhouse version (${{ matrix.clickhouse }})
         run: "sed -i 's/^clickhouse_version:.*/clickhouse_version: \"${{ matrix.clickhouse }}\"/g' ${{ env.clickhouse_version_file }}"
+
+      - name: Set secret hidden to (${{ matrix.secret_hidden }})
+        run: "sed -i 's/^secret_hidden:.*/secret_hidden: ${{ matrix.secret_hidden }}/g' ${{ env.clickhouse_secret_vars_file }}"
 
       - name: Run integration tests
         run: ansible-test integration --docker -v --color --retry-on-error --continue-on-error --python ${{ matrix.python }} --diff --coverage

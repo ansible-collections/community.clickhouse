@@ -1,1 +1,2 @@
+- include_vars: secrets.yml
 - import_tasks: install.yml

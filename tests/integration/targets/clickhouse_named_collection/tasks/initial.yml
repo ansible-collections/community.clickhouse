@@ -43,16 +43,14 @@
   check_mode: true
 
 - name: Check the return values
+  vars:
+    secret: alice
+    secret2: test_pass
   ansible.builtin.assert:
     that:
     - result is changed
     - result.executed_statements == ["CREATE NAMED COLLECTION `test_col` AS `user` = %(val_0)s, `password` = %(val_1)s"]
-    - >
-        result.query_parameters == 
-        [{
-          "val_0": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER",
-          "val_1": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
-        }]
+    - result.query_parameters == expected_params_two
 
 - name: Check the collection was not created in check mode
   register: result
@@ -75,16 +73,14 @@
   register: result
 
 - name: Check the return values
+  vars:
+    secret: alice
+    secret2: test_pass
   ansible.builtin.assert:
     that:
     - result is changed
     - result.executed_statements == ["CREATE NAMED COLLECTION `test_col` AS `user` = %(val_0)s, `password` = %(val_1)s"]
-    - >
-        result.query_parameters == 
-        [{
-          "val_0": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER",
-          "val_1": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
-        }]
+    - result.query_parameters == expected_params_two
 
 - name: Check the collection was not created in check mode
   register: result
@@ -142,16 +138,14 @@
   register: result
 
 - name: Check the return values
+  vars:
+    secret: alice
+    secret2: test_pass2
   ansible.builtin.assert:
     that:
     - result is changed
     - result.executed_statements == ["ALTER NAMED COLLECTION `test_col` SET `user` = %(val_0)s, `password` = %(val_1)s"]
-    - >
-      result.query_parameters == 
-      [{
-        "val_0": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER",
-        "val_1": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
-      }]
+    - result.query_parameters == expected_params_two
 
 - name: Check the collection was altered
   register: result
@@ -177,16 +171,14 @@
   register: result
 
 - name: Check the return values
+  vars:
+    secret: alice
+    secret2: test_pass3
   ansible.builtin.assert:
     that:
     - result is changed
     - result.executed_statements == ["ALTER NAMED COLLECTION `test_col` SET `user` = %(val_0)s, `password` = %(val_1)s"]
-    - >
-      result.query_parameters == 
-      [{
-        "val_0": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER",
-        "val_1": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
-      }]
+    - result.query_parameters == expected_params_two
 
 - name: Check the collection was altered
   register: result
@@ -364,15 +356,13 @@
   register: result
 
 - name: Check the return values
+  vars:
+    secret: alice
   ansible.builtin.assert:
     that:
     - result is changed
     - result.executed_statements == ["CREATE NAMED COLLECTION `test_col` ON CLUSTER `default` AS `user` = %(val_0)s"]
-    - >
-        result.query_parameters == 
-        [{
-          "val_0": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
-        }]
+    - result.query_parameters == expected_params_one
 
 - name: Alter named collection on cluster
   community.clickhouse.clickhouse_named_collection:
@@ -385,15 +375,13 @@
   register: result
 
 - name: Check the return values
+  vars:
+    secret: alice2
   ansible.builtin.assert:
     that:
     - result is changed
     - result.executed_statements == ["ALTER NAMED COLLECTION `test_col` ON CLUSTER `default` SET `user` = %(val_0)s"]
-    - >
-        result.query_parameters == 
-        [{
-          "val_0": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"
-        }]
+    - result.query_parameters == expected_params_one
 
 - name: Drop named collection on cluster
   community.clickhouse.clickhouse_named_collection:
