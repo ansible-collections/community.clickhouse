@@ -1,0 +1,5 @@
+expected_params_one:
+  - val_0: "{{ expected_no_log.secret }}"
+expected_params_two:
+  - val_0: "{{ expected_no_log.secret }}"
+    val_1: "{{ expected_no_log.secret2 }}"

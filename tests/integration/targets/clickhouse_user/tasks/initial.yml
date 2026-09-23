@@ -15,12 +15,13 @@
           password: querty
 
     - name: Check ret values in
+      vars:
+        secret: querty
       ansible.builtin.assert:
         that:
         - result is changed
         - result.executed_statements == ["CREATE USER `test_user` IDENTIFIED WITH sha256_password BY %(password)s"]
-        - >
-          result.query_parameters == [{"password": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"}]
+        - result.query_parameters == expected_password
 
     - name: Check the actual state
       register: result
@@ -247,12 +248,13 @@
           password: querty
 
     - name: Check ret values in
+      vars:
+        secret: querty
       ansible.builtin.assert:
         that:
         - result is changed
         - result.executed_statements == ["CREATE USER `test_user` IDENTIFIED WITH sha256_password BY %(password)s"]
-        - >
-          result.query_parameters == [{"password": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"}]
+        - result.query_parameters == expected_password
 
     - name: Check the actual state
       register: result
@@ -328,12 +330,13 @@
           password: 35029a33a4321a1577432430a8520a406d1de641bea7dd96ade6311a90050a81
 
     - name: Check ret values in
+      vars:
+        secret: 35029a33a4321a1577432430a8520a406d1de641bea7dd96ade6311a90050a81
       ansible.builtin.assert:
         that:
         - result is changed
         - result.executed_statements == ["CREATE USER `test_user` IDENTIFIED WITH sha256_hash BY %(password)s"]
-        - >
-          result.query_parameters == [{"password": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"}]
+        - result.query_parameters == expected_password
 
     - name: Check the actual state
       register: result
@@ -409,12 +412,13 @@
           password: querty
 
     - name: Check ret values in
+      vars:
+        secret: querty
       ansible.builtin.assert:
         that:
         - result is changed
         - result.executed_statements == ["CREATE USER `test_user` IDENTIFIED WITH double_sha1_password BY %(password)s"]
-        - >
-          result.query_parameters == [{"password": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"}]
+        - result.query_parameters == expected_password
 
     - name: Check the actual state
       register: result
@@ -490,12 +494,13 @@
           password: EEF92ED2FB0CA0C81F569C29CAA71F321B1E5200
 
     - name: Check ret values in
+      vars:
+        secret: EEF92ED2FB0CA0C81F569C29CAA71F321B1E5200
       ansible.builtin.assert:
         that:
         - result is changed
         - result.executed_statements == ["CREATE USER `test_user` IDENTIFIED WITH double_sha1_hash BY %(password)s"]
-        - >
-          result.query_parameters == [{"password": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"}]
+        - result.query_parameters == expected_password
 
     - name: Check the actual state
       register: result
@@ -571,12 +576,13 @@
           password: querty
 
     - name: Check ret values in
+      vars:
+        secret: querty
       ansible.builtin.assert:
         that:
         - result is changed
         - result.executed_statements == ["CREATE USER `test_user` IDENTIFIED WITH bcrypt_password BY %(password)s"]
-        - >
-          result.query_parameters == [{"password": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"}]
+        - result.query_parameters == expected_password
 
     - name: Check the actual state
       register: result
@@ -652,12 +658,13 @@
           password: $2a$12$4fjXRdyPxLWNiZ2fAWTsIezG87Nzb0oyr7BZlNqm2p4HtfyvNsff2\0\0\0\0
 
     - name: Check ret values in
+      vars:
+        secret: $2a$12$4fjXRdyPxLWNiZ2fAWTsIezG87Nzb0oyr7BZlNqm2p4HtfyvNsff2\0\0\0\0
       ansible.builtin.assert:
         that:
         - result is changed
         - result.executed_statements == ["CREATE USER `test_user` IDENTIFIED WITH bcrypt_hash BY %(password)s"]
-        - >
-          result.query_parameters == [{"password": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER"}]
+        - result.query_parameters == expected_password
 
     - name: Check the actual state
       register: result
@@ -733,12 +740,13 @@
           server: ad
 
     - name: Check ret values in
+      vars:
+        server: ad
       ansible.builtin.assert:
         that:
         - result is changed
         - result.executed_statements == ["CREATE USER `test_user` IDENTIFIED WITH ldap SERVER %(server)s"]
-        - >
-          result.query_parameters == [{'server': 'ad'}]
+        - result.query_parameters == expected_server
 
     - name: Check the actual state
       register: result
@@ -893,10 +901,12 @@
     update_password: always
 
 - name: Check result
+  vars:
+    secret: querty
   ansible.builtin.assert:
     that:
     - result is changed
-    - result.executed_statements == ["ALTER USER `test_user` IDENTIFIED WITH sha256_password BY '********'"]
+    - result.executed_statements == ["ALTER USER `test_user` IDENTIFIED WITH sha256_password BY '{{ expected_no_log.partial }}'"]
     - result.query_parameters == []
 
 

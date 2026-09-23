@@ -1,0 +1,4 @@
+expected_password:
+  - password: "{{ expected_no_log.secret }}"
+expected_server:
+  - server: "{{ server }}"
