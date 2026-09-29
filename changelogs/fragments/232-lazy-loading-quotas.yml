@@ -1,2 +1,0 @@
-minor_changes:
-  - clickhouse_quota - lazy loading of exists property only once at module execution time. This is to avoid multiple queries to system.quotas table when checking for existence of the quota.

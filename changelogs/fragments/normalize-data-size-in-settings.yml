@@ -1,2 +1,0 @@
-minor_changes:
-  - settings - convert data size short formats to bytes. It makes system settings, user and role module idempotent when passing values like Gi, G etc.
