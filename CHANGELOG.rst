@@ -4,6 +4,28 @@ Ansible community.clickhouse collection changelog Release Notes
 
 .. contents:: Topics
 
+v2.4.0
+======
+
+Release Summary
+---------------
+
+This is a minor release of the ``community.clickhouse`` collection.
+
+Minor Changes
+-------------
+
+- clickhouse_grants - added the ``partial_revokes`` option to support partial revokes. Requires ClickHouse 25.8 or later (https://github.com/ansible-collections/community.clickhouse/issues/161).
+- clickhouse_grants - the ``privileges`` option is no longer required when ``state=present`` and the ``partial_revokes`` option is set. It stays required when ``exclusive=true`` (https://github.com/ansible-collections/community.clickhouse/issues/161).
+- clickhouse_quota - lazy loading of exists property only once at module execution time. This is to avoid multiple queries to system.quotas table when checking for existence of the quota.
+- clickhouse_quota - refactor fetching current state of existing quota. Move fully to system tables instead of parsing create query.
+- settings - convert data size short formats to bytes. It makes system settings, user and role module idempotent when passing values like Gi, G etc.
+
+Bugfixes
+--------
+
+- clickhouse_quota - fix interval idempotency. Since now interval units will be converted to seconds before executing query. (https://github.com/ansible-collections/community.clickhouse/issues/226)
+
 v2.3.0
 ======
 
