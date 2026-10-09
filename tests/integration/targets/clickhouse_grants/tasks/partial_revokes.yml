@@ -721,7 +721,16 @@
       - "'REVOKE SELECT ON foo.bar FROM test_user' not in result.result | flatten"
       - "'GRANT SELECT ON foo.* TO test_user' in result.result | flatten"
 
-- name: Pass revokes with state absent
+- name: Partially revoke a table again
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    partial_revokes:
+      - object: 'foo.bar'
+        privs:
+          - SELECT
+
+- name: Lift the partial revoke with state absent
   register: result
   community.clickhouse.clickhouse_grants:
     state: absent
@@ -731,22 +740,75 @@
         privs:
           - SELECT
 
-- name: Assert that revokes was ignored with a warning
+- name: Assert that only the partial revoke was lifted
   assert:
     that:
       - result.changed == true
-      - result.warnings is defined
-      - "'The partial_revokes option is ignored when state=absent' in result.warnings | join(' ')"
+      - result.executed_statements == ["GRANT SELECT ON `foo`.`bar` TO 'test_user'"]
 
 - name: Get grants for test_user
   register: result
   community.clickhouse.clickhouse_client:
     execute: "SHOW GRANTS FOR test_user"
 
-- name: Assert that all privileges are gone
+- name: Assert that the database grant stays in place
   assert:
     that:
-      - result.result | flatten | length == 0
+      - result.result | flatten == ['GRANT SELECT ON foo.* TO test_user']
+
+- name: Lift the partial revoke with state absent - idempotency
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: test_user
+    partial_revokes:
+      - object: 'foo.bar'
+        privs:
+          - SELECT
+
+- name: Assert nothing changed
+  assert:
+    that:
+      - result.changed == false
+
+- name: Grant with grant option and partially revoke a table
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    privileges:
+      - object: 'foo.*'
+        privs:
+          "SELECT": true
+    partial_revokes:
+      - object: 'foo.bar'
+        privs:
+          - SELECT
+
+- name: Lift the partial revoke under a parent with grant option
+  register: result
+  community.clickhouse.clickhouse_grants:
+    state: absent
+    grantee: test_user
+    partial_revokes:
+      - object: 'foo.bar'
+        privs:
+          - SELECT
+
+- name: Assert that the grant option was lifted too
+  assert:
+    that:
+      - result.changed == true
+      - result.executed_statements == ["GRANT SELECT ON `foo`.`bar` TO 'test_user' WITH GRANT OPTION"]
+
+- name: Get grants for test_user
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_user"
+
+- name: Assert that no REVOKE GRANT OPTION was left behind
+  assert:
+    that:
+      - result.result | flatten == ['GRANT SELECT ON foo.* TO test_user WITH GRANT OPTION']
 
 - name: Drop test user
   community.clickhouse.clickhouse_user:
