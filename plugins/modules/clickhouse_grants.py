@@ -97,7 +97,7 @@ options:
         or because it is granted by O(privileges) in the same task.
       - Removing an entry from this list does not grant the privilege back.
         Use C(state=absent) with the entry to remove the partial revoke.
-      - Since 2.5.0, with C(state=absent), a partial revoke is removed only when it exists on exactly the listed object,
+      - Since collection version 2.5.0, with C(state=absent), a partial revoke is removed only when it exists on exactly the listed object,
         privilege, and columns. The grant option of the parent privilege is restored as well.
       - Partial revokes are not represented in the RV(diff) return value.
     type: list
