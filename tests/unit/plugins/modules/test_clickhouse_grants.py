@@ -418,6 +418,157 @@ class TestClickHouseGrantsPartialRevokes:
         assert result == expected
 
     @pytest.mark.parametrize(
+        'obj,expected',
+        [
+            ("foo.bar", ('foo', 'bar', '')),
+            ("foo.*", ('foo', None, '')),
+            ("*.*", (None, None, '')),
+            ("POSTGRES", (None, None, 'POSTGRES')),
+            ("*", (None, None, '')),
+        ]
+    )
+    def test_split_object(self, obj, expected):
+        result = self.obj._split_object(obj)
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        'grant,obj,stmt,col,expected',
+        [
+            # Exact table match
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
+                 'column': None, 'is_partial_revoke': 1, 'grant_option': 0},
+                "foo.bar", "SELECT", None, True,
+            ),
+            # Privilege name is case insensitive
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
+                 'column': None, 'is_partial_revoke': 1, 'grant_option': 0},
+                "foo.bar", "select", None, True,
+            ),
+            # Regular grant is not a revoke
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
+                 'column': None, 'is_partial_revoke': 0, 'grant_option': 0},
+                "foo.bar", "SELECT", None, False,
+            ),
+            # Different privilege
+            (
+                {'access_type': 'INSERT', 'access_object': '', 'database': 'foo', 'table': 'bar',
+                 'column': None, 'is_partial_revoke': 1, 'grant_option': 0},
+                "foo.bar", "SELECT", None, False,
+            ),
+            # Broader revoke does not count
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
+                 'column': None, 'is_partial_revoke': 1, 'grant_option': 0},
+                "foo.bar", "SELECT", None, False,
+            ),
+            # Narrower revoke does not count
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
+                 'column': None, 'is_partial_revoke': 1, 'grant_option': 0},
+                "foo.*", "SELECT", None, False,
+            ),
+            # Database level revoke
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
+                 'column': None, 'is_partial_revoke': 1, 'grant_option': 0},
+                "foo.*", "SELECT", None, True,
+            ),
+            # Column revoke
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
+                 'column': 'a', 'is_partial_revoke': 1, 'grant_option': 0},
+                "foo.bar", "SELECT", "a", True,
+            ),
+            # Different column
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
+                 'column': 'b', 'is_partial_revoke': 1, 'grant_option': 0},
+                "foo.bar", "SELECT", "a", False,
+            ),
+            # Column revoke is not a table level revoke
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
+                 'column': 'a', 'is_partial_revoke': 1, 'grant_option': 0},
+                "foo.bar", "SELECT", None, False,
+            ),
+            # Access object revoke
+            (
+                {'access_type': 'READ', 'access_object': 'POSTGRES', 'database': None, 'table': None,
+                 'column': None, 'is_partial_revoke': 1, 'grant_option': 0},
+                "POSTGRES", "READ", None, True,
+            ),
+            # Different access object
+            (
+                {'access_type': 'READ', 'access_object': 'MYSQL', 'database': None, 'table': None,
+                 'column': None, 'is_partial_revoke': 1, 'grant_option': 0},
+                "POSTGRES", "READ", None, False,
+            ),
+        ]
+    )
+    def test_partial_revoke_exists(self, grant, obj, stmt, col, expected):
+        self.obj._grants = [grant]
+        result = self.obj._partial_revoke_exists(obj, stmt, col)
+        assert result == expected
+
+    def test_partial_revoke_exists_no_grants(self):
+        self.obj._grants = []
+        assert self.obj._partial_revoke_exists('foo.bar', 'SELECT') is False
+
+    @pytest.mark.parametrize(
+        'grant,obj,stmt,expected',
+        [
+            # Database parent with grant option
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
+                 'column': None, 'is_partial_revoke': 0, 'grant_option': 1},
+                "foo.bar", "SELECT", True,
+            ),
+            # Global parent with grant option
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': None, 'table': None,
+                 'column': None, 'is_partial_revoke': 0, 'grant_option': 1},
+                "foo.bar", "SELECT", True,
+            ),
+            # ALL is a parent for any privilege
+            (
+                {'access_type': 'ALL', 'access_object': '', 'database': 'foo', 'table': None,
+                 'column': None, 'is_partial_revoke': 0, 'grant_option': 1},
+                "foo.bar", "SELECT", True,
+            ),
+            # Parent without grant option
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
+                 'column': None, 'is_partial_revoke': 0, 'grant_option': 0},
+                "foo.bar", "SELECT", False,
+            ),
+            # Grant option revoke is not a parent
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
+                 'column': None, 'is_partial_revoke': 1, 'grant_option': 1},
+                "foo.bar", "SELECT", False,
+            ),
+            # Different privilege
+            (
+                {'access_type': 'INSERT', 'access_object': '', 'database': 'foo', 'table': None,
+                 'column': None, 'is_partial_revoke': 0, 'grant_option': 1},
+                "foo.bar", "SELECT", False,
+            ),
+            # Different database
+            (
+                {'access_type': 'SELECT', 'access_object': '', 'database': 'foo2', 'table': None,
+                 'column': None, 'is_partial_revoke': 0, 'grant_option': 1},
+                "foo.bar", "SELECT", False,
+            ),
+        ]
+    )
+    def test_parent_has_grant_option(self, grant, obj, stmt, expected):
+        self.obj._grants = [grant]
+        assert self.obj._parent_has_grant_option(obj, stmt) is expected
+
+    @pytest.mark.parametrize(
         'grant,obj,expected',
         [
             (
@@ -746,6 +897,29 @@ class TestClickHouseGrantsPartialRevokes:
     def test_normalize_revoke_object(self, obj, expected):
         assert self.obj._normalize_revoke_object(obj) == expected
 
+    @pytest.mark.parametrize(
+        'stmt,obj,cols,grant_option,expected',
+        [
+            ('SELECT', 'foo.bar', None, False, "GRANT SELECT ON `foo`.`bar` TO 'test'"),
+            ('SELECT', 'foo.*', None, False, "GRANT SELECT ON `foo`.* TO 'test'"),
+            ('SELECT', 'foo.bar', ['a'], False, "GRANT SELECT(`a`) ON `foo`.`bar` TO 'test'"),
+            ('SELECT', 'foo.bar', ['a', 'b'], False, "GRANT SELECT(`a`, `b`) ON `foo`.`bar` TO 'test'"),
+            ('SELECT', 'foo.bar', None, True, "GRANT SELECT ON `foo`.`bar` TO 'test' WITH GRANT OPTION"),
+            ('READ', 'POSTGRES', None, False, "GRANT READ ON `POSTGRES` TO 'test'"),
+        ]
+    )
+    def test_grant_query(self, stmt, obj, cols, grant_option, expected):
+        assert self.obj._grant_query(stmt, obj, cols, grant_option) == expected
+
+    def test_grant_query_on_cluster(self):
+        self.obj.cluster = 'test_cluster'
+        result = self.obj._grant_query('SELECT', 'foo.bar', grant_option=True)
+        assert result == "GRANT SELECT ON `foo`.`bar` TO 'test' WITH GRANT OPTION ON CLUSTER `test_cluster`"
+
+    def test_grant_query_rejects_invalid_column(self):
+        self.obj._grant_query('SELECT', 'foo.bar', ['a`b'])
+        self.mock_module.fail_json.assert_called_once()
+
     def test_normalize_revoke_object_rejects_partial_wildcard_db(self):
         self.obj._normalize_revoke_object('*.bar')
         self.mock_module.fail_json.assert_called_once()
@@ -898,3 +1072,125 @@ class TestClickHouseGrantsUpdateRevokes:
         assert executed_statements == ["REVOKE SELECT ON `foo`.`bar` FROM 'alice'"]
         # Only the SHOW GRANTS lookup, never the REVOKE
         assert self.mock_execute_query.call_count == 1
+
+
+class TestClickHouseGrantsLiftPartialRevokes:
+    """Test the statements revoke() builds when partial_revokes is set"""
+
+    def setup_method(self):
+        executed_statements.clear()
+
+        self.mock_module = MagicMock()
+        self.mock_module.check_mode = False
+        self.mock_module.params = {
+            'state': 'absent',
+            'partial_revokes': None,
+            'cluster': None,
+        }
+        self.mock_client = MagicMock()
+
+        patcher = patch('ansible_collections.community.clickhouse.plugins.modules.'
+                        'clickhouse_grants.execute_query')
+        self.mock_execute_query = patcher.start()
+        self.mock_execute_query.return_value = [(1,)]
+
+        version_patcher = patch('ansible_collections.community.clickhouse.plugins.modules.'
+                                'clickhouse_grants.get_server_version')
+        self.mock_version = version_patcher.start()
+        self.mock_version.return_value = {'year': 25, 'feature': 8, 'maintenance': 0}
+
+        self.obj = ClickHouseGrants(module=self.mock_module, client=self.mock_client,
+                                    grantee="alice")
+        self.obj._grants = [
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
+             'column': None, 'is_partial_revoke': 0, 'grant_option': 0},
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
+             'column': None, 'is_partial_revoke': 1, 'grant_option': 0},
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'baz',
+             'column': 'a', 'is_partial_revoke': 1, 'grant_option': 0},
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'baz',
+             'column': 'b', 'is_partial_revoke': 1, 'grant_option': 0},
+        ]
+        self.mock_execute_query.reset_mock()
+
+    def teardown_method(self):
+        patch.stopall()
+        executed_statements.clear()
+
+    def test_lifts_exact_revoke(self):
+        self.mock_module.params['partial_revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
+
+        changed = self.obj.revoke()
+
+        assert changed is True
+        assert executed_statements == ["GRANT SELECT ON `foo`.`bar` TO 'alice'"]
+        self.mock_execute_query.assert_called_once_with(
+            self.mock_module, self.mock_client, "GRANT SELECT ON `foo`.`bar` TO 'alice'")
+
+    def test_lifts_with_parent_grant_option(self):
+        self.mock_module.params['partial_revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
+        self.obj._grants[0]['grant_option'] = 1
+
+        self.obj.revoke()
+
+        assert executed_statements == ["GRANT SELECT ON `foo`.`bar` TO 'alice' WITH GRANT OPTION"]
+
+    def test_lifts_only_grant_option_revoke(self):
+        # REVOKE GRANT OPTION FOR SELECT ON foo.bar, the privilege itself is in place
+        self.mock_module.params['partial_revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
+        self.obj._grants[0]['grant_option'] = 1
+        self.obj._grants[1]['grant_option'] = 1
+
+        changed = self.obj.revoke()
+
+        assert changed is True
+        assert executed_statements == ["GRANT SELECT ON `foo`.`bar` TO 'alice' WITH GRANT OPTION"]
+
+    def test_lifts_only_revoked_columns(self):
+        self.mock_module.params['partial_revokes'] = [{'object': 'foo.baz', 'privs': ['SELECT(a, c)']}]
+
+        changed = self.obj.revoke()
+
+        assert changed is True
+        assert executed_statements == ["GRANT SELECT(`a`) ON `foo`.`baz` TO 'alice'"]
+
+    @pytest.mark.parametrize(
+        'partial_revokes',
+        [
+            # Revoke is on foo.bar, not on the whole database
+            [{'object': 'foo.*', 'privs': ['SELECT']}],
+            # Only column revokes exist on foo.baz
+            [{'object': 'foo.baz', 'privs': ['SELECT']}],
+            # Different privilege
+            [{'object': 'foo.bar', 'privs': ['INSERT']}],
+            # No revoke at all
+            [{'object': 'foo.qux', 'privs': ['SELECT']}],
+        ]
+    )
+    def test_no_statement_without_exact_revoke(self, partial_revokes):
+        self.mock_module.params['partial_revokes'] = partial_revokes
+
+        changed = self.obj.revoke()
+
+        assert changed is False
+        assert executed_statements == []
+        self.mock_execute_query.assert_not_called()
+
+    def test_check_mode_builds_but_does_not_execute(self):
+        self.mock_module.check_mode = True
+        self.mock_module.params['partial_revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
+
+        changed = self.obj.revoke()
+
+        assert changed is True
+        assert executed_statements == ["GRANT SELECT ON `foo`.`bar` TO 'alice'"]
+        self.mock_execute_query.assert_not_called()
+
+    def test_unsupported_server_version_fails(self):
+        self.mock_module.params['partial_revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
+        self.mock_version.return_value = {'year': 25, 'feature': 3, 'maintenance': 0}
+
+        self.obj.revoke()
+
+        self.mock_module.fail_json.assert_called_once()
+        assert '25.8' in self.mock_module.fail_json.call_args.kwargs['msg']
