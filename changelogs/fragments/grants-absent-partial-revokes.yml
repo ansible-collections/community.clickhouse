@@ -1,0 +1,2 @@
+minor_changes:
+  - clickhouse_grants - ``state=absent`` with the ``partial_revokes`` option now removes only the listed partial revokes instead of revoking all privileges.
