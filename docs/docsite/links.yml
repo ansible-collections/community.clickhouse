@@ -30,17 +30,10 @@ extra_links:
 # Specify communication channels for your collection. We suggest to not specify more
 # than one place for communication per communication tool to avoid confusion.
 communication:
-  matrix_rooms:
-    - topic: General usage and support questions
-      room: '#users:ansible.im'
-  irc_channels:
-    - topic: General usage and support questions
-      network: Libera
-      channel: '#ansible'
   forums:
+    - topic: "Ansible Forum: Discussions about Ansible ClickHouse automation (use the clickhouse tag)"
+      # The following URL directly points to the "clickhouse" tag
+      url: https://forum.ansible.com/tag/clickhouse
     - topic: "Ansible Forum: General usage and support questions"
       # The following URL directly points to the "Get Help" section
       url: https://forum.ansible.com/c/help/6/none
-    - topic: "Ansible Forum: Discussions about DNS"
-      # The following URL directly points to the "clickhouse" tag
-      url: https://forum.ansible.com/tag/clickhouse
