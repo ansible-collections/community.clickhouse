@@ -30,9 +30,6 @@ extra_links:
 # Specify communication channels for your collection. We suggest to not specify more
 # than one place for communication per communication tool to avoid confusion.
 communication:
-  matrix_rooms:
-    - topic: General usage and support questions
-      room: '#users:ansible.com'
   forums:
     - topic: "Ansible Forum: General usage and support questions"
       # The following URL directly points to the "Get Help" section
