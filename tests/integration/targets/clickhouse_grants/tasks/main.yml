@@ -15,15 +15,14 @@
   community.clickhouse.clickhouse_info:
     limit: version
 
-- name: Set whether partial revokes are supported
+- name: Set whether single element objects are supported
   set_fact:
-    partial_revokes_supported: "{{ (server_info['version']['year'] | int == 25 and server_info['version']['feature'] | int >= 8)
+    objects_supported: "{{ (server_info['version']['year'] | int == 25 and server_info['version']['feature'] | int >= 8)
                                    or server_info['version']['year'] | int > 25 }}"
 
 - name: Test partial revokes
   import_tasks: partial_revokes.yml
-  when: partial_revokes_supported
 
-- name: Test partial revokes on unsupported versions
-  import_tasks: partial_revokes_unsupported.yml
-  when: not partial_revokes_supported
+- name: Test supported objects in newer version
+  import_tasks: objects.yml
+  when: objects_supported

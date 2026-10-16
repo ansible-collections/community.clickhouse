@@ -416,47 +416,6 @@
     that:
       - result.changed == false
 
-- name: Grant privileges to user
-  register: result
-  community.clickhouse.clickhouse_grants:
-    state: present
-    grantee: test_user
-    privileges:
-      - object: '*'
-        privs:
-          "READ": false
-
-- name: Revoke object from user
-  register: result
-  community.clickhouse.clickhouse_grants:
-    state: present
-    grantee: test_user
-    partial_revokes:
-      - object: 'POSTGRES'
-        privs:
-          - READ
-
-- name: Assert that privileges were revoked
-  assert:
-    that:
-      - result.changed == true
-      - result.executed_statements == ["REVOKE READ ON `POSTGRES` FROM 'test_user'"]
-
-- name: Revoke object from user - idempotency
-  register: result
-  community.clickhouse.clickhouse_grants:
-    state: present
-    grantee: test_user
-    partial_revokes:
-      - object: 'POSTGRES'
-        privs:
-          - READ
-
-- name: Assert that nothing changed on the access object second run
-  assert:
-    that:
-      - result.changed == false
-
 - name: Drop test user
   community.clickhouse.clickhouse_user:
     name: test_user

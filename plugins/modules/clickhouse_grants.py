@@ -108,7 +108,8 @@ options:
         description:
           - The database object to revoke privileges from.
           - Use C(*.*) for global privileges, C(database.*) for all tables in a database, and C(database.table) for a specific table.
-          - When passed single element like C(*), C(POSTGRES) access_object will be used ex. privs READ .
+          - A single element like C(*) or C(POSTGRES) is an access object, ex. for the C(READ) privilege.
+            Such objects are supported in ClickHouse version 25.8 or later.
         type: str
         required: true
       privs:
@@ -294,6 +295,14 @@ GRANT_REGEX = re.compile(r'GRANT (.+?) ON (.+?) TO .+?( WITH GRANT OPTION)?(?: O
 grants_columns = ['access_type', 'access_object', 'database', 'table', 'column', 'is_partial_revoke', 'grant_option']
 
 
+def grants_select_columns(server_version):
+    """Return system.grants columns to select. Before 25.8 there is no access_object column."""
+    if server_version['year'] < 25 or (server_version['year'] == 25 and server_version['feature'] < 8):
+        # Fill with default, so rows keep the same keys on every version.
+        return ["'' AS access_object" if col == 'access_object' else col for col in grants_columns]
+    return list(grants_columns)
+
+
 class ClickHouseGrants():
     def __init__(self, module, client, grantee, cluster=None):
         self.changed = False
@@ -319,15 +328,17 @@ class ClickHouseGrants():
 
     @property
     def grants(self):
-        """Fetch grantee privileges."""
-        """This method works only on ClickHouse 25.8 and later, as it relies on the system.grants table."""
-        """At this moment it is only used for checking the presence of partial revokes, so it is not called on older versions."""
+        """Fetch grantee privileges.
+
+        At this moment it is used only for partial_revokes.
+        """
         if self._grants is None:
-            query_parameters = {'params': {'name': self.grantee}}
+            columns = grants_select_columns(get_server_version(self.module, self.client))
             query = f"""SELECT
-                        {', '.join(grants_columns)}
-                    FROM system.grants WHERE user_name = %(name)s
-                    OR role_name = %(name)s"""
+                    {', '.join(columns)}
+                FROM system.grants WHERE user_name = %(name)s
+                OR role_name = %(name)s"""
+            query_parameters = {'params': {'name': self.grantee}}
             result = execute_query(self.module, self.client, query, query_parameters)
             self._grants = [dict(zip(grants_columns, row)) for row in result]
         return self._grants
@@ -444,12 +455,6 @@ class ClickHouseGrants():
                 return True
 
         return False
-
-    def _check_partial_revokes_supported(self):
-        server_version = get_server_version(self.module, self.client)
-
-        if server_version['year'] < 25 or (server_version['year'] == 25 and server_version['feature'] < 8):
-            self.module.fail_json(msg="Partial revokes not supported. Required 25.8 or later.")
 
     def _grant_query(self, stmt, obj, cols=None, grant_option=False):
         """Build a GRANT statement for a single privilege.
@@ -785,8 +790,6 @@ class ClickHouseGrants():
 
         # Handle partial revokes if specified
         if partial_revokes:
-            self._check_partial_revokes_supported()
-
             # Privileges granted by this very run are revocable too:
             # the REVOKE statements below are appended after the GRANT ones.
             pending_grants = self._pending_grant_rows(to_grant)
@@ -880,7 +883,6 @@ class ClickHouseGrants():
 
         Granting exact matches so nothing new will be granted.
         """
-        self._check_partial_revokes_supported()
 
         queries = []
         for entry in self.module.params['partial_revokes']:
