@@ -1,52 +1,52 @@
----
 ####################################################################
 # WARNING: These are designed specifically for Ansible tests       #
 # and should not be used as examples of how to write Ansible roles #
 ####################################################################
 
-# Partial revokes rely on system.grants, available since ClickHouse 25.8
-
 - name: Create test user
   community.clickhouse.clickhouse_user:
     name: test_user
-    password: test_password
-    state: present
 
-- name: Grant initial privileges to user
+- name: Grant privileges to user
+  register: result
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
     privileges:
-      - object: 'foo.*'
+      - object: '*'
         privs:
-          "SELECT": false
+          "READ": false
 
-- name: Try to partially revoke on an unsupported version
+- name: Revoke object from user
   register: result
-  ignore_errors: true
   community.clickhouse.clickhouse_grants:
     state: present
     grantee: test_user
     partial_revokes:
-      - object: 'foo.bar'
+      - object: 'POSTGRES'
         privs:
-          - SELECT
+          - READ
 
-- name: Assert that the module failed with a descriptive message
+- name: Assert that privileges were revoked
   assert:
     that:
-      - result is failed
-      - "'Partial revokes not supported' in result.msg"
+      - result.changed == true
+      - result.executed_statements == ["REVOKE READ ON `POSTGRES` FROM 'test_user'"]
 
-- name: Get grants for test_user
+- name: Revoke object from user - idempotency
   register: result
-  community.clickhouse.clickhouse_client:
-    execute: "SHOW GRANTS FOR test_user"
+  community.clickhouse.clickhouse_grants:
+    state: present
+    grantee: test_user
+    partial_revokes:
+      - object: 'POSTGRES'
+        privs:
+          - READ
 
-- name: Assert that privileges are untouched
+- name: Assert that nothing changed on the access object second run
   assert:
     that:
-      - "'GRANT SELECT ON foo.* TO test_user' in result.result | flatten"
+      - result.changed == false
 
 - name: Drop test user
   community.clickhouse.clickhouse_user:

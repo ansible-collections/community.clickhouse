@@ -9,7 +9,27 @@ from ansible_collections.community.clickhouse.plugins.modules.clickhouse_grants 
     ClickHouseGrants,
     GRANT_REGEX,
     executed_statements,
+    grants_columns,
+    grants_select_columns,
 )
+
+
+@pytest.mark.parametrize(
+    'server_version,expected',
+    [
+        # No access_object column before 25.8
+        ({'year': 24, 'feature': 12}, "'' AS access_object"),
+        ({'year': 25, 'feature': 3}, "'' AS access_object"),
+        ({'year': 25, 'feature': 8}, 'access_object'),
+        ({'year': 26, 'feature': 1}, 'access_object'),
+    ]
+)
+def test_grants_select_columns(server_version, expected):
+    columns = grants_select_columns(server_version)
+
+    assert columns[grants_columns.index('access_object')] == expected
+    assert len(columns) == len(grants_columns)
+    assert 'access_object' in grants_columns
 
 
 class TestGrantRegex:
@@ -1045,17 +1065,6 @@ class TestClickHouseGrantsUpdateRevokes:
         assert changed is False
         assert executed_statements == []
 
-    def test_unsupported_server_version_fails(self):
-        self.mock_module.params['partial_revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
-        self.mock_execute_query.return_value = []
-        self.mock_version.return_value = {'year': 25, 'feature': 3, 'maintenance': 0}
-        self.obj._grants = []
-
-        self.obj.update()
-
-        self.mock_module.fail_json.assert_called_once()
-        assert '25.8' in self.mock_module.fail_json.call_args.kwargs['msg']
-
     def test_check_mode_builds_but_does_not_execute(self):
         self.mock_module.check_mode = True
         self.mock_module.params['partial_revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
@@ -1185,12 +1194,3 @@ class TestClickHouseGrantsLiftPartialRevokes:
         assert changed is True
         assert executed_statements == ["GRANT SELECT ON `foo`.`bar` TO 'alice'"]
         self.mock_execute_query.assert_not_called()
-
-    def test_unsupported_server_version_fails(self):
-        self.mock_module.params['partial_revokes'] = [{'object': 'foo.bar', 'privs': ['SELECT']}]
-        self.mock_version.return_value = {'year': 25, 'feature': 3, 'maintenance': 0}
-
-        self.obj.revoke()
-
-        self.mock_module.fail_json.assert_called_once()
-        assert '25.8' in self.mock_module.fail_json.call_args.kwargs['msg']
