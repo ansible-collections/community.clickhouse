@@ -30,6 +30,7 @@ jobs:
           - stable-2.19
           - stable-2.20
           - stable-2.21
+          - stable-2.22
           - devel
         include:
         - python: "3.13"
@@ -68,6 +69,7 @@ jobs:
           - stable-2.19
           - stable-2.20
           - stable-2.21
+          - stable-2.22
           - devel
         include:
         - python: "3.13"
@@ -117,6 +119,7 @@ jobs:
           - stable-2.19
           - stable-2.20
           - stable-2.21
+          - stable-2.22
           - devel
         clickhouse:
           - 25.3.14.14
@@ -133,6 +136,8 @@ jobs:
         - ansible: stable-2.20
           secret_hidden: true
         - ansible: stable-2.21
+          secret_hidden: true
+        - ansible: stable-2.22
           secret_hidden: true
         - ansible: devel
           secret_hidden: false
