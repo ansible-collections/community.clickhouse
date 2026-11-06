@@ -11,6 +11,7 @@ from ansible_collections.community.clickhouse.plugins.modules.clickhouse_grants 
     executed_statements,
     grants_columns,
     grants_select_columns,
+    normalize_priv,
 )
 
 
@@ -30,6 +31,19 @@ def test_grants_select_columns(server_version, expected):
     assert columns[grants_columns.index('access_object')] == expected
     assert len(columns) == len(grants_columns)
     assert 'access_object' in grants_columns
+
+
+@pytest.mark.parametrize(
+    'priv,expected',
+    [
+        ('select', 'SELECT'),
+        ('alter user', 'ALTER USER'),
+        ('select(a, B)', 'SELECT(a, B)'),
+        ('select(a), insert(Col)', 'SELECT(a), INSERT(Col)'),
+    ]
+)
+def test_normalize_priv_keeps_column_case(priv, expected):
+    assert normalize_priv(priv) == expected
 
 
 class TestGrantRegex:
@@ -183,7 +197,7 @@ class TestClickHouseGrantsGet:
 
         assert result == {
             'foo.test_table': {
-                'SELECT(X)': False,  # Note: uppercase conversion
+                'SELECT(x)': False,  # Column names keep their case
             }
         }
 
@@ -378,6 +392,26 @@ class TestClickHouseGrantsGetDesiredGrants:
                 'INSERT': False,  # Uppercase
             }
         }
+
+    @patch('ansible_collections.community.clickhouse.plugins.modules.clickhouse_grants.execute_query')
+    def test_get_desired_grants_keeps_column_case(self, mock_execute):
+        """Test that column names are not uppercased"""
+        self.mock_module.params = {
+            'login_user': 'default',
+            'privileges': [
+                {
+                    'object': 'foo.bar',
+                    'privs': {
+                        'select(a, B)': False,
+                    }
+                }
+            ]
+        }
+
+        mock_execute.return_value = [('1',)]
+        grants_obj = ClickHouseGrants(self.mock_module, self.mock_client, 'alice')
+
+        assert grants_obj._get_desired_grants() == {'foo.bar': {'SELECT(a, B)': False}}
 
     @patch('ansible_collections.community.clickhouse.plugins.modules.clickhouse_grants.execute_query')
     def test_get_desired_grants_empty_privileges(self, mock_execute):

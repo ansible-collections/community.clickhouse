@@ -841,7 +841,17 @@
     privileges:
       - object: 'foo.bar'
         privs:
-          'SELECT(A)': false
+          'SELECT(a)': false
+
+- name: Get grants for test_user
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR test_user"
+
+- name: Assert that the column name kept its case
+  assert:
+    that:
+      - "'GRANT SELECT(a) ON foo.bar TO test_user' in result.result | flatten"
 
 - name: Grant test privilege to user - should not change
   register: result
@@ -851,7 +861,7 @@
     privileges:
       - object: 'foo.bar'
         privs:
-          'SELECT(A)': false
+          'SELECT(a)': false
     partial_revokes:
       - object: 'foo.bar'
         privs:

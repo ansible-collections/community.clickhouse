@@ -1,0 +1,2 @@
+bugfixes:
+  - clickhouse_grants - column names in ``privileges`` are no longer uppercased, so ``SELECT(a)`` grants access to column ``a`` instead of ``A``.

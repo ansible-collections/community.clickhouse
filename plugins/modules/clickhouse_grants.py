@@ -293,6 +293,17 @@ executed_statements = []
 GRANT_REGEX = re.compile(r'GRANT (.+?) ON (.+?) TO .+?( WITH GRANT OPTION)?(?: ON CLUSTER .+)?$')
 # Columns for system.grants and keys for dictionaries in _grants
 grants_columns = ['access_type', 'access_object', 'database', 'table', 'column', 'is_partial_revoke', 'grant_option']
+# Column lists in a privilege, ex. (a, b) in SELECT(a, b)
+COLUMNS_REGEX = re.compile(r'(\([^)]*\))')
+
+
+def normalize_priv(priv):
+    """Uppercase statements, but keep column names as they are, since they are case-sensitive.
+
+    Ex:
+        select(a, B), insert → SELECT(a, B), INSERT
+    """
+    return ''.join(part if part.startswith('(') else part.upper() for part in COLUMNS_REGEX.split(priv))
 
 
 def grants_select_columns(server_version):
@@ -364,7 +375,7 @@ class ClickHouseGrants():
             if obj not in grants:
                 grants[obj] = {}
 
-            privs = [p.strip().upper() for p in privs_str.split(',')]
+            privs = [normalize_priv(p.strip()) for p in privs_str.split(',')]
             for priv in privs:
                 grants[obj][priv] = grant_option
 
@@ -384,7 +395,7 @@ class ClickHouseGrants():
             grant_option_override = p.get('grant_option')
             for priv, grant_option in p['privs'].items():
                 final_grant_option = grant_option_override if grant_option_override is not None else grant_option
-                desired_grants[obj][priv.upper()] = bool(final_grant_option)
+                desired_grants[obj][normalize_priv(priv)] = bool(final_grant_option)
 
         return desired_grants
 
