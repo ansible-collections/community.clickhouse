@@ -138,7 +138,7 @@ jobs:
         - ansible: stable-2.21
           secret_hidden: true
         - ansible: stable-2.22
-          secret_hidden: true
+          secret_hidden: false
         - ansible: devel
           secret_hidden: false
     steps:
