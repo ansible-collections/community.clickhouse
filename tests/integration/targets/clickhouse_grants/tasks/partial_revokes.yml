@@ -501,7 +501,7 @@
   assert:
     that:
       - result.changed == true
-      - result.executed_statements == ["GRANT SELECT ON foo.* TO 'test_user'",
+      - result.executed_statements == ["GRANT SELECT ON `foo`.* TO 'test_user'",
                                        "REVOKE SELECT ON `foo`.`bar` FROM 'test_user'"]
 
 - name: Get grants for test_user
@@ -532,7 +532,7 @@
   assert:
     that:
       - result.changed == true
-      - result.executed_statements == ["GRANT SELECT ON foo.* TO 'test_user'",
+      - result.executed_statements == ["GRANT SELECT ON `foo`.* TO 'test_user'",
                                        "REVOKE SELECT ON `foo`.`bar` FROM 'test_user'"]
 
 - name: Get grants for test_user
@@ -906,7 +906,7 @@
       - |
         "REVOKE SELECT(`a`) ON `foo`.`bar` FROM 'test_user'" in result.executed_statements | flatten
       - |
-        "GRANT SELECT ON foo.* TO 'test_user'" in result.executed_statements | flatten
+        "GRANT SELECT ON `foo`.* TO 'test_user'" in result.executed_statements | flatten
 
 - name: Get grants for test_user
   register: result

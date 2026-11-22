@@ -303,6 +303,11 @@ def grants_select_columns(server_version):
     return list(grants_columns)
 
 
+def grant_level(grant):
+    """Return how specific a system.grants row is. Ex: *.* → 0, foo.* → 1, foo.bar → 2, foo.bar(col) → 3."""
+    return sum(1 for key in ('access_object', 'database', 'table', 'column') if grant.get(key))
+
+
 class ClickHouseGrants():
     def __init__(self, module, client, grantee, cluster=None):
         self.changed = False
@@ -456,20 +461,23 @@ class ClickHouseGrants():
 
         return False
 
-    def _grant_query(self, stmt, obj, cols=None, grant_option=False):
-        """Build a GRANT statement for a single privilege.
+    def _grant_query(self, privs, obj, grant_option=False):
+        """Build a GRANT statement from parsed privileges.
 
         Ex:
-            SELECT, foo.bar, [a, b] → GRANT SELECT(`a`, `b`) ON `foo`.`bar` TO 'alice'
+            {SELECT: [a, b], INSERT: []}, foo.bar → GRANT SELECT(`a`, `b`), INSERT ON `foo`.`bar` TO 'alice'
         """
-        if cols:
-            # Columns come from the user, validate and quote them before interpolating.
-            for col in cols:
-                validate_identifier(self.module, col, "column")
-            stmt = "{0}({1})".format(stmt, ', '.join(f"`{col}`" for col in cols))
+        stmts = []
+        for stmt, cols in privs.items():
+            if cols:
+                # Columns come from the user, validate and quote them before interpolating.
+                for col in cols:
+                    validate_identifier(self.module, col, "column")
+                stmt = "{0}({1})".format(stmt, ', '.join(f"`{col}`" for col in cols))
+            stmts.append(stmt)
 
         # Object is validated and quoted the same way as for partial revokes.
-        query = "GRANT {0} ON {1} TO '{2}'".format(stmt, self._normalize_revoke_object(obj), self.grantee)
+        query = "GRANT {0} ON {1} TO '{2}'".format(', '.join(stmts), self._normalize_table_object(obj), self.grantee)
         if grant_option:
             query += ' WITH GRANT OPTION'
 
@@ -483,7 +491,7 @@ class ClickHouseGrants():
         a partial revoke itself is already in place.
         """
         rows = []
-        for priv, obj, is_grant_option in to_grant:
+        for privs, obj, is_grant_option in to_grant:
             if '.' in obj:
                 db, tbl = obj.split('.', 1)
                 database = None if db == '*' else db
@@ -493,8 +501,7 @@ class ClickHouseGrants():
                 database = None
                 table = None
                 access_object = '' if obj == '*' else obj
-            priv_extracted = self._parse_priv_entries(priv)
-            for stmt, cols in priv_extracted.items():
+            for stmt, cols in privs.items():
                 # Iterate over granted columns or fill single entry for all column grant.
                 for col in cols or [None]:
                     rows.append({
@@ -509,7 +516,7 @@ class ClickHouseGrants():
 
         return rows
 
-    def _normalize_revoke_object(self, obj):
+    def _normalize_table_object(self, obj):
         """Turn an object passed by the user into a quoted statement part.
 
         Quoting is what makes the value safe to interpolate, as
@@ -589,7 +596,7 @@ class ClickHouseGrants():
 
         return current + pending_grants
 
-    def _privilege_fully_present(self, obj, privs, revoke=0, extra_grants=None):
+    def _privilege_fully_present(self, obj, privs, revoke=0, extra_grants=None, grant_option=False):
         """
         Check whether privileges described by `privs` on `obj` are already
         represented in current grants.
@@ -622,6 +629,7 @@ class ClickHouseGrants():
                 cols,
                 requested_partial_flag,
                 is_table_object,
+                grant_option,
             ):
                 return False
 
@@ -698,13 +706,19 @@ class ClickHouseGrants():
         cols,
         partial_revoke,
         is_table_object,
+        grant_option,
     ):
         """Return True if grants fully cover the requested privilege."""
         stmt = stmt.upper()
         required_cols = set(cols)
         covered_cols = set()
+        # Grants not more specific than a matching partial revoke are cancelled by it.
+        revoke_level = -1 if partial_revoke else self._revoke_level(grants, stmt, required_cols, grant_option)
 
         for grant in grants:
+            if grant_level(grant) <= revoke_level:
+                continue
+
             grant_type = grant['access_type'].upper()
 
             # For normal grants, ALL covers any specific privilege.
@@ -717,6 +731,10 @@ class ClickHouseGrants():
             grant_partial_flag = int(grant.get('is_partial_revoke') or 0)
 
             if grant_partial_flag != partial_revoke:
+                continue
+
+            # Grant with grant option covers request without it, but not the other way around.
+            if grant_option and not int(grant.get('grant_option') or 0):
                 continue
 
             if not is_table_object:
@@ -735,6 +753,32 @@ class ClickHouseGrants():
 
         return required_cols.issubset(covered_cols)
 
+    def _revoke_level(self, grants, stmt, cols, grant_option):
+        """Return level of the most specific partial revoke affecting the request, -1 if none."""
+        level = -1
+        for grant in grants:
+            if not int(grant.get('is_partial_revoke') or 0) or grant['access_type'].upper() != stmt:
+                continue
+            # REVOKE GRANT OPTION FOR leaves the privilege itself in place.
+            if int(grant.get('grant_option') or 0) and not grant_option:
+                continue
+            # Revoke on other columns than requested.
+            if grant['column'] and cols and grant['column'] not in cols:
+                continue
+            level = max(level, grant_level(grant))
+
+        return level
+
+    def _missing_grants(self):
+        """Return (privs, obj, grant_option) for desired privileges not present yet."""
+        to_grant = []
+        for obj, privs in self._get_desired_grants().items():
+            for priv, grant_option in privs.items():
+                parsed = self._parse_priv_entries(priv)
+                if not self._privilege_fully_present(obj, parsed, grant_option=grant_option):
+                    to_grant.append((parsed, obj, grant_option))
+        return to_grant
+
     def update(self):
         desired = self._get_desired_grants()
         current = self.get()
@@ -751,8 +795,12 @@ class ClickHouseGrants():
                              for priv, go in privs.items()}
 
         to_revoke = all_current_privs - all_desired_privs if exclusive else set()
-        to_grant = all_desired_privs - all_current_privs
-
+        # TODO: exclusive still compares SHOW GRANTS output.
+        if exclusive:
+            to_grant = [(self._parse_priv_entries(priv), obj, go)
+                        for priv, obj, go in sorted(all_desired_privs - all_current_privs)]
+        else:
+            to_grant = self._missing_grants()
         if not to_revoke and not to_grant and not partial_revokes:
             return self.changed
 
@@ -767,26 +815,8 @@ class ClickHouseGrants():
             query += get_on_cluster_clause(self.module, self.cluster)
             queries.append(query)
 
-        grants_go_by_obj = defaultdict(list)
-        grants_no_go_by_obj = defaultdict(list)
-
-        for priv, obj, go in to_grant:
-            if go:
-                grants_go_by_obj[obj].append(priv)
-            else:
-                grants_no_go_by_obj[obj].append(priv)
-
-        for obj, privs in grants_go_by_obj.items():
-            privs_str = ', '.join(sorted(privs))
-            query = "GRANT {0} ON {1} TO '{2}' WITH GRANT OPTION".format(privs_str, obj, self.grantee)
-            query += get_on_cluster_clause(self.module, self.cluster)
-            queries.append(query)
-
-        for obj, privs in grants_no_go_by_obj.items():
-            privs_str = ', '.join(sorted(privs))
-            query = "GRANT {0} ON {1} TO '{2}'".format(privs_str, obj, self.grantee)
-            query += get_on_cluster_clause(self.module, self.cluster)
-            queries.append(query)
+        for privs, obj, go in to_grant:
+            queries.append(self._grant_query(privs, obj, go))
 
         # Handle partial revokes if specified
         if partial_revokes:
@@ -826,7 +856,7 @@ class ClickHouseGrants():
                     else:
                         stmts.append(key)
                 query = "REVOKE {0} ON {1} FROM '{2}'".format(
-                    ', '.join(stmts), self._normalize_revoke_object(revoke_obj), self.grantee)
+                    ', '.join(stmts), self._normalize_table_object(revoke_obj), self.grantee)
                 query += get_on_cluster_clause(self.module, self.cluster)
                 queries.append(query)
 
@@ -895,13 +925,13 @@ class ClickHouseGrants():
                     if not cols:
                         # When no columns, there is only one entry to check.
                         if self._partial_revoke_exists(obj, stmt):
-                            queries.append(self._grant_query(stmt, obj, grant_option=grant_option))
+                            queries.append(self._grant_query({stmt: []}, obj, grant_option=grant_option))
                         continue
 
                     # Check each column separately.
                     lifted = [col for col in cols if self._partial_revoke_exists(obj, stmt, col)]
                     if lifted:
-                        queries.append(self._grant_query(stmt, obj, lifted, grant_option))
+                        queries.append(self._grant_query({stmt: lifted}, obj, grant_option))
 
         return queries
 

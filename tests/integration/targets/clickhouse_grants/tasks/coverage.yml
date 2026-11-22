@@ -1,0 +1,311 @@
+---
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+# Privileges already covered by existing grants must not be granted again.
+
+- name: Coverage - create test user
+  community.clickhouse.clickhouse_user:
+    name: cov_user
+    password: cov_password
+    state: present
+
+# 1. Grant with grant option covers request without it
+- name: Coverage 1 - setup grant with grant option
+  community.clickhouse.clickhouse_client:
+    execute: "GRANT SELECT ON foo.* TO cov_user WITH GRANT OPTION"
+
+- name: Coverage 1 - get grants before
+  register: grants_before
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR cov_user"
+
+- name: Coverage 1 - request without grant option in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    grantee: cov_user
+    privileges:
+      - object: 'foo.*'
+        privs:
+          SELECT: false
+
+- name: Coverage 1 - assert not changed in check mode
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - result.executed_statements == []
+
+- name: Coverage 1 - request without grant option
+  register: result
+  community.clickhouse.clickhouse_grants:
+    grantee: cov_user
+    privileges:
+      - object: 'foo.*'
+        privs:
+          SELECT: false
+
+- name: Coverage 1 - assert not changed
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - result.executed_statements == []
+
+- name: Coverage 1 - get grants after
+  register: grants_after
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR cov_user"
+
+- name: Coverage 1 - assert grants untouched
+  ansible.builtin.assert:
+    that:
+      - grants_after.result == grants_before.result
+
+- name: Coverage 1 - reset grants
+  community.clickhouse.clickhouse_client:
+    execute: "REVOKE ALL ON *.* FROM cov_user"
+
+# 2. Database grant covers table request
+- name: Coverage 2 - setup database grant
+  community.clickhouse.clickhouse_client:
+    execute: "GRANT SELECT ON foo.* TO cov_user"
+
+- name: Coverage 2 - get grants before
+  register: grants_before
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR cov_user"
+
+- name: Coverage 2 - request table grant in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    grantee: cov_user
+    privileges:
+      - object: 'foo.bar'
+        privs:
+          SELECT: false
+
+- name: Coverage 2 - assert not changed in check mode
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - result.executed_statements == []
+
+- name: Coverage 2 - request table grant
+  register: result
+  community.clickhouse.clickhouse_grants:
+    grantee: cov_user
+    privileges:
+      - object: 'foo.bar'
+        privs:
+          SELECT: false
+
+- name: Coverage 2 - assert not changed
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - result.executed_statements == []
+
+- name: Coverage 2 - get grants after
+  register: grants_after
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR cov_user"
+
+- name: Coverage 2 - assert grants untouched
+  ansible.builtin.assert:
+    that:
+      - grants_after.result == grants_before.result
+
+- name: Coverage 2 - reset grants
+  community.clickhouse.clickhouse_client:
+    execute: "REVOKE ALL ON *.* FROM cov_user"
+
+# 3. ALL covers a specific privilege
+- name: Coverage 3 - setup ALL grant
+  community.clickhouse.clickhouse_client:
+    execute: "GRANT ALL ON foo.* TO cov_user"
+
+- name: Coverage 3 - get grants before
+  register: grants_before
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR cov_user"
+
+- name: Coverage 3 - request INSERT in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    grantee: cov_user
+    privileges:
+      - object: 'foo.*'
+        privs:
+          INSERT: false
+
+- name: Coverage 3 - assert not changed in check mode
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - result.executed_statements == []
+
+- name: Coverage 3 - request INSERT
+  register: result
+  community.clickhouse.clickhouse_grants:
+    grantee: cov_user
+    privileges:
+      - object: 'foo.*'
+        privs:
+          INSERT: false
+
+- name: Coverage 3 - assert not changed
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - result.executed_statements == []
+
+- name: Coverage 3 - get grants after
+  register: grants_after
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR cov_user"
+
+- name: Coverage 3 - assert grants untouched
+  ansible.builtin.assert:
+    that:
+      - grants_after.result == grants_before.result
+
+- name: Coverage 3 - reset grants
+  community.clickhouse.clickhouse_client:
+    execute: "REVOKE ALL ON *.* FROM cov_user"
+
+# 4. Column grant covers a subset of its columns
+- name: Coverage 4 - setup column grant
+  community.clickhouse.clickhouse_grants:
+    grantee: cov_user
+    privileges:
+      - object: 'foo.bar'
+        privs:
+          SELECT(x, y): false
+
+- name: Coverage 4 - get grants before
+  register: grants_before
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR cov_user"
+
+- name: Coverage 4 - request subset of columns in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    grantee: cov_user
+    privileges:
+      - object: 'foo.bar'
+        privs:
+          SELECT(x): false
+
+- name: Coverage 4 - assert not changed in check mode
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - result.executed_statements == []
+
+- name: Coverage 4 - request subset of columns
+  register: result
+  community.clickhouse.clickhouse_grants:
+    grantee: cov_user
+    privileges:
+      - object: 'foo.bar'
+        privs:
+          SELECT(x): false
+
+- name: Coverage 4 - assert not changed
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - result.executed_statements == []
+
+- name: Coverage 4 - get grants after
+  register: grants_after
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR cov_user"
+
+- name: Coverage 4 - assert grants untouched
+  ansible.builtin.assert:
+    that:
+      - grants_after.result == grants_before.result
+
+- name: Coverage 4 - reset grants
+  community.clickhouse.clickhouse_client:
+    execute: "REVOKE ALL ON *.* FROM cov_user"
+
+# 5. Grant without grant option does not cover request with it
+- name: Coverage 5 - setup grant without grant option
+  community.clickhouse.clickhouse_client:
+    execute: "GRANT SELECT ON foo.* TO cov_user"
+
+- name: Coverage 5 - request with grant option in check mode
+  register: result
+  check_mode: true
+  community.clickhouse.clickhouse_grants:
+    grantee: cov_user
+    privileges:
+      - object: 'foo.*'
+        privs:
+          SELECT: true
+
+- name: Coverage 5 - assert changed in check mode
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - result.executed_statements == ["GRANT SELECT ON `foo`.* TO 'cov_user' WITH GRANT OPTION"]
+
+- name: Coverage 5 - get grants after check mode
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR cov_user"
+
+- name: Coverage 5 - assert check mode did not touch the server
+  ansible.builtin.assert:
+    that:
+      - "'WITH GRANT OPTION' not in result.result | string"
+
+- name: Coverage 5 - request with grant option
+  register: result
+  community.clickhouse.clickhouse_grants:
+    grantee: cov_user
+    privileges:
+      - object: 'foo.*'
+        privs:
+          SELECT: true
+
+- name: Coverage 5 - assert changed
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - result.executed_statements == ["GRANT SELECT ON `foo`.* TO 'cov_user' WITH GRANT OPTION"]
+
+- name: Coverage 5 - get grants after
+  register: result
+  community.clickhouse.clickhouse_client:
+    execute: "SHOW GRANTS FOR cov_user"
+
+- name: Coverage 5 - assert grant option added
+  ansible.builtin.assert:
+    that:
+      - "['GRANT SELECT ON foo.* TO cov_user WITH GRANT OPTION'] in result.result"
+
+- name: Coverage 5 - request with grant option again
+  register: result
+  community.clickhouse.clickhouse_grants:
+    grantee: cov_user
+    privileges:
+      - object: 'foo.*'
+        privs:
+          SELECT: true
+
+- name: Coverage 5 - assert idempotent
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+
+- name: Coverage - drop test user
+  community.clickhouse.clickhouse_user:
+    name: cov_user
+    state: absent
