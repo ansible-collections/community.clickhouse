@@ -1,0 +1,12 @@
+bugfixes:
+  - clickhouse_grants - with ``exclusive=false``, privileges are now compared against ``system.grants``.
+    Privileges already covered by a broader grant, such as ``*.*`` for ``system.*`` or ``ALL`` for ``SELECT``,
+    or by the same privilege with grant option, are no longer granted again.
+    ``exclusive=true`` is still affected
+    (https://github.com/ansible-collections/community.clickhouse/issues/202).
+  - clickhouse_grants - with ``exclusive=false``, column-level privileges like ``SELECT(a, b)`` no longer report a change on every run.
+    ``exclusive=true`` is still affected
+    (https://github.com/ansible-collections/community.clickhouse/issues/249).
+minor_changes:
+  - clickhouse_grants - ``executed_statements`` now contains one ``GRANT`` per privilege entry with quoted objects,
+    for example ``GRANT SELECT ON `foo`.* TO 'alice'``.

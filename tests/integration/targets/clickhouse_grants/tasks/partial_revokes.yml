@@ -678,7 +678,7 @@
   assert:
     that:
       - "'REVOKE SELECT ON foo.bar FROM test_user' not in result.result | flatten"
-      - "'GRANT SELECT ON `foo`.* TO test_user' in result.result | flatten"
+      - "'GRANT SELECT ON foo.* TO test_user' in result.result | flatten"
 
 - name: Partially revoke a table again
   community.clickhouse.clickhouse_grants:

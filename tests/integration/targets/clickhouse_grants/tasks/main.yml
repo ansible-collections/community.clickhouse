@@ -6,6 +6,9 @@
 # Initial CI tests of clickhouse_grants module
 - import_tasks: initial.yml
 
+# CI tests for privileges covered by existing grants
+- import_tasks: coverage.yml
+
 # CI tests for `cluster` parameter
 - import_tasks: cluster.yml
 

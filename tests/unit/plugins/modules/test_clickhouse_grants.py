@@ -820,9 +820,9 @@ class TestClickHouseGrantsPartialRevokes:
         assert result is True
 
     def test_pending_grant_rows(self):
-        result = self.obj._pending_grant_rows({
-            ('SELECT', 'foo.*', False),
-        })
+        result = self.obj._pending_grant_rows([
+            ({'SELECT': []}, 'foo.*', False),
+        ])
         assert result == [
             {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
              'column': None, 'is_partial_revoke': 0, 'grant_option': 0}
@@ -830,10 +830,10 @@ class TestClickHouseGrantsPartialRevokes:
 
     def test_pending_grant_rows_object_types(self):
         result = self.obj._pending_grant_rows([
-            ('SELECT(a, b)', 'foo.bar', False),
-            ('CREATE USER', '*.*', True),
-            ('READ', 'POSTGRES', False),
-            ('READ', '*', False),
+            ({'SELECT': ['a', 'b']}, 'foo.bar', False),
+            ({'CREATE USER': []}, '*.*', True),
+            ({'READ': []}, 'POSTGRES', False),
+            ({'READ': []}, '*', False),
         ])
         assert result == [
             {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
@@ -852,7 +852,7 @@ class TestClickHouseGrantsPartialRevokes:
         # Nothing is granted yet, the source privilege comes from
         # the GRANT statements the same run is about to execute.
         self.obj._grants = []
-        pending = self.obj._pending_grant_rows({('SELECT', 'foo.*', False)})
+        pending = self.obj._pending_grant_rows([({'SELECT': []}, 'foo.*', False)])
         result = self.obj._privilege_fully_present('foo.bar', {'SELECT': []}, revoke=1,
                                                    extra_grants=pending)
         assert result is False
@@ -860,7 +860,7 @@ class TestClickHouseGrantsPartialRevokes:
     def test_privilege_fully_present_revoke_no_source_in_same_run(self):
         # The pending grant is for another object, so there is nothing to revoke.
         self.obj._grants = []
-        pending = self.obj._pending_grant_rows({('SELECT', 'other.*', False)})
+        pending = self.obj._pending_grant_rows([({'SELECT': []}, 'other.*', False)])
         result = self.obj._privilege_fully_present('foo.bar', {'SELECT': []}, revoke=1,
                                                    extra_grants=pending)
         assert result is True
@@ -874,14 +874,14 @@ class TestClickHouseGrantsPartialRevokes:
             {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
              'column': None, 'is_partial_revoke': 1, 'grant_option': 0},
         ]
-        pending = self.obj._pending_grant_rows({('INSERT', 'foo.*', False)})
+        pending = self.obj._pending_grant_rows([({'INSERT': []}, 'foo.*', False)])
         result = self.obj._privilege_fully_present('foo.bar', {'SELECT': []}, revoke=1,
                                                    extra_grants=pending)
         assert result is True
 
     def test_privilege_fully_present_revoke_and_grant_same_table_diff_column(self):
         self.obj._grants = []
-        pending = self.obj._pending_grant_rows({('SELECT(A)', 'foo.bar', False)})
+        pending = self.obj._pending_grant_rows([({'SELECT': ['A']}, 'foo.bar', False)])
         result = self.obj._privilege_fully_present('foo.bar', {'SELECT': ['B']}, revoke=1,
                                                    extra_grants=pending)
         assert result is True
@@ -905,6 +905,62 @@ class TestClickHouseGrantsPartialRevokes:
         assert self.obj._privilege_covered(grants, 'SELECT', [], 1, True, False) is False
 
     @pytest.mark.parametrize(
+        'current_go,requested_go,expected',
+        [
+            (0, False, True),
+            (1, False, True),
+            (0, True, False),
+            (1, True, True),
+        ]
+    )
+    def test_privilege_covered_grant_option(self, current_go, requested_go, expected):
+        grants = [
+            {'access_type': 'SELECT', 'column': None, 'is_partial_revoke': 0, 'grant_option': current_go},
+        ]
+        assert self.obj._privilege_covered(grants, 'SELECT', [], 0, True, requested_go) is expected
+
+    def test_privilege_covered_grant_option_ignores_grants_without_it(self):
+        grants = [
+            {'access_type': 'SELECT', 'column': None, 'is_partial_revoke': 0, 'grant_option': 0},
+            {'access_type': 'ALL', 'column': None, 'is_partial_revoke': 0, 'grant_option': 1},
+        ]
+        assert self.obj._privilege_covered(grants, 'SELECT', [], 0, True, True) is True
+
+    @pytest.mark.parametrize(
+        'revoke,cols,grant_option,expected',
+        [
+            # Revoke on the requested table cancels the db grant
+            ({'database': 'foo', 'table': 'bar', 'column': None, 'grant_option': 0}, [], False, False),
+            # Revoke on a column cancels the whole table request
+            ({'database': 'foo', 'table': 'bar', 'column': 'a', 'grant_option': 0}, [], False, False),
+            # Revoke on another column does not affect requested one
+            ({'database': 'foo', 'table': 'bar', 'column': 'a', 'grant_option': 0}, ['b'], False, True),
+            # REVOKE GRANT OPTION FOR only matters when grant option is requested
+            ({'database': 'foo', 'table': 'bar', 'column': None, 'grant_option': 1}, [], False, True),
+            ({'database': 'foo', 'table': 'bar', 'column': None, 'grant_option': 1}, [], True, False),
+        ]
+    )
+    def test_privilege_covered_partial_revoke_cancels_parent(self, revoke, cols, grant_option, expected):
+        grants = [
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
+             'column': None, 'is_partial_revoke': 0, 'grant_option': 1},
+            dict(revoke, access_type='SELECT', access_object='', is_partial_revoke=1),
+        ]
+        assert self.obj._privilege_covered(grants, 'SELECT', cols, 0, True, grant_option) is expected
+
+    def test_privilege_covered_grant_more_specific_than_revoke(self):
+        # GRANT SELECT ON *.*, REVOKE SELECT ON foo.*, GRANT SELECT ON foo.bar
+        grants = [
+            {'access_type': 'SELECT', 'access_object': '', 'database': None, 'table': None,
+             'column': None, 'is_partial_revoke': 0, 'grant_option': 0},
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
+             'column': None, 'is_partial_revoke': 1, 'grant_option': 0},
+            {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': 'bar',
+             'column': None, 'is_partial_revoke': 0, 'grant_option': 0},
+        ]
+        assert self.obj._privilege_covered(grants, 'SELECT', [], 0, True, False) is True
+
+    @pytest.mark.parametrize(
         'obj,expected',
         [
             ('foo.bar', '`foo`.`bar`'),
@@ -917,30 +973,29 @@ class TestClickHouseGrantsPartialRevokes:
     def test_normalize_table_object(self, obj, expected):
         assert self.obj._normalize_table_object(obj) == expected
 
-
     @pytest.mark.parametrize(
-        'stmt,obj,cols,grant_option,expected',
+        'privs,obj,grant_option,expected',
         [
-            ('SELECT', 'foo.bar', None, False, "GRANT SELECT ON `foo`.`bar` TO 'test'"),
-            ('SELECT', 'foo.*', None, False, "GRANT SELECT ON `foo`.* TO 'test'"),
-            ('SELECT', 'foo.bar', ['a'], False, "GRANT SELECT(`a`) ON `foo`.`bar` TO 'test'"),
-            ('SELECT', 'foo.bar', ['a', 'b'], False, "GRANT SELECT(`a`, `b`) ON `foo`.`bar` TO 'test'"),
-            ('SELECT', 'foo.bar', None, True, "GRANT SELECT ON `foo`.`bar` TO 'test' WITH GRANT OPTION"),
-            ('READ', 'POSTGRES', None, False, "GRANT READ ON `POSTGRES` TO 'test'"),
+            ({'SELECT': []}, 'foo.bar', False, "GRANT SELECT ON `foo`.`bar` TO 'test'"),
+            ({'SELECT': []}, 'foo.*', False, "GRANT SELECT ON `foo`.* TO 'test'"),
+            ({'SELECT': ['a']}, 'foo.bar', False, "GRANT SELECT(`a`) ON `foo`.`bar` TO 'test'"),
+            ({'SELECT': ['a', 'b']}, 'foo.bar', False, "GRANT SELECT(`a`, `b`) ON `foo`.`bar` TO 'test'"),
+            ({'SELECT': ['a'], 'INSERT': []}, 'foo.bar', False, "GRANT SELECT(`a`), INSERT ON `foo`.`bar` TO 'test'"),
+            ({'SELECT': []}, 'foo.bar', True, "GRANT SELECT ON `foo`.`bar` TO 'test' WITH GRANT OPTION"),
+            ({'READ': []}, 'POSTGRES', False, "GRANT READ ON `POSTGRES` TO 'test'"),
         ]
     )
-    def test_grant_query(self, stmt, obj, cols, grant_option, expected):
-        assert self.obj._grant_query(stmt, obj, cols, grant_option) == expected
+    def test_grant_query(self, privs, obj, grant_option, expected):
+        assert self.obj._grant_query(privs, obj, grant_option) == expected
 
     def test_grant_query_on_cluster(self):
         self.obj.cluster = 'test_cluster'
-        result = self.obj._grant_query('SELECT', 'foo.bar', grant_option=True)
+        result = self.obj._grant_query({'SELECT': []}, 'foo.bar', grant_option=True)
         assert result == "GRANT SELECT ON `foo`.`bar` TO 'test' WITH GRANT OPTION ON CLUSTER `test_cluster`"
 
     def test_grant_query_rejects_invalid_column(self):
-        self.obj._grant_query('SELECT', 'foo.bar', ['a`b'])
+        self.obj._grant_query({'SELECT': ['a`b']}, 'foo.bar')
         self.mock_module.fail_json.assert_called_once()
-
 
     def test_normalize_table_object_rejects_partial_wildcard_db(self):
         self.obj._normalize_table_object('*.bar')
@@ -1016,6 +1071,24 @@ class TestClickHouseGrantsUpdateRevokes:
         self.obj.update()
 
         assert executed_statements == ["REVOKE SELECT(`a`, `b`) ON `foo`.`bar` FROM 'alice'"]
+
+    def test_exclusive_grants_privilege_covered_by_revoked_one(self):
+        """Broader grant is revoked by exclusive, so the covered privilege must be granted."""
+        self.mock_module.params['exclusive'] = True
+        self.mock_module.params['privileges'] = [{'object': 'foo.*', 'privs': {'SELECT': False}}]
+        self.mock_execute_query.return_value = [('GRANT SELECT ON *.* TO alice',)]
+        self.obj._grants = [
+            {'access_type': 'SELECT', 'access_object': '', 'database': None, 'table': None,
+             'column': None, 'is_partial_revoke': 0, 'grant_option': 0}
+        ]
+
+        changed = self.obj.update()
+
+        assert changed is True
+        assert executed_statements == [
+            "REVOKE SELECT ON *.* FROM 'alice'",
+            "GRANT SELECT ON `foo`.* TO 'alice'",
+        ]
 
     def test_grant_and_revoke_in_one_run_are_ordered(self):
         self.mock_module.params['privileges'] = [{'object': 'foo.*', 'privs': {'SELECT': False}}]
@@ -1197,8 +1270,9 @@ class TestClickHouseGrantsLiftPartialRevokes:
         assert executed_statements == ["GRANT SELECT ON `foo`.`bar` TO 'alice'"]
         self.mock_execute_query.assert_not_called()
 
-class TestClickHouseAttachNewFormat:
-    """Test the helpers backing the revokes option"""
+
+class TestClickHouseMissingGrants:
+    """Test which desired privileges _missing_grants reports as not present yet"""
 
     def setup_method(self):
         self.mock_module = MagicMock()
@@ -1213,19 +1287,30 @@ class TestClickHouseAttachNewFormat:
             {'access_type': 'SELECT', 'access_object': '', 'database': 'foo', 'table': None,
              'column': None, 'is_partial_revoke': 0, 'grant_option': 0}
         ]
+
     def teardown_method(self):
         patch.stopall()
 
-    def test_simple(self):
-        self.obj.module.params = {
-            'privileges': [ {
-                'object': 'foo2.*',
-                'privs': {
-                'SELECT': False,
-                }
-            }
-            ],
-        }
-        result = self.obj.attach_new_format()
-        assert result == [('SELECT', 'foo2.*', False)]
-        # assert result == []
+    @pytest.mark.parametrize(
+        'privileges,expected',
+        [
+            # Other database is not covered
+            ([{'object': 'foo2.*', 'privs': {'SELECT': False}}],
+             [({'SELECT': []}, 'foo2.*', False)]),
+            # Database grant covers table and columns
+            ([{'object': 'foo.bar', 'privs': {'SELECT': False}}], []),
+            ([{'object': 'foo.bar', 'privs': {'SELECT(a, b)': False}}], []),
+            # Grant option is missing on the existing grant
+            ([{'object': 'foo.*', 'privs': {'SELECT': True}}],
+             [({'SELECT': []}, 'foo.*', True)]),
+            # grant_option overrides per privilege value
+            ([{'object': 'foo.*', 'grant_option': True, 'privs': {'SELECT': False}}],
+             [({'SELECT': []}, 'foo.*', True)]),
+            # Only missing entries are returned
+            ([{'object': 'foo.*', 'privs': {'SELECT': False, 'INSERT': False}}],
+             [({'INSERT': []}, 'foo.*', False)]),
+        ]
+    )
+    def test_missing_grants(self, privileges, expected):
+        self.obj.module.params = {'privileges': privileges}
+        assert self.obj._missing_grants() == expected
